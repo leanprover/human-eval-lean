@@ -4,7 +4,7 @@ example : [2, 2, 2].intersperse 2 = [2, 2, 2, 2, 2]          := rfl
 
 namespace List
 
-theorem intersperse_length_le (l : List α) : (l.intersperse delim).length ≤ 2 * l.length - 1 := by
+theorem intersperse_length_le (l : List α) : (l.intersperse sep).length ≤ 2 * l.length - 1 := by
   fun_induction intersperse <;> simp only [intersperse, length_cons] at * <;> try omega
   next h _ =>
     have := length_pos_iff.mpr h
@@ -12,14 +12,24 @@ theorem intersperse_length_le (l : List α) : (l.intersperse delim).length ≤ 2
 
 -- Every element of index `2 * i` is the `i`th element of the input list.
 theorem intersperse_getElem?_even {l : List α} (h : 1 < l.length) :
-    (l.intersperse delim)[2 * i]? = l[i]? := by
+    (l.intersperse sep)[2 * i]? = l[i]? := by
   fun_induction intersperse generalizing i <;> try contradiction
-  next hn ih =>
+  next hn _ =>
     have ⟨_, tl, hn⟩ := ne_nil_iff_exists_cons.mp hn
     cases tl <;> cases i
     case nil.succ  j => cases j <;> simp_all +arith
     case cons.succ j => have hj : 2 * (j + 1) = 2 * j + 2 := rfl; simp_all
     all_goals simp [intersperse]
+
+-- Every element of index `2 * i + 1` is the separator element.
+theorem intersperse_getElem?_odd {l : List α} (h₁ : 1 < l.length) (h₂ : i < l.length - 1) :
+    (l.intersperse sep)[2 * i + 1]? = sep := by
+  fun_induction intersperse generalizing i <;> try contradiction
+  next hn _ =>
+    have ⟨_, tl, hn⟩ := ne_nil_iff_exists_cons.mp hn
+    cases tl <;> cases i
+    case cons.succ j => have hj : 2 * (j + 1) = 2 * j + 2 := rfl; simp_all
+    all_goals simp_all
 
 /-!
 ## Prompt
