@@ -17,11 +17,8 @@ theorem intersperse_getElem?_even {l : List α} (h : 1 < l.length) :
   next hn ih =>
     have ⟨_, tl, hn⟩ := ne_nil_iff_exists_cons.mp hn
     cases tl <;> cases i
-    case nil.succ j =>
-      cases j <;> simp +arith [hn, intersperse]
-    case cons.succ j =>
-      have hj : 2 * (j + 1) = 2 * j + 2 := rfl
-      rw [intersperse, hj] <;> simp_all
+    case nil.succ  j => cases j <;> simp_all +arith
+    case cons.succ j => have hj : 2 * (j + 1) = 2 * j + 2 := rfl; simp_all
     all_goals simp [intersperse]
 
 /-!
