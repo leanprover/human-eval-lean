@@ -10,9 +10,10 @@ theorem intersperse_length_le (l : List α) : (l.intersperse sep).length ≤ 2 *
     have := length_pos_iff.mpr h
     omega
 
+variable {l : List α}
+
 -- Every element of index `2 * i` is the `i`th element of the input list.
-theorem intersperse_getElem?_even {l : List α} (h : 1 < l.length) :
-    (l.intersperse sep)[2 * i]? = l[i]? := by
+theorem intersperse_getElem?_even (h : 1 < l.length) : (l.intersperse sep)[2 * i]? = l[i]? := by
   fun_induction intersperse generalizing i <;> try contradiction
   next hn _ =>
     have ⟨_, tl, hn⟩ := ne_nil_iff_exists_cons.mp hn
@@ -22,7 +23,7 @@ theorem intersperse_getElem?_even {l : List α} (h : 1 < l.length) :
     all_goals simp [intersperse]
 
 -- Every element of index `2 * i + 1` is the separator element.
-theorem intersperse_getElem?_odd {l : List α} (h₁ : 1 < l.length) (h₂ : i < l.length - 1) :
+theorem intersperse_getElem?_odd (h₁ : 1 < l.length) (h₂ : i < l.length - 1) :
     (l.intersperse sep)[2 * i + 1]? = sep := by
   fun_induction intersperse generalizing i <;> try contradiction
   next hn _ =>
