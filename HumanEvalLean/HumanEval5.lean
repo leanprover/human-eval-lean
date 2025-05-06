@@ -4,7 +4,7 @@ example : [2, 2, 2].intersperse 2 = [2, 2, 2, 2, 2]          := rfl
 
 namespace List
 
-theorem intersperse_length (l : List α) : (l.intersperse sep).length = 2 * l.length - 1 := by
+theorem length_intersperse (l : List α) : (l.intersperse sep).length = 2 * l.length - 1 := by
   fun_induction intersperse <;> simp only [intersperse, length_cons, length_nil] at * <;> try omega
   next h _ => have := length_pos_iff.mpr h; omega
 
