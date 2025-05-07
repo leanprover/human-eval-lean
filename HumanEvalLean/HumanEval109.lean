@@ -95,8 +95,51 @@ theorem List.Pairwise_lt_of_forall_neighbor (l : List Int)
   | nil => simp
   | cons hd tl ih =>
     simp
-
-
+    have : ∀ (i j : Nat) (h : i + j < tl.length), j ≠ 0 → tl[i] < tl[i + j] := by
+      intro i j hij
+      induction j with
+      | zero => simp
+      | succ k ih =>
+        cases k with
+        | zero =>
+          simp
+          specialize h (i+1)
+          simp at h
+          apply h
+          simpa
+        | succ l =>
+          simp
+          apply Int.lt_trans
+          · apply ih
+            · omega
+            · simp
+          · specialize h ((i + (l + 1)) + 1)
+            simp at h
+            apply h
+            omega
+    constructor
+    · intro a ha
+      rw [mem_iff_getElem] at ha
+      rcases ha with ⟨i, hi, tli⟩
+      cases i with
+      | zero =>
+        rw [← tli]
+        apply h
+        simpa
+      | succ j =>
+        rw [← tli]
+        specialize this 0 (j + 1)
+        simp [hi] at this
+        apply Int.lt_trans
+        · specialize h 0
+          simp at h
+          apply h
+        · apply this trivial
+    · apply ih
+      intro i hi
+      specialize h (i+1)
+      apply h
+      simpa
 
 end helper
 
@@ -108,6 +151,10 @@ theorem rightShiftExample : rightShift [3,4,5,1,2] 2 = [1,2,3,4,5] := by native_
 
 @[simp]
 theorem rightShift_zero {l : List α} : rightShift l 0 = l := by
+  simp [rightShift]
+
+theorem length_rightShift {l : List α} {n : Nat} :
+    (rightShift l n).length = l.length := by
   simp [rightShift]
 
 def isBreakPoint (l : List Int) (pos : Nat) (h : pos < l.length) :=
@@ -179,8 +226,11 @@ theorem move_one_ball_correct {l : List Int} :
         simp [countBreakPoints, hl, List.sum_eq_one_iff] at h
         rcases h with ⟨i, hi1, hi2⟩
         exists i
+        apply List.Pairwise_lt_of_forall_neighbor
+        intro j hj
+        simp [rightShift]
         sorry
-    ·
+    · sorry
 /-!
 ## Prompt
 
