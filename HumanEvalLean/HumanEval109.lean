@@ -1,308 +1,153 @@
 variable {α : Type _}
 
-def leftShift (l : List α) (n : Nat) : List α :=
-  match n with
-  | .zero => l
-  | .succ m =>
-    match l with
-    | .nil => []
-    | .cons hd tl => leftShift (tl ++ [hd]) m
+section helper
 
-@[simp]
-theorem leftShift_zero {l : List α} :
-    leftShift l 0 = l := rfl
-
-@[simp]
-theorem leftShift_nil {n : Nat} :
-    leftShift ([] : List α) n = [] := by
-  cases n <;> simp [leftShift]
-
-@[simp]
-theorem leftShift_cons_one {hd : α} {tl : List α} :
-    leftShift (hd::tl) 1 = tl ++ [hd] := rfl
-
-theorem leftShift_of_le_length {l : List α} {n : Nat} (h : n ≤ l.length) :
-    leftShift l n = l.drop n ++ l.take n := by
-  induction n generalizing l with
+theorem Nat.lt_two_iff {n : Nat} : n < 2 ↔ n = 0 ∨ n = 1 := by
+  cases n with
   | zero => simp
-  | succ m ih =>
-    have : m ≤ l.length := by
-      apply Nat.le_of_succ_le h
-    cases l with
-    | nil => simp
-    | cons hd tl =>
-      simp only [leftShift, List.drop_succ_cons, List.take_succ_cons]
-      rw [ih]
-      · simp only [List.length_cons, Nat.add_le_add_iff_right] at h
-        simp [List.drop_append_of_le_length h, List.take_append_of_le_length h]
-      · simpa
+  | succ m =>
+    cases m with
+    | zero => simp
+    | succ o => simp
 
-theorem leftShift_add_one {l : List α} {n1 : Nat} :
-    leftShift l (n1 + 1) = leftShift (leftShift l n1) 1 := by
-  induction n1 generalizing l with
-  | zero => simp
-  | succ m ih =>
-    cases l with
-    | nil => simp
-    | cons hd tl =>
-      conv =>
-        lhs
-        unfold leftShift -- prevent multiple unfolding
-        simp
-      rw [ih]
-      have : leftShift (hd :: tl) (m + 1) = leftShift (tl ++ [hd]) m := by
-        conv =>
-          lhs
-          simp [leftShift]
-      rw [this]
-
-theorem leftShift_add {l : List α} {n1 n2 : Nat} :
-    leftShift l (n1 + n2) = leftShift (leftShift l n1) n2 := by
-  induction n2 with
-  | zero => simp
-  | succ m ih =>
-    simp [← Nat.add_assoc, leftShift_add_one, ih]
-
-theorem leftShift_mul_length_eq_self {l : List α} {k : Nat}:
-    leftShift l (k * l.length) = l := by
-  induction k with
-  | zero => simp
-  | succ m ih =>
-    simp only [Nat.add_mul, Nat.one_mul, leftShift_add, ih]
-    rw [leftShift_of_le_length (by omega)]
-    simp
-
-@[simp]
-theorem isEmpty_leftShift_eq_isEmpty (l : List α) (n : Nat) :
-    (leftShift l n).isEmpty = l.isEmpty := by
-  induction n generalizing l with
-  | zero => simp [leftShift]
-  | succ m ih =>
-    cases l with
-    | nil => simp [leftShift]
-    | cons hd tl =>
-      simp [leftShift, ih]
-
-theorem Nat.exists_eq_mul_mod (n m : Nat) :
-    ∃ k, n = k * m + n % m := by
-  exists (n - n % m)/m
-  rw [← Nat.div_eq_sub_mod_div]
-  rw [div_add_mod']
-
-theorem leftShift_eq_leftShift_mod_length (l : List α) (n : Nat) :
-    leftShift l n = leftShift l (n % l.length) := by
-  have := Nat.exists_eq_mul_mod n l.length
-  rcases this with ⟨k, hk⟩
-  conv =>
-    lhs
-    rw [hk, leftShift_add, leftShift_mul_length_eq_self]
-
-def isleftShiftOf (l l' : List α) : Prop := ∃ (n : Nat), l' = leftShift l n
-
-theorem isleftShiftOf_iff_exists (l l' : List α) :
-    isleftShiftOf l l' ↔ ∃ (u v : List α), l = u ++ v ∧ l' = v ++ u := by
-  simp [isleftShiftOf]
-  by_cases hl : l = []
-  · simp [hl]
-    constructor
-    · intro h
-      exists []
-      exists []
-    · intro h
-      rcases h with ⟨u,v, huv, h⟩
-      simp [h, huv]
-  · constructor
-    · intro h'
-      rcases h' with ⟨n , h⟩
-      rw [leftShift_eq_leftShift_mod_length] at h
-      rw [leftShift_of_le_length] at h
-      · exists (l.take (n % l.length))
-        exists (l.drop (n % l.length))
-        refine And.intro ?_ h
-        exact Eq.symm (List.take_append_drop (n % l.length) l)
-      · apply Nat.le_of_lt
-        apply Nat.mod_lt
-        exact List.length_pos_iff.mpr hl
-    · intro h'
-      rcases h' with ⟨u, v, h, h'⟩
-      exists u.length
-      simp [h, h', leftShift_of_le_length]
-
-def countBreakPointsAndGetEnd (l : List Int) (hl : l ≠ []) : Nat × Int :=
-  go l 0 hl where
-  go (l : List Int) (curr : Nat) (hl : l ≠ []) : Nat × Int :=
-  match l with
-  | .nil => by simp at hl
-  | .cons hd tl =>
-    match tl with
-    | .nil => (curr, hd)
-    | .cons hd' tl' =>
-      if hd < hd'
-      then go (hd' :: tl') curr (by simp)
-      else go (hd' :: tl') (curr + 1) (by simp)
-
-theorem countBreakPointsAndGetEndGoIncreasing (l : List Int) (curr : Nat) (hl : l ≠ []) :
-    (countBreakPointsAndGetEnd.go l curr hl).fst ≥ curr := by
-  induction l generalizing curr with
-  | nil => simp at hl
-  | cons hd tl ih =>
-    cases tl with
-    | nil => simp [countBreakPointsAndGetEnd.go]
-    | cons hd' tl' =>
-      simp only [countBreakPointsAndGetEnd.go, ge_iff_le]
-      split
-      · apply ih
-      · specialize ih (curr + 1) (by simp)
-        apply Nat.le_trans ?_ ih
-        simp
-
-theorem countBreakPointsAndGetEnd_fst_eq_zero_iff_sorted (l : List Int) (hl : l ≠ []) :
-    (countBreakPointsAndGetEnd l hl).fst = 0 ↔ List.Pairwise (fun (a b : Int) => a < b) l := by
-  simp [countBreakPointsAndGetEnd]
+theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔ ∀ x ∈ l, x = 0 := by
   induction l with
-  | nil => simp at hl
+  | nil => simp
   | cons hd tl ih =>
-    cases tl with
-    | nil => simp [countBreakPointsAndGetEnd.go]
-    | cons hd' tl' =>
-      simp only [countBreakPointsAndGetEnd.go, Nat.zero_add, List.pairwise_cons, List.mem_cons,
-        forall_eq_or_imp]
-      simp only [ne_eq, reduceCtorEq, not_false_eq_true, List.pairwise_cons] at ih
-      split
-      · rename_i hhd
-        rw [ih True.intro]
-        simp only [hhd, true_and, iff_and_self, and_imp]
-        intro h₁ _ x hx
-        apply Int.lt_trans hhd (h₁ x hx)
-      · rename_i hhd
-        simp only [hhd, false_and, iff_false]
-        intro h
-        have := countBreakPointsAndGetEndGoIncreasing (hd' :: tl') 1 (by simp)
-        simp [h] at this
+    simp
+    intro _
+    exact ih
 
-def countGlobalBreakPoints (l : List Int) : Nat :=
-  if h : l.length < 2
-  then 0
-  else
-    have : l ≠ [] := by
-      rw [List.ne_nil_iff_length_pos]
-      simp at h
-      exact Nat.zero_lt_of_lt h
-    let (count, listEnd) := countBreakPointsAndGetEnd l this
-    let start := l.head this
-
-    if start < listEnd
-    then count + 1
-    else count
-
-theorem countBreakPointsAndGetEnd_fst_eq_zero_of_countGlobalBreakPoints
-    {l : List Int} (hl : l ≠ []) (h : countGlobalBreakPoints l = 0) :
-    (countBreakPointsAndGetEnd l hl).fst = 0 := by
-  cases l with
-  | nil => simp at hl
-  | cons hd tl =>
-    cases tl with
-    | nil => rfl
-    | cons hd' tl' =>
-      simp [countGlobalBreakPoints] at h
-      specialize h True.intro
-      split at h
-      · simp at h
-      · exact h
-
-theorem countGlobalBreakPoints_of_countBreakPointsAndGetEnd {l : List Int} {hl : l ≠ []} {n : Nat}
-    (h : (countBreakPointsAndGetEnd l hl).fst = n) :
-    countGlobalBreakPoints l = n ∨ countGlobalBreakPoints l = n + 1 := by
-  cases l with
-  | nil => simp at hl
-  | cons hd tl =>
-    cases tl with
-    | nil =>
-      simp [countBreakPointsAndGetEnd, countBreakPointsAndGetEnd.go] at h
-      simpa [countGlobalBreakPoints]
-    | cons hd' tl' =>
-      simp [countGlobalBreakPoints, h]
-      split
-      · rename_i htl
-        false_or_by_contra
-        revert htl
-        simp
-      · split <;> simp
-
-theorem countGlobalBreakPoints_leftShift_eq (l : List Int) (hl : l ≠ []) (n : Nat) :
-    countGlobalBreakPoints (leftShift l n) = countGlobalBreakPoints l := by
-  induction n generalizing l with
-  | zero => simp
-  | succ m ih =>
-    simp [leftShift]
-    cases l with
-    | nil => simp
-    | cons hd tl =>
-      simp
-      rw [ih _ (by simp)]
-      sorry
-
-def move_one_ball (l : List Int) : Bool :=
-  countGlobalBreakPoints l ≤ 1
-
-theorem move_one_ball_correct_iff (l : List Int) :
-    move_one_ball l = true ↔
-    ∃ (l' : List Int), isleftShiftOf l l' ∧ List.Pairwise (fun (a b : Int) => a < b) l' := by
-  simp [move_one_ball, Nat.le_succ_iff]
-  by_cases hl: l.length < 2
-  · simp [countGlobalBreakPoints, hl]
-    exists l
-    simp [isleftShiftOf]
-    constructor
-    · exists 0
-    · cases l with
-      | nil => simp
-      | cons hd tl =>
-        cases tl with
-        | nil => simp
-        | cons hd' tl' =>
-          simp at hl
-          omega
-  · have hl' : l ≠ [] := by
-      apply List.ne_nil_of_length_pos
-      simp at hl
-      exact Nat.zero_lt_of_lt hl
+theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i < l.length),
+    l[i] = 1 ∧ ∀ (j : Nat) (hj : j < l.length), i ≠ j → l[j] = 0 := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    simp [Nat.add_eq_one_iff]
     constructor
     · intro h
       cases h with
       | inl h =>
-        exists l
-        simp [isleftShiftOf]
-        have := countBreakPointsAndGetEnd_fst_eq_zero_of_countGlobalBreakPoints hl' h
-        rw [countBreakPointsAndGetEnd_fst_eq_zero_iff_sorted] at this
-        refine And.intro ?_ this
-        exists 0
+        rcases h with ⟨hl, hr⟩
+        rw [ih] at hr
+        rcases hr with ⟨i, hi, h⟩
+        exists (i + 1)
+        simp
+        constructor
+        · exists hi
+          simp [h]
+        · intro j hj hij
+          cases j with
+          | zero => simp[hl]
+          | succ k =>
+            simp
+            apply (And.right h)
+            simp at hij
+            assumption
       | inr h =>
-        simp [countGlobalBreakPoints, hl] at h
-        split at h
-        · simp at h
-          exists l
-          rw [countBreakPointsAndGetEnd_fst_eq_zero_iff_sorted] at h
-          refine And.intro ?_ h
-          simp [isleftShiftOf]
-          exists 0
-        · sorry
-    · false_or_by_contra
-      rename_i h h'
-      simp at h'
-      rcases h with ⟨l', hshift, hsort⟩
-      simp [isleftShiftOf] at hshift
-      rcases hshift with ⟨n, hshift⟩
-      have leftShift_ne_nil : leftShift l n ≠ [] := by
-        rw [ne_eq, ← List.isEmpty_iff]
-        simpa
-      rw [hshift, ← countBreakPointsAndGetEnd_fst_eq_zero_iff_sorted _ leftShift_ne_nil] at hsort
-      simp [← countGlobalBreakPoints_leftShift_eq l hl' n] at h'
-      have := countGlobalBreakPoints_of_countBreakPointsAndGetEnd hsort
-      simp at this
-      cases this with
-      | inl this => simp [this] at h'
-      | inr this => simp [this] at h'
+        exists 0
+        simp [h]
+        rw [sum_eq_zero] at h
+        intro j hj hij
+        cases j with
+        | zero => simp at hij
+        | succ k =>
+          simp
+          rcases h with ⟨_, h⟩
+          apply h
+          simp
+    · intro h
+      rcases h with ⟨i, hi, h⟩
+      cases i with
+      | zero =>
+        right
+        simp at hi
+        simp [hi]
+        rw [List.sum_eq_zero]
+        intro x hx
+        rw [List.mem_iff_getElem] at hx
+        rcases hx with ⟨k, hk, tlk⟩
+        specialize h (k + 1)
+        simp at h
+        rw [← tlk]
+        apply h hk
+      | succ k =>
+        simp at hi
+        left
+        constructor
+        · specialize h 0
+          simp at h
+          assumption
+        · rw [ih]
+          exists k
+          rcases hi with ⟨hk, tlk⟩
+          exists hk
+          simp [tlk]
+          intro j hj hkj
+          specialize h (j + 1)
+          simp at h
+          apply h hj hkj
+
+theorem List.Pairwise_lt_of_forall_neighbor (l : List Int)
+    (h : ∀ (i : Nat) (hi : i + 1 < l.length), l[i] < l[i+1]) :
+    List.Pairwise (fun (a b : Int) => a < b) l := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    simp
+
+
+
+end helper
+
+
+def rightShift (l : List α) (n : Nat) :=
+    l.drop (l.length - n) ++ l.take (l.length - n)
+
+theorem rightShiftExample : rightShift [3,4,5,1,2] 2 = [1,2,3,4,5] := by native_decide
+
+@[simp]
+theorem rightShift_zero {l : List α} : rightShift l 0 = l := by
+  simp [rightShift]
+
+def isBreakPoint (l : List Int) (pos : Nat) (h : pos < l.length) :=
+  if h:pos + 1 < l.length
+  then
+    if l[pos] < l[pos + 1]
+    then 0
+    else 1
+  else
+    if l[pos] > l[0]
+    then 1
+    else 0
+
+def countBreakPoints (l : List Int) : Nat :=
+  if l.length < 2
+  then 0
+  else
+    ((List.range l.length).attach.map (fun ⟨x,h⟩ =>
+      isBreakPoint l x (by simp at h; assumption))).sum
+
+theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔ l.length < 2 := by
+  simp [countBreakPoints, List.sum_eq_zero]
+  constructor
+  · intro h
+    false_or_by_contra
+    rename_i hl
+    simp at hl
+    specialize h hl
+    cases l with
+    | nil => simp at hl
+    | cons hd tl =>
+      cases tl with
+      | nil => simp at hl
+      | cons hd' tl' =>
+        sorry
+  · omega
+
+
+def move_one_ball (l : List Int) : Bool :=
+  countBreakPoints l < 2
 
 theorem testCase1 : move_one_ball [3,4,5,1,2] = True := by native_decide
 theorem testCase2 : move_one_ball [3,5,10,1,2] = True := by native_decide
@@ -310,6 +155,32 @@ theorem testCase3 : move_one_ball [4,3,1,2] = False := by native_decide
 theorem testCase4 : move_one_ball [3,5,4,1,2] = False := by native_decide
 theorem testCase5 : move_one_ball [] = True := by native_decide
 
+theorem move_one_ball_correct {l : List Int} :
+    move_one_ball l = true ↔ ∃ (n : Nat), List.Pairwise (fun (a b : Int) => a < b) (rightShift l n) := by
+  by_cases hl : l.length < 2
+  · simp [move_one_ball, hl, countBreakPoints]
+    exists 0
+    cases l with
+    | nil => simp
+    | cons hd tl =>
+      cases tl with
+      | nil => simp
+      | cons hd' tl' =>
+        simp at hl
+        omega
+  · simp [move_one_ball]
+    constructor
+    · intro h
+      rw [Nat.lt_two_iff] at h
+      cases h with
+      | inl h =>
+        sorry
+      | inr h =>
+        simp [countBreakPoints, hl, List.sum_eq_one_iff] at h
+        rcases h with ⟨i, hi1, hi2⟩
+        exists i
+        sorry
+    ·
 /-!
 ## Prompt
 
