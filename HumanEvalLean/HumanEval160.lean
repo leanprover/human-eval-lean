@@ -52,6 +52,14 @@ def eval : Expr → Nat
   | lit n            => n
   | app op arg₁ arg₂ => op.interpret arg₁.eval arg₂.eval
 
+def lits : Expr → List Nat
+  | lit n           => [n]
+  | app _ arg₁ arg₂ => arg₁.lits ++ arg₂.lits
+
+def apps : Expr → List Op
+  | lit _            => []
+  | app op arg₁ arg₂ => arg₁.apps ++ op :: arg₂.apps
+
 structure ParseState where
   ops    : List Op   := []
   args   : List Nat  := []
@@ -67,21 +75,25 @@ def pushArg (σ : ParseState) (arg : Nat) : ParseState :=
 @[simp]
 theorem pushArg_ops (σ : ParseState) : (σ.pushArg arg).ops = σ.ops := rfl
 
-def pushOp (σ : ParseState) (op : Op) : ParseState :=
+def pushOp? (σ : ParseState) (op : Op) : Option ParseState :=
   match σ.hold with
-  | [] => { σ with hold := [op] }
+  | [] => some { σ with hold := [op] }
   | top :: hold =>
     match compare top.prio op.prio, top.leftAssoc with
-    | .lt, _ | .eq, false => { σ with hold := op :: top :: hold }
+    | .lt, _ | .eq, false => some { σ with hold := op :: top :: hold }
     | .gt, _ | .eq, true =>
       match σ.output with
-      | arg₂ :: arg₁ :: out => { σ with hold := op :: hold, output := .app top arg₁ arg₂ :: out }
-      | _                   => σ -- Trash value chosen to easily satisfy `pushOp_ops`.
+      | arg₂ :: arg₁ :: out => some { σ with hold := op :: hold, output := .app top arg₁ arg₂ :: out }
+      | _                   => none
 
 @[simp]
-theorem pushOp_ops (σ : ParseState) : (σ.pushOp op).ops = σ.ops := by
-  rw [pushOp]
-  repeat (split <;> try rfl)
+theorem pushOp?_ops {σ : ParseState} (h : σ.pushOp? op = some σ') : σ'.ops = σ.ops := by
+  rw [pushOp?] at h
+  repeat' split at h
+  all_goals
+    first
+    | injection h with h; rw [←h]
+    | contradiction
 
 def finalize (σ : ParseState) : ParseState :=
   match _ : σ.hold, σ.output with
@@ -93,26 +105,38 @@ def finalize (σ : ParseState) : ParseState :=
 end ParseState
 
 -- Parses an expression based on the "shunting yard algorithm".
-def parse! (ops : List Op) (args : List Nat) : Expr :=
-  go { ops, args } |>.output[0]!
+def parse? (ops : List Op) (args : List Nat) : Option Expr :=
+  go { ops, args } >>= (·.output[0]?)
 where
-  go (σ : ParseState) : ParseState :=
+  go (σ : ParseState) : Option ParseState :=
     match _ : σ.ops, σ.args with
-    | op :: ops, arg :: args => { σ with ops, args }  |>.pushArg arg |>.pushOp op |> go
-    | [],        [arg]       => { σ with args := [] } |>.pushArg arg |>.finalize
-    | _,         _           => panic! "Invalid parse state"
+    | op :: ops, arg :: args =>
+      match _ : { σ with ops, args } |>.pushArg arg |>.pushOp? op with
+      | none   => none
+      | some σ => go σ
+    | [], [arg] => { σ with args := [] } |>.pushArg arg |>.finalize
+    | _, _  => none
   termination_by σ.ops
-  decreasing_by simp_all +arith
+  decreasing_by simp_all +arith [ParseState.pushOp?_ops ‹_›]
+
+theorem parse?.some_iff : (parse? ops args = some e) ↔ (args.length = ops.length + 1) := by
+  sorry
+
+theorem parse?.lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
+  sorry
+
+theorem parse?.apps_eq_ops (h : parse? ops args = some e) : e.apps = ops := by
+  sorry
 
 end Expr
 
-def doAlgebra (ops : List Op) (args : List Nat) : Nat :=
-  Expr.parse! ops args |>.eval
+def doAlgebra (ops : List Op) (args : List Nat) : Option Nat :=
+  Expr.eval <$> Expr.parse? ops args
 
-example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = 9  := by native_decide
-example : doAlgebra [.pow, .mul, .add] [2, 3, 4, 5] = 37 := by native_decide
-example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = 9  := by native_decide
-example : doAlgebra [.div, .mul]       [7, 3, 4]    = 8  := by native_decide
+example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = some 9  := by native_decide
+example : doAlgebra [.pow, .mul, .add] [2, 3, 4, 5] = some 37 := by native_decide
+example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = some 9  := by native_decide
+example : doAlgebra [.div, .mul]       [7, 3, 4]    = some 8  := by native_decide
 
 /-!
 ## Prompt
