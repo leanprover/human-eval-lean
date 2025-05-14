@@ -19,8 +19,14 @@ example : evenOddCount (-2) = (1, 0)      := rfl
 example : evenOddCount (-45347) = (2, 3)  := rfl
 example : evenOddCount 0 = (1, 0)         := rfl
 
-def Prod.sum : Nat × Nat → Nat
+def Prod.sum : (Nat × Nat) → Nat
   | (n₁, n₂) => n₁ + n₂
+
+instance : Add (Nat × Nat) where
+  add | (l₁, r₁), (l₂, r₂) => (l₁ + l₂, r₁ + r₂)
+
+instance : Sub (Nat × Nat) where
+  sub | (l₁, r₁), (l₂, r₂) => (l₁ - l₂, r₁ - r₂)
 
 -- Applying `evenOddCount.countDigit` increases the total digit count by `1`.
 theorem evenOddCount.countDigit_sum (evenOdd : Nat × Nat) (d : Char) :
@@ -45,6 +51,10 @@ theorem evenOddCount_sum_eq_length : (evenOddCount i).sum = i.toDigits.length :=
   case nil => rfl
   case cons ih => rw [List.foldl_cons, List.length_cons, evenOddCount.countDigit_sum_foldl, ih,
                       evenOddCount.countDigit_sum, Prod.sum]
+
+theorem evenOddCount_decompose :
+    evenOddCount (10 * n + d) = evenOddCount n + evenOddCount (d % 10) - (1, 0) :=
+  sorry
 
 /-!
 ## Prompt
