@@ -69,11 +69,9 @@ structure ParseState where
 
 namespace ParseState
 
+@[simp]
 def pushArg (σ : ParseState) (arg : Nat) : ParseState :=
   { σ with output := (lit arg) :: σ.output }
-
-@[simp]
-theorem pushArg_ops (σ : ParseState) : (σ.pushArg arg).ops = σ.ops := rfl
 
 def pushOp? (σ : ParseState) (op : Op) : Option ParseState :=
   match σ.hold with
@@ -95,37 +93,85 @@ theorem pushOp?_ops {σ : ParseState} (h : σ.pushOp? op = some σ') : σ'.ops =
     | injection h with h; rw [←h]
     | contradiction
 
+theorem pushOp?_output_hold_length
+    {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
+    σ₂.output.length - σ₂.hold.length = σ₁.output.length - σ₁.hold.length - 1 := by
+  rw [pushOp?] at hp
+  (repeat' split at hp) <;> injection hp
+  all_goals next hp => simp_all only [List.length_cons, ←hp]; omega
+
+theorem pushOp?_hold_length_le_output_length
+    {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
+    σ₂.hold.length ≤ σ₂.output.length := by
+  rw [pushOp?] at hp
+  (repeat' split at hp) <;> injection hp
+  all_goals next hp => simp_all +arith [←hp]
+
 def finalize (σ : ParseState) : ParseState :=
   match _ : σ.hold, σ.output with
-  | op :: hold, arg₂ :: arg₁ :: out => finalize { σ with hold, output := .app op arg₁ arg₂ :: out }
+  | op :: hold, arg₂ :: arg₁ :: out => finalize { σ with hold, output := app op arg₁ arg₂ :: out }
   | _, _                            => σ
   termination_by σ.hold
   decreasing_by simp_all +arith
+
+theorem finalize_output_length {σ : ParseState} (h : σ.hold.length < σ.output.length) :
+    σ.finalize.output.length = σ.output.length - σ.hold.length := by
+  replace ⟨ops, args, hold, output⟩ := σ
+  induction hold generalizing output <;> cases output <;> rw [finalize]
+  case cons.cons out => cases out <;> simp_all
+  all_goals simp_all
+
+def run (σ : ParseState) : Option ParseState :=
+  match _ : σ.ops, σ.args with
+  | op :: ops, arg :: args =>
+    match _ : { σ with ops, args } |>.pushArg arg |>.pushOp? op with
+    | none   => none
+    | some σ => run σ
+  | [], [arg] => { σ with args := [] } |>.pushArg arg |>.finalize
+  | _, _  => none
+termination_by σ.ops
+decreasing_by simp_all +arith [pushOp?_ops ‹_›]
+
+theorem run_output_length
+    {σ₁ : ParseState} (hr : σ₁.run = some σ₂) (hl : σ₁.hold.length ≤ σ₁.output.length) :
+    σ₂.output.length = σ₁.output.length + 1 - σ₁.hold.length := by
+  rw [run] at hr
+  repeat' split at hr
+  · contradiction
+  next σ' h =>
+    have : σ'.ops.length < σ₁.ops.length := by simp [pushOp?_ops h, *]
+    have hl := pushOp?_hold_length_le_output_length h <| by simp_all +arith
+    rw [run_output_length hr hl]
+    have := pushOp?_output_hold_length h <| by simp only [pushArg, List.length_cons]; omega
+    simp only [pushArg, List.length_cons] at this
+    omega
+  · injection hr with hr
+    rw [←hr, finalize_output_length]
+    repeat simp only [pushArg, List.length_cons]
+    omega
+  · contradiction
+termination_by σ₁.ops.length
+
+-- This implies that `parse?` either fails, or returns precisely the single output element.
+theorem run_output_singleton {ops args} (h : run { ops, args } = some σ) : σ.output.length = 1 :=
+  run_output_length h .refl
 
 end ParseState
 
 -- Parses an expression based on the "shunting yard algorithm".
 def parse? (ops : List Op) (args : List Nat) : Option Expr :=
-  go { ops, args } >>= (·.output[0]?)
-where
-  go (σ : ParseState) : Option ParseState :=
-    match _ : σ.ops, σ.args with
-    | op :: ops, arg :: args =>
-      match _ : { σ with ops, args } |>.pushArg arg |>.pushOp? op with
-      | none   => none
-      | some σ => go σ
-    | [], [arg] => { σ with args := [] } |>.pushArg arg |>.finalize
-    | _, _  => none
-  termination_by σ.ops
-  decreasing_by simp_all +arith [ParseState.pushOp?_ops ‹_›]
+  match h : { ops, args : ParseState }.run with
+  | none   => none
+  | some σ => σ.output[0]'(by simp [ParseState.run_output_singleton h])
 
-theorem parse?.some_iff : (parse? ops args = some e) ↔ (args.length = ops.length + 1) := by
+theorem parse?_isSome_iff : (parse? ops args).isSome ↔ (args.length = ops.length + 1) where
+  mp  := sorry
+  mpr := sorry
+
+theorem parse?_lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
   sorry
 
-theorem parse?.lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
-  sorry
-
-theorem parse?.apps_eq_ops (h : parse? ops args = some e) : e.apps = ops := by
+theorem parse?_apps_eq_ops (h : parse? ops args = some e) : e.apps = ops := by
   sorry
 
 end Expr
