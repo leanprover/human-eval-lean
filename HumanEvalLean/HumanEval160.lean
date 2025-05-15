@@ -88,35 +88,42 @@ decreasing_by all_goals simp +arith [*]
 
 @[simp]
 theorem pushOp?_ops {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.ops = σ₂.ops := by
-  sorry
-  /-
   rw [pushOp?] at h
   repeat' split at h
   all_goals
     first
     | injection h with h; rw [←h]
+    | rw [pushOp?_ops h]
     | contradiction
-  -/
+termination_by σ₁.hold
+decreasing_by all_goals simp +arith [*]
 
 theorem pushOp?_output_hold_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.output.length - σ₂.hold.length = σ₁.output.length - σ₁.hold.length - 1 := by
-  sorry
-  /-
   rw [pushOp?] at hp
-  (repeat' split at hp) <;> injection hp
-  all_goals next hp => simp_all only [List.length_cons, ←hp]; omega
-  -/
+  repeat' split at hp <;> try contradiction
+  all_goals
+    first
+      | injection hp with hp
+      | have hp := pushOp?_output_hold_length hp
+    simp_all only [List.length_cons, ←hp]
+    omega
+termination_by σ₁.hold
+decreasing_by all_goals simp +arith [*]
 
 theorem pushOp?_hold_length_le_output_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.hold.length ≤ σ₂.output.length := by
-  sorry
-  /-
   rw [pushOp?] at hp
-  (repeat' split at hp) <;> injection hp
-  all_goals next hp => simp_all +arith [←hp]
-  -/
+  repeat' split at hp
+  all_goals
+    first
+      | contradiction
+      | injection hp with hp; simp_all +arith [←hp]
+      | exact pushOp?_hold_length_le_output_length hp (by simp_all)
+termination_by σ₁.hold
+decreasing_by all_goals simp +arith [*]
 
 def push? (σ : ParseState) (arg : Nat) (op : Op) : Option ParseState :=
   σ.pushArg arg |>.pushOp? op
