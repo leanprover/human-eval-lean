@@ -74,38 +74,49 @@ def pushArg (σ : ParseState) (arg : Nat) : ParseState :=
   { σ with output := (lit arg) :: σ.output }
 
 def pushOp? (σ : ParseState) (op : Op) : Option ParseState :=
-  match σ.hold with
+  match _ : σ.hold with
   | [] => some { σ with hold := [op] }
   | top :: hold =>
     match compare top.prio op.prio, top.leftAssoc with
     | .lt, _ | .eq, false => some { σ with hold := op :: top :: hold }
     | .gt, _ | .eq, true =>
       match σ.output with
-      | arg₂ :: arg₁ :: out => some { σ with hold := op :: hold, output := app top arg₁ arg₂ :: out }
+      | arg₂ :: arg₁ :: out => pushOp? { σ with hold, output := app top arg₁ arg₂ :: out } op
       | _                   => none
+termination_by σ.hold.length
+decreasing_by all_goals simp +arith [*]
 
 @[simp]
 theorem pushOp?_ops {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.ops = σ₂.ops := by
+  sorry
+  /-
   rw [pushOp?] at h
   repeat' split at h
   all_goals
     first
     | injection h with h; rw [←h]
     | contradiction
+  -/
 
 theorem pushOp?_output_hold_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.output.length - σ₂.hold.length = σ₁.output.length - σ₁.hold.length - 1 := by
+  sorry
+  /-
   rw [pushOp?] at hp
   (repeat' split at hp) <;> injection hp
   all_goals next hp => simp_all only [List.length_cons, ←hp]; omega
+  -/
 
 theorem pushOp?_hold_length_le_output_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.hold.length ≤ σ₂.output.length := by
+  sorry
+  /-
   rw [pushOp?] at hp
   (repeat' split at hp) <;> injection hp
   all_goals next hp => simp_all +arith [←hp]
+  -/
 
 def push? (σ : ParseState) (arg : Nat) (op : Op) : Option ParseState :=
   σ.pushArg arg |>.pushOp? op
@@ -123,6 +134,11 @@ theorem push?_output_hold_length
   have hh : σ₁.hold.length < σ₁.output.length + 1 := by omega
   simp only [pushOp?_output_hold_length hp hh, List.length_cons]
   omega
+
+theorem push?_output_length_eq_hold_length
+    {σ₁ : ParseState} (hp : σ₁.push? arg op = some σ₂) (he : σ₁.hold.length = σ₁.output.length) :
+    σ₂.output.length = σ₂.hold.length := by
+  sorry -- TODO: Not sure if this is actually provable.
 
 def finalize (σ : ParseState) : ParseState :=
   match _ : σ.hold, σ.output with
