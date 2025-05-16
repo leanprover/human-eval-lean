@@ -99,6 +99,82 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
           simp at h
           apply h hj hkj
 
+theorem List.sum_ge_two_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length), l[i] ≤ 1) :
+    l.sum ≥ 2 ↔ ∃ (i j : Nat) (hij : i ≠ j) (hi : i < l.length) (hj : j < l.length),
+      l[i] = 1 ∧ l[j] = 1 := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    simp
+    cases hd with
+    | zero =>
+      simp
+      simp at ih
+      rw [ih]
+      · constructor
+        · intro h
+          rcases h with ⟨i, hi, j, hj⟩
+          exists (i+1)
+          simp [hi]
+          exists (j + 1)
+          simp [hj]
+        · intro h
+          rcases h with ⟨i, hi, j, hj⟩
+          cases i with
+          | zero => simp at hi
+          | succ m =>
+            exists m
+            simp at hi
+            simp [hi]
+            cases j with
+            | zero => simp at hj
+            | succ n =>
+              exists n
+              simp at hj
+              simp [hj]
+      · intro i hi
+        specialize h (i+1)
+        simp at h
+        exact h hi
+    | succ k =>
+      cases k with
+      | zero =>
+        have : 2 ≤ 1 + tl.sum ↔ 1 ≤ tl.sum := by omega
+        simp [this, Nat.le_iff_lt_or_eq]
+        constructor
+        · intro h'
+          cases h' with
+          | inl h' =>
+            simp [Nat.lt_iff_add_one_le] at h'
+            simp at ih
+            rw [ih] at h'
+            · rcases h' with ⟨i, hi, j, hij, hj⟩
+              exists (i+1)
+              simp
+              exists hi
+              exists (j+1)
+              simp [hij, hj]
+            · intro i hi
+              simp at h
+              specialize h (i+1)
+              simp at h
+              exact h hi
+          | inr h' =>
+            exists 0
+            simp
+            rw [Eq.comm, sum_eq_one_iff] at h'
+            rcases h' with ⟨j, hj, htl⟩
+            exists (j+1)
+            simp
+            exists hj
+            simp [htl]
+        · intro h'
+          sorry
+
+      | succ l =>
+        specialize h 0
+        simp at h
+
 end helper
 
 
@@ -118,6 +194,12 @@ theorem length_rightShift {l : List α} {n : Nat} :
 
 def leftShift (l : List α) (n : Nat) :=
     l.drop n ++ l.take n
+
+@[simp]
+theorem length_leftShift {l : List α} {n : Nat} :
+    (leftShift l n).length = l.length := by
+  simp [leftShift]
+  omega
 
 theorem leftShiftExample1 : leftShift [3,4,5,1,2] 2 = [5,1,2,3,4] := by native_decide
 
@@ -190,24 +272,58 @@ theorem sorted_of_countBreakPoints_eq_zero {l : List Int} (h : countBreakPoints 
       simp [hi] at h
       exact h
 
-
-theorem head_lt_getLast_of_sorted_of_ge_2 {l : List Int} (hl : l.length ≥ 2)
+theorem pairwise_sorted_of_sorted {l : List Int} {i j : Nat}
+    (hj: j > 0) (hij : i + j < l.length)
     (sorted : ∀ (i : Nat) (hi : i + 1 < l.length), l[i] < l[i+1]) :
-    l[0]'(by omega) < l[l.length - 1] := by
-  induction l with
-  | nil => simp at hl
+    l[i]'(by omega) < l[i + j] := by
+  induction l generalizing i j with
+  | nil => simp at hij
   | cons hd tl ih =>
-    simp
-    by_cases h : tl.length ≥ 2
-    · specialize ih h
-      have htl : tl ≠ [] := ne_nil_of_two_ge h
-      have h₁ : hd < tl.head htl := by
-        sorry
-      have h₂ : tl.head htl < tl.getLast htl := by
-        sorry
-      have := Nat.lt_trans h₁ h₂
-
-
+    cases i with
+    | zero =>
+      simp
+      simp [Nat.lt_iff_add_one_le] at hj
+      cases j with
+      | zero => simp at hj
+      | succ k =>
+        cases k with
+        | zero =>
+          simp
+          specialize sorted 0
+          simp at sorted
+          apply sorted
+          simp at hij
+          assumption
+        | succ m =>
+          simp
+          have : m + 1 > 0 := by omega
+          have ih' := ih (i:= 0) (j := m+1)
+          specialize ih' this
+          simp at ih'
+          simp at hij
+          specialize ih' hij
+          apply Int.lt_trans (b := tl[0])
+          · specialize sorted 0
+            simp at sorted
+            apply sorted
+            apply Nat.lt_trans (m:= m + 1)
+            · simp
+            · exact hij
+          · apply ih'
+            intro i hi
+            specialize sorted (i+1)
+            simp at sorted
+            apply sorted hi
+    | succ n =>
+      simp
+      have : n + 1 + j = (n + j).succ := by omega
+      simp [this]
+      apply ih
+      · exact hj
+      · intro i hi
+        specialize sorted (i+1)
+        simp at sorted
+        apply sorted hi
 
 theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔ l.length < 2 := by
   constructor
@@ -223,21 +339,20 @@ theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔
       | nil => simp at hl
       | cons hd' tl' =>
         have h₁ : hd < (hd' :: tl')[tl'.length] := by
-          have := head_lt_getLast_of_sorted_of_ge_2 (l := hd :: hd' :: tl')
-          simp at this
-          apply this trivial
-          simp at sorted
-          exact sorted
-        have h₂ : (hd :: tl')[tl'.length] < hd := by
+          have head_lt_getLast := pairwise_sorted_of_sorted (l := hd :: hd' :: tl') (i := 0)
+              (j := tl'.length + 1) (by simp) (by simp) sorted
+          simp at head_lt_getLast
+          exact head_lt_getLast
+        have h₂ : (hd' :: tl')[tl'.length] < hd := by
           simp [countBreakPoints, List.sum_eq_zero, isBreakPoint] at h
           specialize h (tl'.length + 1)
           simp at h
-
-
-
-
-
-  · omega
+          apply h
+          trivial
+        have := Int.lt_trans h₁ h₂
+        simp at this
+  · intro h
+    simp [countBreakPoints, h]
 
 
 def move_one_ball (l : List Int) : Bool :=
@@ -296,9 +411,9 @@ theorem move_one_ball_correct {l : List Int} :
           · specialize hi2 (i + 1 + j) (by omega)
             have : ¬ i = i + 1 + j := by omega
             simp [this] at hi2
-            have : ¬ i + 1 + j + 1 < l.length := by sorry
+            have : ¬ i + 1 + j + 1 < l.length := by omega
             simp [this] at hi2
-            have : j + 1 - (l.length - (i + 1)) = 0 := by sorry
+            have : j + 1 - (l.length - (i + 1)) = 0 := by omega
             simp [this]
             exact hi2
         · split
@@ -311,6 +426,7 @@ theorem move_one_ball_correct {l : List Int} :
           · sorry
     · false_or_by_contra
       rename_i h h'
+
 
 
 /-!
