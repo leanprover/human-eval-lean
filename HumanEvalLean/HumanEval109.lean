@@ -1,4 +1,4 @@
-variable {α : Type u} {β : Type v}
+variable {α : Type _}
 
 section helper
 
@@ -97,88 +97,105 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
           apply h hj hkj
 
 theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length), l[i] ≤ 1) :
-    2 ≤ l.sum ↔ ∃ (i j : Nat) (hij : i ≠ j) (hi : i < l.length) (hj : j < l.length),
+    2 ≤ l.sum ↔ ∃ (i j : Nat) (_hij : i ≠ j) (hi : i < l.length) (hj : j < l.length),
       l[i] = 1 ∧ l[j] = 1 := by
   induction l with
   | nil => simp
   | cons hd tl ih =>
     simp
-    cases hd with
-    | zero =>
-      simp
-      simp at ih
-      rw [ih]
-      · constructor
-        · intro h
-          rcases h with ⟨i, hi, j, hj⟩
-          exists (i+1)
-          simp [hi]
-          exists (j + 1)
-          simp [hj]
-        · intro h
-          rcases h with ⟨i, hi, j, hj⟩
-          cases i with
-          | zero => simp at hi
-          | succ m =>
-            exists m
-            simp at hi
-            simp [hi]
-            cases j with
-            | zero => simp at hj
-            | succ n =>
-              exists n
-              simp at hj
-              simp [hj]
+    by_cases h' : 2 ≤ tl.sum
+    · have : 2 ≤ hd + tl.sum := by omega
+      rw [ih] at h'
+      · simp [this]
+        rcases h' with ⟨i, j, hij, hi, hj, h'⟩
+        exists (i+1)
+        simp
+        constructor
+        · exists hi
+          simp [h']
+        · exists (j+1)
+          simp [hij]
+          exists hj
+          simp [h']
       · intro i hi
         specialize h (i+1)
         simp at h
-        exact h hi
-    | succ k =>
-      cases k with
+        apply h hi
+    · simp at h'
+      cases htl : tl.sum with
       | zero =>
-        have : 2 ≤ 1 + tl.sum ↔ 1 ≤ tl.sum := by omega
-        simp [this, Nat.le_iff_lt_or_eq]
+        simp
+        have hhd : ¬ 2 ≤ hd := by
+          intro h'
+          specialize h 0
+          simp at h
+          omega
+        rw [List.sum_eq_zero] at htl
+        simp [hhd]
+        intro i hi hi' j hij hj
+        cases i with
+        | zero =>
+          simp at hi'
+          cases j with
+          | zero => contradiction
+          | succ k =>
+            simp
+            intro hk
+            specialize htl k
+            have : k < tl.length := by omega
+            specialize htl this
+            rw [hk] at htl
+            simp at htl
+        | succ k =>
+          simp at hi'
+          specialize htl k
+          have : k < tl.length := by omega
+          specialize htl this
+          rw [hi'] at htl
+          simp at htl
+      | succ k =>
+        have hk : k = 0 := by omega
+        simp [hk]
         constructor
-        · intro h'
-          cases h' with
-          | inl h' =>
-            simp [Nat.lt_iff_add_one_le] at h'
-            simp at ih
-            rw [ih] at h'
-            · rcases h' with ⟨i, hi, j, hij, hj⟩
-              exists (i+1)
-              simp
-              exists hi
-              exists (j+1)
-              simp [hij, hj]
-            · intro i hi
-              simp at h
-              specialize h (i+1)
-              simp at h
-              exact h hi
-          | inr h' =>
-            exists 0
+        · intro h₁
+          exists 0
+          simp
+          constructor
+          · specialize h 0
+            simp at h
+            omega
+          · simp [hk] at htl
+            rw [List.sum_eq_one_iff] at htl
+            rcases htl with ⟨i, hi,hi', _⟩
+            exists (i+1)
             simp
-            rw [Eq.comm, sum_eq_one_iff] at h'
-            rcases h' with ⟨j, hj, htl⟩
-            exists (j+1)
-            simp
-            exists hj
-            simp [htl]
-        · intro h'
-          by_cases hsum: 1 = tl.sum
-          · simp [hsum]
-          · simp [hsum, Nat.lt_iff_add_one_le]
-            simp at ih
-            rw [ih]
-            · sorry
-            · intro i hi
-              specialize h (i+1)
-              simp at h
-              exact h hi
-      | succ l =>
-        specialize h 0
-        simp at h
+            exists hi
+        · intro h₁
+          simp [hk] at htl
+          rw [List.sum_eq_one_iff] at htl
+          rcases htl with ⟨i, hi,hi', htl⟩
+          rcases h₁ with ⟨j, hj, k, hjk, hk⟩
+          cases j with
+          | zero =>
+            simp at hj
+            simp [hj]
+          | succ l =>
+            simp at hj
+            cases k with
+            | zero =>
+              simp at hk
+              simp [hk]
+            | succ m =>
+              simp at hk
+              by_cases hil : i = l
+              · specialize htl m
+                rcases hk with ⟨hm, hm'⟩
+                specialize htl hm
+                omega
+              · rcases hj with ⟨hl, hl'⟩
+                specialize htl l hl
+                omega
+
 
 -- from mathlib
 @[simp] theorem List.take_eq_self_iff (x : List α) {n : Nat} : x.take n = x ↔ x.length ≤ n :=
