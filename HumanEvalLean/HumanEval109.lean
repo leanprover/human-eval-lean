@@ -66,7 +66,6 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
           simp
           rcases h with ⟨_, h⟩
           apply h
-          simp
     · intro h
       rcases h with ⟨i, hi, h⟩
       cases i with
@@ -76,12 +75,10 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
         simp [hi]
         rw [List.sum_eq_zero]
         intro x hx
-        rw [List.mem_iff_getElem] at hx
-        rcases hx with ⟨k, hk, tlk⟩
-        specialize h (k + 1)
+        specialize h (x+1)
         simp at h
-        rw [← tlk]
-        apply h hk
+        apply h
+        exact hx
       | succ k =>
         simp at hi
         left
@@ -169,14 +166,25 @@ theorem List.sum_ge_two_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
             exists hj
             simp [htl]
         · intro h'
-          sorry
-
+          by_cases hsum: 1 = tl.sum
+          · simp [hsum]
+          · simp [hsum, Nat.lt_iff_add_one_le]
+            simp at ih
+            rw [ih]
+            · sorry
+            · intro i hi
+              specialize h (i+1)
+              simp at h
+              exact h hi
       | succ l =>
         specialize h 0
         simp at h
 
-end helper
+-- from mathlib
+@[simp] theorem List.take_eq_self_iff (x : List α) {n : Nat} : x.take n = x ↔ x.length ≤ n :=
+  ⟨fun h ↦ by rw [← h]; simp; omega, List.take_of_length_le⟩
 
+end helper
 
 def rightShift (l : List α) (n : Nat) :=
     l.drop (l.length - n) ++ l.take (l.length - n)
@@ -204,10 +212,6 @@ theorem length_leftShift {l : List α} {n : Nat} :
 theorem leftShiftExample1 : leftShift [3,4,5,1,2] 2 = [5,1,2,3,4] := by native_decide
 
 theorem leftShiftExample2 : leftShift [3,4,5,1,2] 3 = [1,2,3,4,5] := by native_decide
-
--- from mathlib
-@[simp] theorem List.take_eq_self_iff (x : List α) {n : Nat} : x.take n = x ↔ x.length ≤ n :=
-  ⟨fun h ↦ by rw [← h]; simp; omega, List.take_of_length_le⟩
 
 theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Prop) :
     (∃ (n : Nat), p (rightShift l n)) ↔ ∃ (n : Nat), p (leftShift l n) := by
@@ -423,9 +427,16 @@ theorem move_one_ball_correct {l : List Int} :
             have : 1 < l.length := by omega
             simp [this] at hi2
             omega
-          · sorry
+          · rename_i h₁ h₂
+            specialize hi2 (j - (l.length - (i + 1))) (by omega) (by omega)
+            have : j - (l.length - (i + 1)) + 1 < l.length := by omega
+            simp [this] at hi2
+            have : j - (l.length - (i + 1)) + 1 = j + 1 - (l.length - (i + 1)) := by omega
+            simp [this] at hi2
+            exact hi2
     · false_or_by_contra
       rename_i h h'
+      sorry
 
 
 
