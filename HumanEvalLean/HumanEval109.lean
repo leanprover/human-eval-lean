@@ -1,4 +1,4 @@
-variable {α : Type _}
+variable {α : Type u} {β : Type v}
 
 section helper
 
@@ -184,6 +184,14 @@ theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
 @[simp] theorem List.take_eq_self_iff (x : List α) {n : Nat} : x.take n = x ↔ x.length ≤ n :=
   ⟨fun h ↦ by rw [← h]; simp; omega, List.take_of_length_le⟩
 
+theorem List.sum_append {l₁ l₂ : List Nat} :
+    (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
+  induction l₁ with
+  | nil => simp
+  | cons hd tl ih =>
+    simp [ih]
+    omega
+
 end helper
 
 def rightShift (l : List α) (n : Nat) :=
@@ -213,18 +221,10 @@ theorem leftShiftExample1 : leftShift [3,4,5,1,2] 2 = [5,1,2,3,4] := by native_d
 
 theorem leftShiftExample2 : leftShift [3,4,5,1,2] 3 = [1,2,3,4,5] := by native_decide
 
-theorem List.sum_append {l₁ l₂ : List Int} :
-    (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
-  induction l₁ with
-  | nil => simp
-  | cons hd tl ih =>
-    simp [ih]
-    omega
-
-theorem List.sum_leftShift_eq_sum {l : List Int} {n : Nat} :
+theorem List.sum_leftShift_eq_sum {l : List Nat} {n : Nat} :
     (leftShift l n).sum = l.sum := by
   simp [leftShift]
-  rw [List.sum_append, Int.add_comm, ← List.sum_append, take_append_drop]
+  rw [List.sum_append, Nat.add_comm, ← List.sum_append, take_append_drop]
 
 theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Prop) :
     (∃ (n : Nat), p (rightShift l n)) ↔ ∃ (n : Nat), p (leftShift l n) := by
@@ -250,23 +250,25 @@ theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Pr
       simp [this.mpr h] at hn
       exact hn
 
-def isBreakPoint (l : List Int) (pos : Nat) (h : pos < l.length) :=
-  if h:pos + 1 < l.length
+def isBreakPoint (l : List Int) (pos : Nat) :=
+  if h:pos < l.length
   then
-    if l[pos] < l[pos + 1]
-    then 0
-    else 1
-  else
-    if l[0] > l[pos]
-    then 0
-    else 1
+    if h':pos + 1 < l.length
+    then
+      if l[pos] < l[pos + 1]
+      then 0
+      else 1
+    else
+      if l[0] > l[pos]
+      then 0
+      else 1
+  else 0
 
 def countBreakPoints (l : List Int) : Nat :=
   if l.length < 2
   then 0
   else
-    ((List.range l.length).attach.map (fun ⟨x,h⟩ =>
-      isBreakPoint l x (by simp at h; assumption))).sum
+    ((List.range l.length).map (fun x => isBreakPoint l x)).sum
 
 theorem ne_nil_of_two_ge {l : List α} (h : 2 ≤ l.length) : l ≠ [] := by
   cases l with
@@ -287,7 +289,8 @@ theorem sorted_of_countBreakPoints_eq_zero {l : List Int} (h : countBreakPoints 
       intro i hi
       specialize h i (by omega)
       simp [hi] at h
-      exact h
+      apply h
+      omega
 
 theorem pairwise_sorted_of_sorted {l : List Int} {i j : Nat}
     (hj: j > 0) (hij : i + j < l.length)
@@ -365,7 +368,8 @@ theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔
           specialize h (tl'.length + 1)
           simp at h
           apply h
-          trivial
+          · trivial
+          · trivial
         have := Int.lt_trans h₁ h₂
         simp at this
   · intro h
@@ -376,10 +380,76 @@ theorem countBreakPoints_leftShift_eq_countBreakPoints {l : List Int} {n : Nat} 
   simp [countBreakPoints]
   by_cases h: l.length < 2
   · simp [h]
-  · simp [h]
-    have : List.range (leftShift l n).length = List.range l.length := by
-      sorry
-    simp [this]
+  · by_cases hn: n < l.length
+    · simp [h]
+      have : List.map (fun x => isBreakPoint (leftShift l n) x) (List.range l.length) =
+              leftShift (List.map (fun x => isBreakPoint l x) (List.range l.length)) n := by
+        apply List.ext_get
+        · simp
+        · simp
+          intro m h₁ _
+          conv =>
+            rhs
+            simp [leftShift]
+            rw [List.getElem_append]
+            simp
+          split
+          · simp [isBreakPoint, h₁]
+            split
+            · have : n + m < l.length := by omega
+              simp [this]
+              by_cases hnm : n + m +1 < l.length
+              · simp [hnm, leftShift, List.getElem_append]
+                simp [*]
+                have : m + 1 < l.length - n := by omega
+                simp [this]
+                rfl
+              · simp [hnm, leftShift, List.getElem_append]
+                simp [*]
+                have : ¬ m + 1 < l.length - n := by omega
+                simp [this]
+                have : m + 1 - (l.length - n) = 0 := by omega
+                simp [this]
+            · have : n + m < l.length := by omega
+              simp [this]
+              by_cases hnm : n + m +1 < l.length
+              · omega
+              · simp [hnm, leftShift, List.getElem_append]
+                simp [*]
+                have : 0 < l.length -n := by omega
+                simp [this]
+                have : n = 0 := by omega
+                simp [this]
+          · rename_i hnm
+            simp [isBreakPoint, h₁]
+            by_cases h₂ : m + 1 < l.length
+            · simp [h₂]
+              have : m - (l.length - n) < l.length := by omega
+              simp [this]
+              have : m - (l.length - n) + 1 < l.length := by omega
+              simp [this, leftShift, List.getElem_append]
+              simp [hnm]
+              have : ¬ m + 1 < l.length - n := by omega
+              simp [this]
+              congr
+              omega
+            · simp [h₂]
+              have : m - (l.length - n) < l.length := by omega
+              simp [this]
+              have : m - (l.length - n) + 1 < l.length := by omega
+              simp [this, leftShift, List.getElem_append, hnm]
+              have : 0 < l.length - n := by omega
+              simp [this]
+              congr
+              omega
+      simp [this]
+      rw [List.sum_leftShift_eq_sum (n:= n) (l:= (List.map (fun x => isBreakPoint l x) (List.range l.length)))]
+    · congr
+      funext
+      congr
+      simp at hn
+      simp [leftShift, List.drop_eq_nil_iff.mpr, hn]
+
 
 theorem not_sorted_of_countBreakPoints_ge_two {l : List Int} (h : countBreakPoints l ≥ 2) :
     ∃ (i : Nat) (hi : i + 1 < l.length),
@@ -398,15 +468,17 @@ theorem not_sorted_of_countBreakPoints_ge_two {l : List Int} (h : countBreakPoin
         simp [this] at h
         exists i
         exists this
+        simp [hi] at h
         simp [h]
       | inr this =>
         simp [this] at h
         exists j
         exists this
+        simp [hj] at h
         simp [h]
     · simp [isBreakPoint]
       intro _ _
-      split <;> split ; all_goals simp
+      split <;> split <;> split <;> simp
 
 def move_one_ball (l : List Int) : Bool :=
   countBreakPoints l < 2
@@ -448,11 +520,11 @@ theorem move_one_ball_correct {l : List Int} :
         rw [this]
         rcases h with ⟨i, hi1, hi2⟩
         exists (i + 1)
-        rcases hi1 with ⟨hi, hi1⟩
         intro j hj
         simp [leftShift]
         simp [List.getElem_append]
         simp [isBreakPoint] at hi2
+        rcases hi2 with ⟨hi, hi2⟩
         split
         · split
           · specialize hi2 (i + 1 + j) (by omega)
@@ -461,6 +533,7 @@ theorem move_one_ball_correct {l : List Int} :
             have :  i + 1 + j + 1 < l.length := by omega
             simp [this] at hi2
             apply hi2
+            omega
           · specialize hi2 (i + 1 + j) (by omega)
             have : ¬ i = i + 1 + j := by omega
             simp [this] at hi2
@@ -468,7 +541,8 @@ theorem move_one_ball_correct {l : List Int} :
             simp [this] at hi2
             have : j + 1 - (l.length - (i + 1)) = 0 := by omega
             simp [this]
-            exact hi2
+            apply hi2
+            omega
         · split
           · specialize hi2 0 (by omega)
             have : ¬ i = 0 := by omega
@@ -482,7 +556,8 @@ theorem move_one_ball_correct {l : List Int} :
             simp [this] at hi2
             have : j - (l.length - (i + 1)) + 1 = j + 1 - (l.length - (i + 1)) := by omega
             simp [this] at hi2
-            exact hi2
+            apply hi2
+            omega
     · false_or_by_contra
       rename_i h h'
       simp at h'
@@ -492,8 +567,10 @@ theorem move_one_ball_correct {l : List Int} :
       rw [this] at h
       rcases h with ⟨n,h⟩
       have := not_sorted_of_countBreakPoints_ge_two (l := leftShift l n)
+      rw [countBreakPoints_leftShift_eq_countBreakPoints] at this
+      simp [h'] at this
       rcases this with ⟨i, hi, this⟩
-      specialize h i (by simp at hi; exact hi)
+      specialize h i hi
       omega
 
 /-!
