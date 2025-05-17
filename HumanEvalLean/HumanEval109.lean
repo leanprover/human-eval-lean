@@ -15,13 +15,13 @@ theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
   induction l with
   | nil => simp
   | cons hd tl ih =>
-    simp [ih]
+    simp only [sum_cons, Nat.add_eq_zero, ih, length_cons]
     constructor
     · intro h i hi
       cases i with
       | zero => simp [h]
       | succ m =>
-        simp
+        simp only [getElem_cons_succ]
         apply And.right h
     · intro h
       constructor
@@ -34,7 +34,7 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
   induction l with
   | nil => simp
   | cons hd tl ih =>
-    simp [Nat.add_eq_one_iff]
+    simp only [sum_cons, Nat.add_eq_one_iff, length_cons, ne_eq, exists_and_right]
     constructor
     · intro h
       cases h with
@@ -43,7 +43,7 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
         rw [ih] at hr
         rcases hr with ⟨i, hi, h⟩
         exists (i + 1)
-        simp
+        simp only [getElem_cons_succ, Nat.add_lt_add_iff_right]
         constructor
         · exists hi
           simp [h]
@@ -51,19 +51,19 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
           cases j with
           | zero => simp[hl]
           | succ k =>
-            simp
+            simp only [getElem_cons_succ]
             apply (And.right h)
-            simp at hij
+            simp only [Nat.add_right_cancel_iff] at hij
             assumption
       | inr h =>
         exists 0
-        simp [h]
+        simp only [h, getElem_cons_zero, Nat.zero_lt_succ, exists_const, true_and]
         rw [sum_eq_zero] at h
         intro j hj hij
         cases j with
         | zero => simp at hij
         | succ k =>
-          simp
+          simp only [getElem_cons_succ]
           rcases h with ⟨_, h⟩
           apply h
     · intro h
@@ -71,29 +71,31 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
       cases i with
       | zero =>
         right
-        simp at hi
-        simp [hi]
+        simp only [getElem_cons_zero, Nat.zero_lt_succ, exists_const] at hi
+        simp only [hi, true_and]
         rw [List.sum_eq_zero]
         intro x hx
         specialize h (x+1)
-        simp at h
+        simp only [Nat.add_lt_add_iff_right, Nat.right_eq_add, Nat.add_eq_zero, Nat.succ_ne_self,
+          and_false, not_false_eq_true, getElem_cons_succ, forall_const] at h
         apply h
         exact hx
       | succ k =>
-        simp at hi
+        simp only [getElem_cons_succ, Nat.add_lt_add_iff_right] at hi
         left
         constructor
         · specialize h 0
-          simp at h
+          simp only [Nat.zero_lt_succ, Nat.add_eq_zero, Nat.succ_ne_self, and_false,
+            not_false_eq_true, getElem_cons_zero, forall_const] at h
           assumption
         · rw [ih]
           exists k
           rcases hi with ⟨hk, tlk⟩
           exists hk
-          simp [tlk]
+          simp only [tlk, ne_eq, true_and]
           intro j hj hkj
           specialize h (j + 1)
-          simp at h
+          simp only [Nat.add_lt_add_iff_right, Nat.add_right_cancel_iff, getElem_cons_succ] at h
           apply h hj hkj
 
 theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length), l[i] ≤ 1) :
@@ -102,52 +104,53 @@ theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
   induction l with
   | nil => simp
   | cons hd tl ih =>
-    simp
+    simp only [sum_cons, length_cons, exists_and_left, exists_and_right, ne_eq, exists_prop]
     by_cases h' : 2 ≤ tl.sum
     · have : 2 ≤ hd + tl.sum := by omega
       rw [ih] at h'
-      · simp [this]
+      · simp only [this, true_iff]
         rcases h' with ⟨i, j, hij, hi, hj, h'⟩
         exists (i+1)
-        simp
+        simp only [getElem_cons_succ, Nat.add_lt_add_iff_right]
         constructor
         · exists hi
           simp [h']
         · exists (j+1)
-          simp [hij]
+          simp only [Nat.add_right_cancel_iff, hij, not_false_eq_true, getElem_cons_succ,
+            Nat.add_lt_add_iff_right, true_and]
           exists hj
           simp [h']
       · intro i hi
         specialize h (i+1)
-        simp at h
+        simp only [length_cons, Nat.add_lt_add_iff_right, getElem_cons_succ] at h
         apply h hi
-    · simp at h'
+    · simp only [Nat.not_le] at h'
       cases htl : tl.sum with
       | zero =>
-        simp
+        simp only [Nat.add_zero]
         have hhd : ¬ 2 ≤ hd := by
           intro h'
           specialize h 0
-          simp at h
+          simp only [length_cons, Nat.zero_lt_succ, getElem_cons_zero, forall_const] at h
           omega
         rw [List.sum_eq_zero] at htl
-        simp [hhd]
+        simp only [hhd, false_iff, not_exists, not_and, forall_exists_index]
         intro i hi hi' j hij hj
         cases i with
         | zero =>
-          simp at hi'
+          simp only [getElem_cons_zero] at hi'
           cases j with
           | zero => contradiction
           | succ k =>
-            simp
+            simp only [getElem_cons_succ]
             intro hk
             specialize htl k
             have : k < tl.length := by omega
             specialize htl this
             rw [hk] at htl
-            simp at htl
+            simp only [Nat.succ_ne_self] at htl
         | succ k =>
-          simp at hi'
+          simp only [getElem_cons_succ] at hi'
           specialize htl k
           have : k < tl.length := by omega
           specialize htl this
@@ -155,38 +158,39 @@ theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
           simp at htl
       | succ k =>
         have hk : k = 0 := by omega
-        simp [hk]
+        simp only [hk, Nat.zero_add, Nat.reduceLeDiff]
         constructor
         · intro h₁
           exists 0
-          simp
+          simp only [getElem_cons_zero, Nat.zero_lt_succ, exists_const]
           constructor
           · specialize h 0
-            simp at h
+            simp only [length_cons, Nat.zero_lt_succ, getElem_cons_zero, forall_const] at h
             omega
-          · simp [hk] at htl
+          · simp only [hk, Nat.zero_add] at htl
             rw [List.sum_eq_one_iff] at htl
             rcases htl with ⟨i, hi,hi', _⟩
             exists (i+1)
-            simp
+            simp only [Nat.right_eq_add, Nat.add_eq_zero, Nat.succ_ne_self, and_false,
+              not_false_eq_true, getElem_cons_succ, Nat.add_lt_add_iff_right, true_and]
             exists hi
         · intro h₁
-          simp [hk] at htl
+          simp only [hk, Nat.zero_add] at htl
           rw [List.sum_eq_one_iff] at htl
           rcases htl with ⟨i, hi,hi', htl⟩
           rcases h₁ with ⟨j, hj, k, hjk, hk⟩
           cases j with
           | zero =>
-            simp at hj
+            simp only [getElem_cons_zero, Nat.zero_lt_succ, exists_const] at hj
             simp [hj]
           | succ l =>
-            simp at hj
+            simp only [getElem_cons_succ, Nat.add_lt_add_iff_right] at hj
             cases k with
             | zero =>
-              simp at hk
+              simp only [getElem_cons_zero, Nat.zero_lt_succ, exists_const] at hk
               simp [hk]
             | succ m =>
-              simp at hk
+              simp only [getElem_cons_succ, Nat.add_lt_add_iff_right] at hk
               by_cases hil : i = l
               · specialize htl m
                 rcases hk with ⟨hm, hm'⟩
@@ -199,14 +203,14 @@ theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
 
 -- from mathlib
 @[simp] theorem List.take_eq_self_iff (x : List α) {n : Nat} : x.take n = x ↔ x.length ≤ n :=
-  ⟨fun h ↦ by rw [← h]; simp; omega, List.take_of_length_le⟩
+  ⟨fun h ↦ by rw [← h]; simp only [length_take]; omega, List.take_of_length_le⟩
 
 theorem List.sum_append {l₁ l₂ : List Nat} :
     (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
   induction l₁ with
   | nil => simp
   | cons hd tl ih =>
-    simp [ih]
+    simp only [cons_append, sum_cons, ih]
     omega
 
 end helper
@@ -245,7 +249,7 @@ theorem List.sum_leftShift_eq_sum {l : List Nat} {n : Nat} :
 
 theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Prop) :
     (∃ (n : Nat), p (rightShift l n)) ↔ ∃ (n : Nat), p (leftShift l n) := by
-  simp [leftShift, rightShift]
+  simp only [rightShift, leftShift]
   constructor
   · intro h
     obtain ⟨n, hn⟩ := h
@@ -255,16 +259,16 @@ theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Pr
     by_cases n < l.length
     · exists (l.length - n)
       have : l.length - (l.length - n) = n := by omega
-      simp [this]
+      simp only [this]
       exact hn
     · exists 0
-      simp
+      simp only [Nat.sub_zero, List.drop_length, List.take_length, List.nil_append]
       rename_i h
-      simp at h
+      simp only [Nat.not_lt] at h
       have := List.drop_eq_nil_iff (l := l) (i := n)
-      simp [this.mpr h] at hn
+      simp only [this.mpr h, List.nil_append] at hn
       have := List.take_eq_self_iff l (n := n)
-      simp [this.mpr h] at hn
+      simp only [this.mpr h] at hn
       exact hn
 
 def isBreakPoint (l : List Int) (pos : Nat) :=
@@ -301,11 +305,15 @@ theorem sorted_of_countBreakPoints_eq_zero {l : List Int} (h : countBreakPoints 
     cases tl with
     | nil => simp
     | cons hd' tl' =>
-      simp[List.sum_eq_zero, isBreakPoint] at h
-      simp
+      simp only [List.length_cons, Nat.le_add_left, isBreakPoint, Nat.add_lt_add_iff_right,
+        List.getElem_cons_succ, List.getElem_cons_zero, gt_iff_lt, List.sum_eq_zero,
+        List.length_map, List.length_range, List.getElem_map, List.getElem_range, dite_eq_right_iff,
+        forall_const] at h
+      simp only [List.length_cons, Nat.add_lt_add_iff_right, List.getElem_cons_succ]
       intro i hi
       specialize h i (by omega)
-      simp [hi] at h
+      simp only [hi, ↓reduceDIte, ite_eq_left_iff, Int.not_lt, Nat.succ_ne_self, imp_false,
+        Int.not_le] at h
       apply h
       omega
 
@@ -318,30 +326,32 @@ theorem pairwise_sorted_of_sorted {l : List Int} {i j : Nat}
   | cons hd tl ih =>
     cases i with
     | zero =>
-      simp
-      simp [Nat.lt_iff_add_one_le] at hj
+      simp only [List.getElem_cons_zero, Nat.zero_add]
+      simp only [gt_iff_lt, Nat.lt_iff_add_one_le, Nat.zero_add] at hj
       cases j with
       | zero => simp at hj
       | succ k =>
         cases k with
         | zero =>
-          simp
+          simp only [Nat.zero_add, List.getElem_cons_succ]
           specialize sorted 0
-          simp at sorted
+          simp only [Nat.zero_add, List.length_cons, Nat.lt_add_left_iff_pos,
+            List.getElem_cons_zero, List.getElem_cons_succ] at sorted
           apply sorted
-          simp at hij
+          simp only [Nat.zero_add, List.length_cons, Nat.lt_add_left_iff_pos] at hij
           assumption
         | succ m =>
-          simp
+          simp only [List.getElem_cons_succ]
           have : m + 1 > 0 := by omega
           have ih' := ih (i:= 0) (j := m+1)
           specialize ih' this
-          simp at ih'
-          simp at hij
+          simp only [Nat.zero_add] at ih'
+          simp only [Nat.zero_add, List.length_cons, Nat.add_lt_add_iff_right] at hij
           specialize ih' hij
           apply Int.lt_trans (b := tl[0])
           · specialize sorted 0
-            simp at sorted
+            simp only [Nat.zero_add, List.length_cons, Nat.lt_add_left_iff_pos,
+              List.getElem_cons_zero, List.getElem_cons_succ] at sorted
             apply sorted
             apply Nat.lt_trans (m:= m + 1)
             · simp
@@ -349,17 +359,17 @@ theorem pairwise_sorted_of_sorted {l : List Int} {i j : Nat}
           · apply ih'
             intro i hi
             specialize sorted (i+1)
-            simp at sorted
+            simp only [List.length_cons, Nat.add_lt_add_iff_right, List.getElem_cons_succ] at sorted
             apply sorted hi
     | succ n =>
-      simp
+      simp only [List.getElem_cons_succ]
       have : n + 1 + j = (n + j).succ := by omega
-      simp [this]
+      simp only [this, Nat.succ_eq_add_one, List.getElem_cons_succ, gt_iff_lt]
       apply ih
       · exact hj
       · intro i hi
         specialize sorted (i+1)
-        simp at sorted
+        simp only [List.length_cons, Nat.add_lt_add_iff_right, List.getElem_cons_succ] at sorted
         apply sorted hi
 
 theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔ l.length < 2 := by
@@ -368,7 +378,7 @@ theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔
     have sorted := sorted_of_countBreakPoints_eq_zero h
     false_or_by_contra
     rename_i hl
-    simp at hl
+    simp only [gt_iff_lt, Nat.not_lt] at hl
     cases l with
     | nil => simp at hl
     | cons hd tl =>
@@ -378,12 +388,17 @@ theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔
         have h₁ : hd < (hd' :: tl')[tl'.length] := by
           have head_lt_getLast := pairwise_sorted_of_sorted (l := hd :: hd' :: tl') (i := 0)
               (j := tl'.length + 1) (by simp) (by simp) sorted
-          simp at head_lt_getLast
+          simp only [List.getElem_cons_zero, Nat.zero_add,
+            List.getElem_cons_succ] at head_lt_getLast
           exact head_lt_getLast
         have h₂ : (hd' :: tl')[tl'.length] < hd := by
-          simp [countBreakPoints, List.sum_eq_zero, isBreakPoint] at h
+          simp only [countBreakPoints, List.length_cons, isBreakPoint, Nat.add_lt_add_iff_right,
+            List.getElem_cons_succ, List.getElem_cons_zero, gt_iff_lt, ite_eq_left_iff, Nat.not_lt,
+            Nat.le_add_left, List.sum_eq_zero, List.length_map, List.length_range, List.getElem_map,
+            List.getElem_range, dite_eq_right_iff, forall_const] at h
           specialize h (tl'.length + 1)
-          simp at h
+          simp only [Nat.lt_add_one, Nat.lt_irrefl, ↓reduceDIte, List.getElem_cons_succ,
+            ite_eq_left_iff, Int.not_lt, Nat.succ_ne_self, imp_false, Int.not_le] at h
           apply h
           · trivial
           · trivial
@@ -394,106 +409,114 @@ theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔
 
 theorem countBreakPoints_leftShift_eq_countBreakPoints {l : List Int} {n : Nat} :
     countBreakPoints (leftShift l n) = countBreakPoints l := by
-  simp [countBreakPoints]
+  simp only [countBreakPoints, length_leftShift]
   by_cases h: l.length < 2
   · simp [h]
   · by_cases hn: n < l.length
-    · simp [h]
+    · simp only [h, ↓reduceIte]
       have : List.map (fun x => isBreakPoint (leftShift l n) x) (List.range l.length) =
               leftShift (List.map (fun x => isBreakPoint l x) (List.range l.length)) n := by
         apply List.ext_get
         · simp
-        · simp
+        · simp only [List.length_map, List.length_range, length_leftShift, List.get_eq_getElem,
+          List.getElem_map, List.getElem_range]
           intro m h₁ _
           conv =>
             rhs
-            simp [leftShift]
+            simp only [leftShift]
             rw [List.getElem_append]
             simp
           split
-          · simp [isBreakPoint, h₁]
+          · simp only [isBreakPoint, length_leftShift, h₁, ↓reduceDIte, gt_iff_lt]
             split
             · have : n + m < l.length := by omega
-              simp [this]
+              simp only [this, ↓reduceDIte]
               by_cases hnm : n + m +1 < l.length
-              · simp [hnm, leftShift, List.getElem_append]
-                simp [*]
+              · simp only [leftShift, List.getElem_append, List.length_drop, List.getElem_drop,
+                List.getElem_take, hnm, ↓reduceDIte]
+                simp only [↓reduceDIte, *]
                 have : m + 1 < l.length - n := by omega
-                simp [this]
+                simp only [this, ↓reduceDIte]
                 rfl
-              · simp [hnm, leftShift, List.getElem_append]
-                simp [*]
+              · simp only [leftShift, List.getElem_append, List.length_drop, List.getElem_drop,
+                List.getElem_take, hnm, ↓reduceDIte]
+                simp only [↓reduceDIte, *]
                 have : ¬ m + 1 < l.length - n := by omega
-                simp [this]
+                simp only [this, ↓reduceDIte]
                 have : m + 1 - (l.length - n) = 0 := by omega
                 simp [this]
             · have : n + m < l.length := by omega
-              simp [this]
+              simp only [this, ↓reduceDIte]
               by_cases hnm : n + m +1 < l.length
               · omega
-              · simp [hnm, leftShift, List.getElem_append]
-                simp [*]
+              · simp only [leftShift, List.getElem_append, List.length_drop, List.getElem_drop,
+                List.getElem_take, Nat.add_zero, Nat.zero_le, Nat.sub_eq_zero_of_le, hnm,
+                ↓reduceDIte]
+                simp only [↓reduceDIte, *]
                 have : 0 < l.length -n := by omega
-                simp [this]
+                simp only [this, ↓reduceDIte]
                 have : n = 0 := by omega
                 simp [this]
           · rename_i hnm
-            simp [isBreakPoint, h₁]
+            simp only [isBreakPoint, length_leftShift, h₁, ↓reduceDIte, gt_iff_lt]
             by_cases h₂ : m + 1 < l.length
-            · simp [h₂]
+            · simp only [h₂, ↓reduceDIte]
               have : m - (l.length - n) < l.length := by omega
-              simp [this]
+              simp only [this, ↓reduceDIte]
               have : m - (l.length - n) + 1 < l.length := by omega
-              simp [this, leftShift, List.getElem_append]
-              simp [hnm]
+              simp only [leftShift, List.getElem_append, List.length_drop, List.getElem_drop,
+                List.getElem_take, this, ↓reduceDIte, hnm]
               have : ¬ m + 1 < l.length - n := by omega
-              simp [this]
+              simp only [this, ↓reduceDIte]
               congr
               omega
-            · simp [h₂]
+            · simp only [h₂, ↓reduceDIte]
               have : m - (l.length - n) < l.length := by omega
-              simp [this]
+              simp only [this, ↓reduceDIte]
               have : m - (l.length - n) + 1 < l.length := by omega
-              simp [this, leftShift, List.getElem_append, hnm]
+              simp only [leftShift, List.getElem_append, List.length_drop, hnm, ↓reduceDIte,
+                List.getElem_take, List.getElem_drop, Nat.add_zero, Nat.zero_le,
+                Nat.sub_eq_zero_of_le, this]
               have : 0 < l.length - n := by omega
-              simp [this]
+              simp only [this, ↓reduceDIte]
               congr
               omega
-      simp [this]
+      simp only [this]
       rw [List.sum_leftShift_eq_sum (n:= n) (l:= (List.map (fun x => isBreakPoint l x) (List.range l.length)))]
     · congr
       funext
       congr
-      simp at hn
+      simp only [Nat.not_lt] at hn
       simp [leftShift, List.drop_eq_nil_iff.mpr, hn]
 
 
 theorem not_sorted_of_countBreakPoints_ge_two {l : List Int} (h : countBreakPoints l ≥ 2) :
     ∃ (i : Nat) (hi : i + 1 < l.length),
       l[i] ≥ l[i+1] := by
-  simp [countBreakPoints] at h
+  simp only [countBreakPoints, ge_iff_le] at h
   split at h
   · simp at h
   · rw [List.two_le_sum_iff] at h
     · rcases h with ⟨i, j, hij, hi, hj, h⟩
-      simp[isBreakPoint] at h
-      simp at hi
-      simp at hj
+      simp only [isBreakPoint, gt_iff_lt, List.getElem_map, List.getElem_range] at h
+      simp only [List.length_map, List.length_range] at hi
+      simp only [List.length_map, List.length_range] at hj
       have : i + 1 < l.length ∨ j + 1 < l.length := by omega
       cases this with
       | inl this =>
-        simp [this] at h
+        simp only [this, ↓reduceDIte] at h
         exists i
         exists this
-        simp [hi] at h
+        simp only [hi, ↓reduceDIte, ite_eq_right_iff, Nat.zero_ne_one, imp_false, Int.not_lt] at h
         simp [h]
       | inr this =>
-        simp [this] at h
+        simp only [this, ↓reduceDIte] at h
         exists j
         exists this
-        simp [hj] at h
+        simp only [hj, ↓reduceDIte, ite_eq_right_iff, Nat.zero_ne_one, imp_false, Int.not_lt] at h
         simp [h]
-    · simp [isBreakPoint]
+    · simp only [isBreakPoint, gt_iff_lt, List.length_map, List.length_range, List.getElem_map,
+      List.getElem_range]
       intro _ _
       split <;> split <;> split <;> simp
 
@@ -509,9 +532,11 @@ theorem testCase5 : move_one_ball [] = True := by native_decide
 theorem move_one_ball_correct {l : List Int} :
     move_one_ball l = true ↔
     ∃ (n : Nat), ∀ (i : Nat) (hi : i + 1 < l.length),
-      (rightShift l n)[i]'(by simp; omega) < (rightShift l n)[i +1]'(by simpa) := by
+      (rightShift l n)[i]'(by simp only [length_rightShift]; omega) <
+        (rightShift l n)[i +1]'(by simpa) := by
   by_cases hl : l.length < 2
-  · simp [move_one_ball, hl, countBreakPoints]
+  · simp only [move_one_ball, countBreakPoints, hl, ↓reduceIte, Nat.zero_lt_succ, decide_true,
+    true_iff]
     exists 0
     cases l with
     | nil => simp
@@ -519,9 +544,9 @@ theorem move_one_ball_correct {l : List Int} :
       cases tl with
       | nil => simp
       | cons hd' tl' =>
-        simp at hl
+        simp only [List.length_cons] at hl
         omega
-  · simp [move_one_ball]
+  · simp only [move_one_ball, decide_eq_true_eq]
     constructor
     · intro h
       rw [Nat.lt_two_iff] at h
@@ -530,62 +555,69 @@ theorem move_one_ball_correct {l : List Int} :
         rw [countBreakPoints_eq_zero_iff] at h
         contradiction
       | inr h =>
-        simp [countBreakPoints, hl, List.sum_eq_one_iff] at h
+        simp only [countBreakPoints, hl, ↓reduceIte, List.sum_eq_one_iff, List.getElem_map,
+          List.getElem_range, List.length_map, List.length_range, ne_eq, exists_and_left,
+          exists_prop] at h
         have := exists_rightShift_iff_exists_leftShift (l:= l) (p := fun (l : List Int) =>
           ∀ (i : Nat) (hi : i + 1 < l.length), l[i]'(by omega) < l[i + 1])
-        simp at this
+        simp only [length_rightShift, length_leftShift] at this
         rw [this]
         rcases h with ⟨i, hi1, hi2⟩
         exists (i + 1)
         intro j hj
-        simp [leftShift]
-        simp [List.getElem_append]
-        simp [isBreakPoint] at hi2
+        simp only [leftShift]
+        simp only [List.getElem_append, List.length_drop, List.getElem_drop, List.getElem_take]
+        simp only [isBreakPoint, gt_iff_lt, dite_eq_right_iff] at hi2
         rcases hi2 with ⟨hi, hi2⟩
         split
         · split
           · specialize hi2 (i + 1 + j) (by omega)
             have : ¬ i = i + 1 + j := by omega
-            simp [this] at hi2
+            simp only [this, not_false_eq_true, forall_const] at hi2
             have :  i + 1 + j + 1 < l.length := by omega
-            simp [this] at hi2
+            simp only [this, ↓reduceDIte, ite_eq_left_iff, Int.not_lt, Nat.succ_ne_self, imp_false,
+              Int.not_le] at hi2
             apply hi2
             omega
           · specialize hi2 (i + 1 + j) (by omega)
             have : ¬ i = i + 1 + j := by omega
-            simp [this] at hi2
+            simp only [this, not_false_eq_true, forall_const] at hi2
             have : ¬ i + 1 + j + 1 < l.length := by omega
-            simp [this] at hi2
+            simp only [this, ↓reduceDIte, ite_eq_left_iff, Int.not_lt, Nat.succ_ne_self, imp_false,
+              Int.not_le] at hi2
             have : j + 1 - (l.length - (i + 1)) = 0 := by omega
-            simp [this]
+            simp only [this, gt_iff_lt]
             apply hi2
             omega
         · split
           · specialize hi2 0 (by omega)
             have : ¬ i = 0 := by omega
-            simp [this] at hi2
+            simp only [this, not_false_eq_true, Nat.zero_add, Int.lt_irrefl, ↓reduceIte,
+              forall_const] at hi2
             have : 1 < l.length := by omega
-            simp [this] at hi2
+            simp only [this, ↓reduceDIte, ite_eq_left_iff, Int.not_lt, Nat.succ_ne_self, imp_false,
+              Int.not_le] at hi2
             omega
           · rename_i h₁ h₂
             specialize hi2 (j - (l.length - (i + 1))) (by omega) (by omega)
             have : j - (l.length - (i + 1)) + 1 < l.length := by omega
-            simp [this] at hi2
+            simp only [this, ↓reduceDIte, ite_eq_left_iff, Int.not_lt, Nat.succ_ne_self, imp_false,
+              Int.not_le] at hi2
             have : j - (l.length - (i + 1)) + 1 = j + 1 - (l.length - (i + 1)) := by omega
-            simp [this] at hi2
+            simp only [this] at hi2
             apply hi2
             omega
     · false_or_by_contra
       rename_i h h'
-      simp at h'
+      simp only [Nat.not_lt] at h'
       have := exists_rightShift_iff_exists_leftShift (l:= l) (p := fun (l : List Int) =>
           ∀ (i : Nat) (hi : i + 1 < l.length), l[i]'(by omega) < l[i + 1])
-      simp at this
+      simp only [length_rightShift, length_leftShift] at this
       rw [this] at h
       rcases h with ⟨n,h⟩
       have := not_sorted_of_countBreakPoints_ge_two (l := leftShift l n)
       rw [countBreakPoints_leftShift_eq_countBreakPoints] at this
-      simp [h'] at this
+      simp only [ge_iff_le, h', length_leftShift, forall_const] at this
       rcases this with ⟨i, hi, this⟩
       specialize h i hi
       omega
