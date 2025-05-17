@@ -213,9 +213,18 @@ theorem leftShiftExample1 : leftShift [3,4,5,1,2] 2 = [5,1,2,3,4] := by native_d
 
 theorem leftShiftExample2 : leftShift [3,4,5,1,2] 3 = [1,2,3,4,5] := by native_decide
 
+theorem List.sum_append {l₁ l₂ : List Int} :
+    (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
+  induction l₁ with
+  | nil => simp
+  | cons hd tl ih =>
+    simp [ih]
+    omega
+
 theorem List.sum_leftShift_eq_sum {l : List Int} {n : Nat} :
     (leftShift l n).sum = l.sum := by
-  sorry
+  simp [leftShift]
+  rw [List.sum_append, Int.add_comm, ← List.sum_append, take_append_drop]
 
 theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Prop) :
     (∃ (n : Nat), p (rightShift l n)) ↔ ∃ (n : Nat), p (leftShift l n) := by
@@ -362,33 +371,42 @@ theorem countBreakPoints_eq_zero_iff {l : List Int} : countBreakPoints l = 0 ↔
   · intro h
     simp [countBreakPoints, h]
 
+theorem countBreakPoints_leftShift_eq_countBreakPoints {l : List Int} {n : Nat} :
+    countBreakPoints (leftShift l n) = countBreakPoints l := by
+  simp [countBreakPoints]
+  by_cases h: l.length < 2
+  · simp [h]
+  · simp [h]
+    have : List.range (leftShift l n).length = List.range l.length := by
+      sorry
+    simp [this]
 
 theorem not_sorted_of_countBreakPoints_ge_two {l : List Int} (h : countBreakPoints l ≥ 2) :
-    ∀ (n : Nat), ∃ (i : Nat) (hi : i + 1 < (leftShift l n).length),
-      (leftShift l n)[i] ≥ (leftShift l n)[i+1] := by
+    ∃ (i : Nat) (hi : i + 1 < l.length),
+      l[i] ≥ l[i+1] := by
   simp [countBreakPoints] at h
   split at h
   · simp at h
   · rw [List.two_le_sum_iff] at h
-    rcases h with ⟨i, j, hij, hi, hj, h⟩
-    simp at h
-    intro n
-    by_cases hin : i = n
-    · simp [leftShift]
+    · rcases h with ⟨i, j, hij, hi, hj, h⟩
+      simp[isBreakPoint] at h
       simp at hi
       simp at hj
-      rw [Nat.ne_iff_lt_or_gt] at hij
-      cases hij with
-      | inl hij =>
-        exists (j - i)
-        simp [hin, List.getElem_append]
-        have : j - n + 1 < l.length - n + min n l.length := by
-          simp [← hin]
-          rw [Nat.min_eq_left]
-          · rw [Nat.sub_add_eq_max, Nat.max_eq_left]
-            · omega
-            · omega
-
+      have : i + 1 < l.length ∨ j + 1 < l.length := by omega
+      cases this with
+      | inl this =>
+        simp [this] at h
+        exists i
+        exists this
+        simp [h]
+      | inr this =>
+        simp [this] at h
+        exists j
+        exists this
+        simp [h]
+    · simp [isBreakPoint]
+      intro _ _
+      split <;> split ; all_goals simp
 
 def move_one_ball (l : List Int) : Bool :=
   countBreakPoints l < 2
@@ -472,9 +490,8 @@ theorem move_one_ball_correct {l : List Int} :
           ∀ (i : Nat) (hi : i + 1 < l.length), l[i]'(by omega) < l[i + 1])
       simp at this
       rw [this] at h
-      have := not_sorted_of_countBreakPoints_ge_two (l := l) (by simpa)
       rcases h with ⟨n,h⟩
-      specialize this n
+      have := not_sorted_of_countBreakPoints_ge_two (l := leftShift l n)
       rcases this with ⟨i, hi, this⟩
       specialize h i (by simp at hi; exact hi)
       omega
