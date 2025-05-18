@@ -155,7 +155,7 @@ theorem push?_output_length_eq_hold_length
   have := pushOp?_hold_length_le_output_length hp (by simp_all)
   omega
 
-theorem push?_some (wf : Wellformed σ₁) (arg op) : ∃ σ₂, σ₁.push? arg op = some σ₂ :=
+theorem push?_wf (wf : Wellformed σ₁) (arg op) : ∃ σ₂, σ₁.push? arg op = some σ₂ :=
   pushOp?_some <| by simp [wf.internal]
 
 theorem Wellformed.push? (hp : σ₁.push? arg op = some σ₂) (wf : Wellformed σ₁) : Wellformed σ₂ where
@@ -209,20 +209,34 @@ termination_by σ₁.ops.length
 theorem run?_output_singleton {ops args} (h : run? { ops, args } = some σ) : σ.output.length = 1 :=
   run?_output_length h .refl
 
-theorem run?_some (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := by
+theorem run?_wf (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := by
   rw [run?]
   repeat split
   next op _ arg _ ho ha _ =>
-    have := push?_some (wf.of_external_cons ho ha) arg op
+    have := push?_wf (wf.of_external_cons ho ha) arg op
     simp_all
   next ops _ _ ho ha σ₂ h =>
     have : σ₂.ops.length ≤ ops.length := by have := push?_ops h; simp_all
-    exact run?_some <| (wf.of_external_cons ho ha).push? h
+    exact run?_wf <| (wf.of_external_cons ho ha).push? h
   · simp
   next h _ =>
     have ⟨_, _⟩ := wf
     cases ho : σ₁.ops <;> cases ha : σ₁.args <;> try specialize h _ _ _ _ ho ha
     all_goals simp_all
+termination_by σ₁.ops.length
+
+theorem run?_some {σ₁ : ParseState} (h : σ₁.run? = some σ₂) :
+    σ₁.args.length = σ₁.ops.length + 1 := by
+  rw [run?] at h
+  repeat split at h
+  · contradiction
+  next ops _ _ _ _ σ₂ hp =>
+    have : σ₂.ops.length ≤ ops.length := by have := push?_ops hp; simp_all
+    have := run?_some h
+    have := push?_args hp
+    have := push?_ops hp
+    simp_all
+  all_goals simp_all
 termination_by σ₁.ops.length
 
 end ParseState
@@ -234,9 +248,14 @@ def parse? (ops : List Op) (args : List Nat) : Option Expr :=
   | some σ => σ.output[0]'(by simp [ParseState.run?_output_singleton h])
 
 theorem parse?_some_iff : (∃ e, parse? ops args = some e) ↔ (args.length = ops.length + 1) where
-  mp := sorry
+  mp h := by
+    replace ⟨_, h⟩ := h
+    rw [parse?] at h
+    split at h
+    · contradiction
+    next hr => simp_all [ParseState.run?_some hr]
   mpr h := by
-    have := ParseState.run?_some (σ₁ := { ops, args }) ⟨h, rfl⟩
+    have := ParseState.run?_wf (σ₁ := { ops, args }) ⟨h, rfl⟩
     rw [parse?]
     split <;> simp_all
 
