@@ -7,14 +7,6 @@ inductive Op where
 
 namespace Op
 
-instance : ToString Op where
-  toString
-    | add => "+"
-    | sub => "-"
-    | mul => "*"
-    | div => "/"
-    | pow => "^"
-
 def prio : Op → Nat
   | add | sub => 1
   | mul | div => 2
@@ -37,16 +29,8 @@ end Op
 inductive Expr where
   | lit (n : Nat)
   | app (op : Op) (arg₁ arg₂ : Expr)
-  deriving Inhabited
 
 namespace Expr
-
-instance : ToString Expr where
-  toString :=
-    let rec go
-      | .lit n            => s!"{n}"
-      | .app op arg₁ arg₂ => s!"({go arg₁} {op} {go arg₂})"
-    go
 
 def eval : Expr → Nat
   | lit n            => n
@@ -65,9 +49,21 @@ structure ParseState where
   args   : List Nat  := []
   hold   : List Op   := []
   output : List Expr := []
-  deriving Inhabited
 
 namespace ParseState
+
+macro_rules
+  | `(tactic| decreasing_tactic) => `(tactic| simp +arith [*])
+
+structure Wellformed (σ : ParseState) where
+  external : σ.args.length = σ.ops.length + 1
+  internal : σ.hold.length = σ.output.length
+
+theorem Wellformed.of_external_cons
+    (wf : Wellformed σ) (ho : σ.ops = op :: os) (ha : σ.args = arg :: as) :
+    Wellformed { σ with ops := os, args := as } where
+  external := have ⟨_, _⟩ := wf; by simp_all
+  internal := wf.internal
 
 @[simp]
 def pushArg (σ : ParseState) (arg : Nat) : ParseState :=
@@ -84,51 +80,60 @@ def pushOp? (σ : ParseState) (op : Op) : Option ParseState :=
       | arg₂ :: arg₁ :: out => pushOp? { σ with hold, output := app top arg₁ arg₂ :: out } op
       | _                   => none
 termination_by σ.hold.length
-decreasing_by all_goals simp +arith [*]
 
-@[simp]
-theorem pushOp?_ops {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.ops = σ₂.ops := by
-  rw [pushOp?] at h
-  repeat' split at h
-  all_goals
-    first
-    | injection h with h; rw [←h]
-    | rw [pushOp?_ops h]
-    | contradiction
+macro "pushOp?_cases " h:ident : tactic => `(tactic|(
+  rw [pushOp?] at $h:ident
+  repeat' split at $h:ident
+  all_goals try contradiction
+  all_goals try injection $h with $h
+  all_goals try rw [← $h]
+))
+
+theorem pushOp?_args {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.args = σ₂.args := by
+  pushOp?_cases h <;> rw [pushOp?_args h]
 termination_by σ₁.hold
-decreasing_by all_goals simp +arith [*]
+
+theorem pushOp?_ops {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.ops = σ₂.ops := by
+  pushOp?_cases h <;> rw [pushOp?_ops h]
+termination_by σ₁.hold
 
 theorem pushOp?_output_hold_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.output.length - σ₂.hold.length = σ₁.output.length - σ₁.hold.length - 1 := by
-  rw [pushOp?] at hp
-  repeat' split at hp <;> try contradiction
+  pushOp?_cases hp
   all_goals
-    first
-      | injection hp with hp
-      | have hp := pushOp?_output_hold_length hp
+    try have hp := pushOp?_output_hold_length hp
     simp_all only [List.length_cons, ←hp]
     omega
 termination_by σ₁.hold
-decreasing_by all_goals simp +arith [*]
 
 theorem pushOp?_hold_length_le_output_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.hold.length ≤ σ₂.output.length := by
-  rw [pushOp?] at hp
-  repeat' split at hp
+  pushOp?_cases hp
   all_goals
     first
-      | contradiction
-      | injection hp with hp; simp_all +arith [←hp]
       | exact pushOp?_hold_length_le_output_length hp (by simp_all)
+      | simp_all +arith [←hp]
 termination_by σ₁.hold
-decreasing_by all_goals simp +arith [*]
+
+theorem pushOp?_some {σ₁ : ParseState} (h : σ₁.hold.length < σ₁.output.length) :
+    ∃ σ₂, σ₁.pushOp? op = some σ₂ := by
+  rw [pushOp?]
+  repeat' split
+  all_goals try apply pushOp?_some
+  all_goals try cases _ : σ₁.output <;> cases ‹List Expr›
+  all_goals simp_all
+termination_by σ₁.hold
 
 def push? (σ : ParseState) (arg : Nat) (op : Op) : Option ParseState :=
   σ.pushArg arg |>.pushOp? op
 
-@[simp]
+theorem push?_args {σ₁ : ParseState} (h : σ₁.push? arg op = some σ₂) : σ₁.args = σ₂.args := by
+  rw [push?, pushArg] at h
+  have := pushOp?_args h
+  repeat simp_all only
+
 theorem push?_ops {σ₁ : ParseState} (h : σ₁.push? arg op = some σ₂) : σ₁.ops = σ₂.ops := by
   rw [push?, pushArg] at h
   have := pushOp?_ops h
@@ -144,15 +149,24 @@ theorem push?_output_hold_length
 
 theorem push?_output_length_eq_hold_length
     {σ₁ : ParseState} (hp : σ₁.push? arg op = some σ₂) (he : σ₁.hold.length = σ₁.output.length) :
-    σ₂.output.length = σ₂.hold.length := by
-  sorry -- TODO: Not sure if this is actually provable.
+    σ₂.hold.length = σ₂.output.length := by
+  simp only [push?, pushArg] at hp
+  have := push?_output_hold_length hp (Nat.le_of_eq he)
+  have := pushOp?_hold_length_le_output_length hp (by simp_all)
+  omega
+
+theorem push?_some (wf : Wellformed σ₁) (arg op) : ∃ σ₂, σ₁.push? arg op = some σ₂ :=
+  pushOp?_some <| by simp [wf.internal]
+
+theorem Wellformed.push? (hp : σ₁.push? arg op = some σ₂) (wf : Wellformed σ₁) : Wellformed σ₂ where
+  external := push?_args hp ▸ push?_ops hp ▸ wf.external
+  internal := push?_output_length_eq_hold_length hp wf.internal
 
 def finalize (σ : ParseState) : ParseState :=
   match _ : σ.hold, σ.output with
   | op :: hold, arg₂ :: arg₁ :: out => finalize { σ with hold, output := app op arg₁ arg₂ :: out }
   | _, _                            => σ
-  termination_by σ.hold
-  decreasing_by simp_all +arith
+termination_by σ.hold
 
 theorem finalize_output_length {σ : ParseState} (h : σ.hold.length < σ.output.length) :
     σ.finalize.output.length = σ.output.length - σ.hold.length := by
@@ -178,8 +192,8 @@ theorem run?_output_length
   rw [run?] at hr
   repeat' split at hr
   · contradiction
-  next σ' h =>
-    have : σ'.ops.length < σ₁.ops.length := by have := push?_ops h; simp_all
+  next ops₁ _ _ _ _  σ' h =>
+    have : σ'.ops.length ≤ ops₁.length := by have := push?_ops h; simp_all
     have hl' := pushOp?_hold_length_le_output_length h <| by simp_all +arith
     have := push?_output_hold_length h hl
     simp only [run?_output_length hr hl', pushArg, List.length_cons] at *
@@ -195,6 +209,22 @@ termination_by σ₁.ops.length
 theorem run?_output_singleton {ops args} (h : run? { ops, args } = some σ) : σ.output.length = 1 :=
   run?_output_length h .refl
 
+theorem run?_some (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := by
+  rw [run?]
+  repeat split
+  next op _ arg _ ho ha _ =>
+    have := push?_some (wf.of_external_cons ho ha) arg op
+    simp_all
+  next ops _ _ ho ha σ₂ h =>
+    have : σ₂.ops.length ≤ ops.length := by have := push?_ops h; simp_all
+    exact run?_some <| (wf.of_external_cons ho ha).push? h
+  · simp
+  next h _ =>
+    have ⟨_, _⟩ := wf
+    cases ho : σ₁.ops <;> cases ha : σ₁.args <;> try specialize h _ _ _ _ ho ha
+    all_goals simp_all
+termination_by σ₁.ops.length
+
 end ParseState
 
 -- Parses an expression based on the "shunting yard algorithm".
@@ -203,9 +233,12 @@ def parse? (ops : List Op) (args : List Nat) : Option Expr :=
   | none   => none
   | some σ => σ.output[0]'(by simp [ParseState.run?_output_singleton h])
 
-theorem parse?_isSome_iff : (parse? ops args).isSome ↔ (args.length = ops.length + 1) where
-  mp  := sorry
-  mpr := sorry
+theorem parse?_some_iff : (∃ e, parse? ops args = some e) ↔ (args.length = ops.length + 1) where
+  mp := sorry
+  mpr h := by
+    have := ParseState.run?_some (σ₁ := { ops, args }) ⟨h, rfl⟩
+    rw [parse?]
+    split <;> simp_all
 
 theorem parse?_lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
   sorry
