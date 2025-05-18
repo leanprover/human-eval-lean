@@ -1,3 +1,7 @@
+theorem List.length_one_eq_getElem_zero {l : List α} (h : l.length = 1) : l = [l[0]] := by
+  cases l <;> try cases ‹List _›
+  all_goals simp at h ⊢
+
 inductive Op where
   | add
   | sub
@@ -52,6 +56,16 @@ structure ParseState where
 
 namespace ParseState
 
+def lits (σ : ParseState) : List Nat :=
+  go σ.output
+where
+  go : List Expr → List Nat
+  | []       => []
+  | e :: out => go out ++ e.lits
+
+theorem output_eq_lits_eq {σ₁ σ₂ : ParseState} (h : σ₁.output = σ₂.output) : σ₁.lits = σ₂.lits := by
+  simp only [lits, h]
+
 macro_rules
   | `(tactic| decreasing_tactic) => `(tactic| simp +arith [*])
 
@@ -97,6 +111,17 @@ theorem pushOp?_ops {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : �
   pushOp?_cases h <;> rw [pushOp?_ops h]
 termination_by σ₁.hold
 
+theorem pushOp?_lits {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.lits = σ₂.lits := by
+  pushOp?_cases h
+  · have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl)
+    simp_all only
+  · have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl)
+    simp_all only
+  · have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl)
+    simp_all only
+  · sorry -- TODO: removing arg₂ arg₁ from the output and adding (app arg₁ arg₂) preserves the lits
+  · sorry -- TODO: removing arg₂ arg₁ from the output and adding (app arg₁ arg₂) preserves the lits
+
 theorem pushOp?_output_hold_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
     σ₂.output.length - σ₂.hold.length = σ₁.output.length - σ₁.hold.length - 1 := by
@@ -138,6 +163,9 @@ theorem push?_ops {σ₁ : ParseState} (h : σ₁.push? arg op = some σ₂) : �
   rw [push?, pushArg] at h
   have := pushOp?_ops h
   repeat simp_all only
+
+theorem push?_lits {σ₁ : ParseState} (h : σ₁.push? arg op = some σ₂) : σ₂.lits = σ₁.lits ++ [arg] :=
+  pushOp?_lits h |>.symm
 
 theorem push?_output_hold_length
     {σ₁ : ParseState} (hp : σ₁.push? arg op = some σ₂) (hl : σ₁.hold.length ≤ σ₁.output.length) :
@@ -185,6 +213,9 @@ def run? (σ : ParseState) : Option ParseState :=
   | _, _  => none
 termination_by σ.ops
 decreasing_by have := push?_ops ‹_›; simp_all +arith
+
+theorem run?_lits {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) : σ₂.lits = σ₁.lits ++ σ₁.args := by
+  sorry
 
 theorem run?_output_length
     {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) (hl : σ₁.hold.length ≤ σ₁.output.length) :
@@ -247,33 +278,43 @@ def parse? (ops : List Op) (args : List Nat) : Option Expr :=
   | none   => none
   | some σ => σ.output[0]'(by simp [ParseState.run?_output_singleton h])
 
+theorem parse?_some_to_run?_some (h : parse? ops args = some e) :
+    ∃ σ, { ops, args : ParseState }.run? = some σ := by
+  sorry
+
 theorem parse?_some_iff : (∃ e, parse? ops args = some e) ↔ (args.length = ops.length + 1) where
-  mp h := by
-    replace ⟨_, h⟩ := h
-    rw [parse?] at h
-    split at h
-    · contradiction
-    next hr => simp_all [ParseState.run?_some hr]
+  mp h := parse?_some_to_run?_some h.choose_spec |>.choose_spec |> ParseState.run?_some
   mpr h := by
     have := ParseState.run?_wf (σ₁ := { ops, args }) ⟨h, rfl⟩
     rw [parse?]
     split <;> simp_all
 
 theorem parse?_lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
-  sorry
+  rw [parse?] at h
+  split at h
+  · contradiction
+  next σ hr =>
+    injection h with h
+    have hs := ParseState.run?_output_singleton hr
+    have : σ.output = [e] := h ▸ List.length_one_eq_getElem_zero hs
+    have := ParseState.run?_lits hr
+    simp_all [ParseState.lits, ParseState.lits.go]
 
 theorem parse?_apps_eq_ops (h : parse? ops args = some e) : e.apps = ops := by
   sorry
 
+def parse (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1) : Expr :=
+  (parse? ops args).get <| Option.isSome_iff_exists.mpr <| parse?_some_iff.mpr h
+
 end Expr
 
-def doAlgebra (ops : List Op) (args : List Nat) : Option Nat :=
-  Expr.eval <$> Expr.parse? ops args
+def doAlgebra (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1 := by decide) :=
+  Expr.parse ops args h |>.eval
 
-example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = some 9  := by native_decide
-example : doAlgebra [.pow, .mul, .add] [2, 3, 4, 5] = some 37 := by native_decide
-example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = some 9  := by native_decide
-example : doAlgebra [.div, .mul]       [7, 3, 4]    = some 8  := by native_decide
+example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = 9  := by native_decide
+example : doAlgebra [.pow, .mul, .add] [2, 3, 4, 5] = 37 := by native_decide
+example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = 9  := by native_decide
+example : doAlgebra [.div, .mul]       [7, 3, 4]    = 8  := by native_decide
 
 /-!
 ## Prompt
