@@ -113,14 +113,11 @@ termination_by σ₁.hold
 
 theorem pushOp?_lits {σ₁ : ParseState} (h : σ₁.pushOp? op = some σ₂) : σ₁.lits = σ₂.lits := by
   pushOp?_cases h
-  · have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl)
-    simp_all only
-  · have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl)
-    simp_all only
-  · have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl)
-    simp_all only
-  · sorry -- TODO: removing arg₂ arg₁ from the output and adding (app arg₁ arg₂) preserves the lits
-  · sorry -- TODO: removing arg₂ arg₁ from the output and adding (app arg₁ arg₂) preserves the lits
+  all_goals
+    first
+    | have : σ₁.lits = σ₂.lits := output_eq_lits_eq (h ▸ rfl); simp_all only
+    | rw [← pushOp?_lits h]; simp_all [Expr.lits, lits, lits.go]
+termination_by σ₁.hold
 
 theorem pushOp?_output_hold_length
     {σ₁ : ParseState} (hp : σ₁.pushOp? op = some σ₂) (hl : σ₁.hold.length < σ₁.output.length) :
@@ -128,7 +125,7 @@ theorem pushOp?_output_hold_length
   pushOp?_cases hp
   all_goals
     try have hp := pushOp?_output_hold_length hp
-    simp_all only [List.length_cons, ←hp]
+    simp_all only [List.length_cons, ← hp]
     omega
 termination_by σ₁.hold
 
@@ -139,7 +136,7 @@ theorem pushOp?_hold_length_le_output_length
   all_goals
     first
       | exact pushOp?_hold_length_le_output_length hp (by simp_all)
-      | simp_all +arith [←hp]
+      | simp_all +arith [← hp]
 termination_by σ₁.hold
 
 theorem pushOp?_some {σ₁ : ParseState} (h : σ₁.hold.length < σ₁.output.length) :
@@ -163,6 +160,9 @@ theorem push?_ops {σ₁ : ParseState} (h : σ₁.push? arg op = some σ₂) : �
   rw [push?, pushArg] at h
   have := pushOp?_ops h
   repeat simp_all only
+
+macro_rules
+  | `(tactic| decreasing_tactic) => `(tactic| have := push?_ops ‹_›; simp_all +arith)
 
 theorem push?_lits {σ₁ : ParseState} (h : σ₁.push? arg op = some σ₂) : σ₂.lits = σ₁.lits ++ [arg] :=
   pushOp?_lits h |>.symm
@@ -196,6 +196,15 @@ def finalize (σ : ParseState) : ParseState :=
   | _, _                            => σ
 termination_by σ.hold
 
+@[simp]
+theorem finalize_lits (σ : ParseState) : σ.finalize.lits = σ.lits := by
+  rw [finalize]
+  split
+  · rw [finalize_lits]
+    simp_all [Expr.lits, lits, lits.go]
+  · rfl
+termination_by σ.hold
+
 theorem finalize_output_length {σ : ParseState} (h : σ.hold.length < σ.output.length) :
     σ.finalize.output.length = σ.output.length - σ.hold.length := by
   replace ⟨ops, args, hold, output⟩ := σ
@@ -212,28 +221,38 @@ def run? (σ : ParseState) : Option ParseState :=
   | [], [arg] => { σ with args := [] } |>.pushArg arg |>.finalize
   | _, _  => none
 termination_by σ.ops
-decreasing_by have := push?_ops ‹_›; simp_all +arith
+
+macro "run?_cases " h:ident : tactic => `(tactic|(
+  rw [run?] at $h:ident
+  repeat' split at $h:ident
+  all_goals try contradiction
+))
 
 theorem run?_lits {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) : σ₂.lits = σ₁.lits ++ σ₁.args := by
-  sorry
+  run?_cases hr
+  next h =>
+    rw [run?_lits hr]
+    have := push?_lits h
+    have := push?_args h
+    simp_all [lits]
+  · injection hr with hr
+    rw [← hr, finalize_lits]
+    simp_all [Expr.lits, lits, lits.go]
+termination_by σ₁.ops.length
 
 theorem run?_output_length
     {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) (hl : σ₁.hold.length ≤ σ₁.output.length) :
     σ₂.output.length = σ₁.output.length + 1 - σ₁.hold.length := by
-  rw [run?] at hr
-  repeat' split at hr
-  · contradiction
+  run?_cases hr
   next ops₁ _ _ _ _  σ' h =>
-    have : σ'.ops.length ≤ ops₁.length := by have := push?_ops h; simp_all
     have hl' := pushOp?_hold_length_le_output_length h <| by simp_all +arith
     have := push?_output_hold_length h hl
     simp only [run?_output_length hr hl', pushArg, List.length_cons] at *
     omega
   · injection hr with hr
-    rw [←hr, finalize_output_length]
+    rw [← hr, finalize_output_length]
     repeat simp only [pushArg, List.length_cons]
     omega
-  · contradiction
 termination_by σ₁.ops.length
 
 -- This implies that `parse?` either fails, or returns precisely a single output element.
@@ -246,8 +265,7 @@ theorem run?_wf (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := 
   next op _ arg _ ho ha _ =>
     have := push?_wf (wf.of_external_cons ho ha) arg op
     simp_all
-  next ops _ _ ho ha σ₂ h =>
-    have : σ₂.ops.length ≤ ops.length := by have := push?_ops h; simp_all
+  next ho ha _ h =>
     exact run?_wf <| (wf.of_external_cons ho ha).push? h
   · simp
   next h _ =>
@@ -256,18 +274,15 @@ theorem run?_wf (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := 
     all_goals simp_all
 termination_by σ₁.ops.length
 
-theorem run?_some {σ₁ : ParseState} (h : σ₁.run? = some σ₂) :
+theorem run?_some {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) :
     σ₁.args.length = σ₁.ops.length + 1 := by
-  rw [run?] at h
-  repeat split at h
-  · contradiction
-  next ops _ _ _ _ σ₂ hp =>
-    have : σ₂.ops.length ≤ ops.length := by have := push?_ops hp; simp_all
-    have := run?_some h
-    have := push?_args hp
-    have := push?_ops hp
+  run?_cases hr
+  next ops _ _ _ _ σ₂ h =>
+    have := run?_some hr
+    have := push?_args h
+    have := push?_ops h
     simp_all
-  all_goals simp_all
+  · simp_all
 termination_by σ₁.ops.length
 
 end ParseState
@@ -280,7 +295,8 @@ def parse? (ops : List Op) (args : List Nat) : Option Expr :=
 
 theorem parse?_some_to_run?_some (h : parse? ops args = some e) :
     ∃ σ, { ops, args : ParseState }.run? = some σ := by
-  sorry
+  rw [parse?] at h
+  split at h <;> simp_all
 
 theorem parse?_some_iff : (∃ e, parse? ops args = some e) ↔ (args.length = ops.length + 1) where
   mp h := parse?_some_to_run?_some h.choose_spec |>.choose_spec |> ParseState.run?_some
@@ -305,6 +321,10 @@ theorem parse?_apps_eq_ops (h : parse? ops args = some e) : e.apps = ops := by
 
 def parse (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1) : Expr :=
   (parse? ops args).get <| Option.isSome_iff_exists.mpr <| parse?_some_iff.mpr h
+
+theorem parse?_eq_parse (h : parse? ops args = some e) :
+    e = parse ops args (parse?_some_iff.mp ⟨e, h⟩) := by
+  simp [parse, h]
 
 end Expr
 
