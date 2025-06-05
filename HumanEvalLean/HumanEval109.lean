@@ -3,31 +3,18 @@ variable {α : Type _}
 section helper
 
 theorem Nat.lt_two_iff {n : Nat} : n < 2 ↔ n = 0 ∨ n = 1 := by
-  cases n with
-  | zero => simp
-  | succ m =>
-    cases m with
-    | zero => simp
-    | succ o => simp
+  omega
+
+theorem List.exists_mem_and {P : α → Prop} {l : List α} :
+    (∃ a, a ∈ l ∧ P a) ↔ (∃ (n : Nat), ∃ h, P (l[n]'h)) := by
+  refine ⟨fun ⟨a, h, h'⟩ => ?_, fun ⟨n, h, h'⟩ => ⟨l[n], by simp, h'⟩⟩
+  obtain ⟨i, h'', rfl⟩ := List.getElem_of_mem h
+  exact ⟨_, _, h'⟩
 
 theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
-  ∀ (i : Nat) (hi : i < l.length), l[i]'hi = 0 := by
-  induction l with
-  | nil => simp
-  | cons hd tl ih =>
-    simp only [sum_cons, Nat.add_eq_zero, ih, length_cons]
-    constructor
-    · intro h i hi
-      cases i with
-      | zero => simp [h]
-      | succ m =>
-        simp only [getElem_cons_succ]
-        apply And.right h
-    · intro h
-      constructor
-      · apply h 0 (by simp)
-      · intro i hi
-        apply h (i + 1) (by omega)
+    ∀ (i : Nat) (hi : i < l.length), l[i]'hi = 0 := by
+  rw [← Decidable.not_iff_not]
+  simp [← Nat.pos_iff_ne_zero, Nat.sum_pos_iff_exists_pos, List.exists_mem_and]
 
 theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i < l.length),
     l[i] = 1 ∧ ∀ (j : Nat) (hj : j < l.length), i ≠ j → l[j] = 0 := by
@@ -244,7 +231,7 @@ theorem leftShiftExample2 : leftShift [3,4,5,1,2] 3 = [1,2,3,4,5] := by native_d
 
 theorem List.sum_leftShift_eq_sum {l : List Nat} {n : Nat} :
     (leftShift l n).sum = l.sum := by
-  simp [leftShift]
+  simp only [leftShift]
   rw [List.sum_append, Nat.add_comm, ← List.sum_append, take_append_drop]
 
 theorem exists_rightShift_iff_exists_leftShift {l : List α} (p : List α → Prop) :
