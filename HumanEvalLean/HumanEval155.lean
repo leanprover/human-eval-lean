@@ -4,7 +4,6 @@ section Batteries
 @[simp] theorem Nat.isDigit_digitChar : n.digitChar.isDigit = decide (n < 10) := sorry
 theorem Nat.mem_toDigits_base_10_isDigit (h : c ∈ toDigits 10 n) : c.isDigit := sorry
 theorem Nat.toDigits_10_of_lt_10 (h : n < 10) : toDigits 10 n = [n.digitChar] := sorry
-@[simp] theorem Nat.toDigits_10_natAbs_ofNat (n : Nat) : toDigits 10 (n : Int).natAbs = toDigits 10 n := sorry
 
 theorem Nat.toDigits_10_decompose (h : d < 10) (n : Nat) :
     toDigits 10 (10 * n + d) = (toDigits 10 n) ++ (toDigits 10 d) :=
