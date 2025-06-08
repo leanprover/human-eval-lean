@@ -82,11 +82,17 @@ def log (t : Tally) (d : Digit) : Tally :=
   | _                           => { t with odd  := t.odd  + 1 }
 
 theorem log_add (t₁ t₂ : Tally) (d : Digit) : (t₁.log d) + t₂ = (t₁ + t₂).log d := by
-  sorry
+  simp only [log]
+  split
+  all_goals
+    simp only [(· + ·), Add.add]
+    simp +arith
 
 theorem log_digitChar (h : d < 10) (t : Tally) :
-    t.log ⟨d.digitChar, by simp_all⟩ = t + ⟨1 - d % 2, d % 2⟩ :=
-  sorry
+    t.log ⟨d.digitChar, by simp_all⟩ = t + ⟨1 - d % 2, d % 2⟩ := by
+  match d with
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => rfl
+  | _ + 10                                => contradiction
 
 -- Folding `log` over a given tally `init` produces the same tally as folding `log` over `⟨0, 0⟩`
 -- and adding that to `init`.
