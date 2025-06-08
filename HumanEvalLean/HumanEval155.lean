@@ -1,6 +1,3 @@
--- TODO: This already exists in Mathlib.
-@[simp] theorem Nat.natAbs_cast (n : Nat) : (n : Int).natAbs = n := rfl
-
 section Batteries
 
 -- https://github.com/leanprover-community/batteries/pull/1267
