@@ -40,20 +40,9 @@ theorem digits_decompose (h : d < 10) (n : Nat) : (10 * n + d).digits = n.digits
 
 end Nat
 
-namespace Int
-
-def digits (i : Int) : List Digit :=
-  i.natAbs.digits
-
 @[simp]
-theorem digits_cast (n : Nat) : (n : Int).digits = n.digits := by
-  simp [digits]
-
-theorem digits_decompose {d : Nat} (h : d < 10) (n : Nat) :
-    digits (10 * n + d : Nat) = n.digits ++ d.digits := by
-  rw [digits, Nat.natAbs_cast, Nat.digits_decompose h]
-
-end Int
+theorem Int.digits_natAbs_cast (n : Nat) : (n : Int).natAbs.digits = n.digits := by
+  simp [Nat.digits]
 
 structure Tally where
   even : Nat
@@ -125,40 +114,40 @@ theorem log_total (d : Digit) (t : Tally) : (t.log d).total = t.total + 1 := by
   rw [log]
   split <;> simp +arith [total]
 
-def count (i : Int) : Tally :=
-  i.digits.foldl log ⟨0, 0⟩
-
-example : count (-12) = ⟨1, 1⟩     := rfl
-example : count 123 = ⟨1, 2⟩       := rfl
-example : count 7 = ⟨0, 1⟩         := rfl
-example : count (-78) = ⟨1, 1⟩     := rfl
-example : count 3452 = ⟨2, 2⟩      := rfl
-example : count 346211 = ⟨3, 3⟩    := rfl
-example : count (-345821) = ⟨3, 3⟩ := rfl
-example : count (-2) = ⟨1, 0⟩      := rfl
-example : count (-45347) = ⟨2, 3⟩  := rfl
-example : count 0 = ⟨1, 0⟩         := rfl
+def count (n : Nat) : Tally :=
+  n.digits.foldl log ⟨0, 0⟩
 
 -- The tally total produced by `count` matches the number of digits in the input.
-theorem count_total_eq_length : (count i).total = i.digits.length := by
+theorem count_total_eq_length : (count n).total = n.digits.length := by
   rw [count]
-  generalize i.digits = ds
+  generalize n.digits = ds
   induction ds
   case nil     => rfl
   case cons ih => rw [List.foldl_cons, List.length_cons, log_total_foldl, ih, log_total]; rfl
 
-variable {n d : Nat}
-
 theorem count_of_lt_10 (hd : d < 10) : count d = ⟨1 - d % 2, d % 2⟩ := by
   simp [count, Nat.digits_of_lt_10, log_digitChar, hd]
 
-theorem count_decompose (hd : d < 10) : count (10 * n + d : Nat) = count n + count d := by
-  simp only [count, Int.digits_cast, Nat.digits_decompose hd, List.foldl_append]
+theorem count_decompose (hd : d < 10) : count (10 * n + d) = count n + count d := by
+  simp only [count, Int.digits_natAbs_cast, Nat.digits_decompose hd, List.foldl_append]
   rw [log_foldl, add_comm]
 
-theorem count_decompose' (hd : d < 10) :
-    count (10 * n + d : Nat) = count n + ⟨1 - d % 2, d % 2⟩ := by
+theorem count_decompose' (hd : d < 10) : count (10 * n + d) = count n + ⟨1 - d % 2, d % 2⟩ := by
   rw [← count_of_lt_10 hd, count_decompose hd]
+
+def evenOddCount (i : Int) : Tally :=
+  count i.natAbs
+
+example : evenOddCount (-12) = ⟨1, 1⟩     := rfl
+example : evenOddCount 123 = ⟨1, 2⟩       := rfl
+example : evenOddCount 7 = ⟨0, 1⟩         := rfl
+example : evenOddCount (-78) = ⟨1, 1⟩     := rfl
+example : evenOddCount 3452 = ⟨2, 2⟩      := rfl
+example : evenOddCount 346211 = ⟨3, 3⟩    := rfl
+example : evenOddCount (-345821) = ⟨3, 3⟩ := rfl
+example : evenOddCount (-2) = ⟨1, 0⟩      := rfl
+example : evenOddCount (-45347) = ⟨2, 3⟩  := rfl
+example : evenOddCount 0 = ⟨1, 0⟩         := rfl
 
 /-!
 ## Prompt
