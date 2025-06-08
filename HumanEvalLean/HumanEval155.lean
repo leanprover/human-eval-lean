@@ -1,18 +1,13 @@
 section Batteries
 
 -- https://github.com/leanprover-community/batteries/pull/1267
-@[simp] theorem isDigit_digitChar : n.digitChar.isDigit = decide (n < 10) := sorry
+@[simp] theorem Nat.isDigit_digitChar : n.digitChar.isDigit = decide (n < 10) := sorry
 theorem Nat.mem_toDigits_base_10_isDigit (h : c ∈ toDigits 10 n) : c.isDigit := sorry
-
-theorem Nat.toDigits_10_of_lt_10 (h : n < 10) : toDigits 10 n = [n.digitChar] := by
-  sorry
+theorem Nat.toDigits_10_of_lt_10 (h : n < 10) : toDigits 10 n = [n.digitChar] := sorry
+@[simp] theorem Nat.toDigits_10_natAbs_ofNat (n : Nat) : toDigits 10 (n : Int).natAbs = toDigits 10 n := sorry
 
 theorem Nat.toDigits_10_decompose (h : d < 10) (n : Nat) :
     toDigits 10 (10 * n + d) = (toDigits 10 n) ++ (toDigits 10 d) :=
-  sorry
-
-@[simp]
-theorem Nat.toDigits_10_natAbs_cast (n : Nat) : toDigits 10 (n : Int).natAbs = toDigits 10 n :=
   sorry
 
 end Batteries
@@ -27,7 +22,10 @@ def digits (n : Nat) : List Digit :=
     |>.map fun ⟨j, h⟩ => ⟨j, Nat.mem_toDigits_base_10_isDigit h⟩
 
 theorem digits_of_lt_10 (h : n < 10) : n.digits = [⟨n.digitChar, by simp_all⟩] := by
-  sorry
+  simp only [digits, List.map_eq_singleton_iff, Subtype.mk.injEq, Subtype.exists, exists_and_right,
+             exists_eq_right]
+  rw [toDigits_10_of_lt_10 h]
+  exists List.mem_singleton_self _
 
 theorem digits_decompose (h : d < 10) (n : Nat) : (10 * n + d).digits = n.digits ++ d.digits := by
   simp [digits]
