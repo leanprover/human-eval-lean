@@ -1,15 +1,30 @@
-section Batteries
+section Batteries -- https://github.com/leanprover-community/batteries/pull/1267
 
--- https://github.com/leanprover-community/batteries/pull/1267
-@[simp] theorem Nat.isDigit_digitChar : n.digitChar.isDigit = decide (n < 10) := sorry
-theorem Nat.mem_toDigits_base_10_isDigit (h : c ∈ toDigits 10 n) : c.isDigit := sorry
-theorem Nat.toDigits_10_of_lt_10 (h : n < 10) : toDigits 10 n = [n.digitChar] := sorry
+@[simp]
+theorem Nat.isDigit_digitChar : n.digitChar.isDigit = decide (n < 10) :=
+  sorry
 
-theorem Nat.toDigits_10_decompose (h : d < 10) (n : Nat) :
-    toDigits 10 (10 * n + d) = (toDigits 10 n) ++ (toDigits 10 d) :=
+theorem Nat.isDigit_of_mem_toDigits (hb₁ : 0 < b) (hb₂ : b ≤ 10) (hc : c ∈ toDigits b n) :
+    c.isDigit :=
+  sorry
+
+theorem Nat.toDigits_of_lt_base (h : n < b) : toDigits b n = [n.digitChar] :=
+  sorry
+
+theorem Nat.toDigits_append_toDigits (hb₁ : 1 < b) (hb₂ : b ≤ 10) (hn : 0 < n) (hd : d < b) :
+    (toDigits b n) ++ (toDigits b d) = toDigits b (b * n + d) := by
   sorry
 
 end Batteries
+
+-- TODO: If you want to use induction or recursion here, you probably have to state a lemma for
+--       `Nat.toDigitsCore`, too.
+theorem Nat.toDigits_decompose (hb₁ : 1 < b) (hb₂ : b ≤ 10) (hd : d < b) (n : Nat) :
+    toDigits b (b * n + d) = (toDigits b n) ++ (toDigits b d) := by
+  rw [toDigits, toDigitsCore]
+  split
+  · sorry
+  · sorry
 
 abbrev Digit := { c : Char // c.isDigit }
 
@@ -18,12 +33,12 @@ namespace Nat
 def digits (n : Nat) : List Digit :=
   n.toDigits (base := 10)
     |>.attach
-    |>.map fun ⟨j, h⟩ => ⟨j, Nat.mem_toDigits_base_10_isDigit h⟩
+    |>.map fun ⟨j, h⟩ => ⟨j, Nat.isDigit_of_mem_toDigits (by decide) (by decide) h⟩
 
 theorem digits_of_lt_10 (h : n < 10) : n.digits = [⟨n.digitChar, by simp_all⟩] := by
   simp only [digits, List.map_eq_singleton_iff, Subtype.mk.injEq, Subtype.exists, exists_and_right,
              exists_eq_right]
-  rw [toDigits_10_of_lt_10 h]
+  rw [toDigits_of_lt_base h]
   exists List.mem_singleton_self _
 
 theorem digits_decompose (h : d < 10) (n : Nat) : (10 * n + d).digits = n.digits ++ d.digits := by
