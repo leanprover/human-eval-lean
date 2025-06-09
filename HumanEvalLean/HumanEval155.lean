@@ -32,7 +32,8 @@ theorem digits_of_lt_10 (h : n < 10) : n.digits = [⟨n.digitChar, by simp_all�
   rw [toDigits_of_lt_base h]
   exists List.mem_singleton_self _
 
-theorem digits_decompose (h : d < 10) (n : Nat) : (10 * n + d).digits = n.digits ++ d.digits := by
+theorem digits_append_digits (hn : 0 < n) (hd : d < 10) :
+    n.digits ++ d.digits = (10 * n + d).digits := by
   simp [digits]
   -- PROBLEM: When appending lists with `attach`es, the membership witnesses change.
   -- rw [toDigits_10_decompose h]
@@ -134,12 +135,14 @@ theorem count_total_eq_length : (count n).total = n.digits.length := by
 theorem count_of_lt_10 (hd : d < 10) : count d = ⟨1 - d % 2, d % 2⟩ := by
   simp [count, Nat.digits_of_lt_10, log_digitChar, hd]
 
-theorem count_decompose (hd : d < 10) : count (10 * n + d) = count n + count d := by
-  simp only [count, Int.digits_natAbs_cast, Nat.digits_decompose hd, List.foldl_append]
-  rw [log_foldl, add_comm]
+theorem count_add (hn : 0 < n) (hd : d < 10) : count n + count d = count (10 * n + d) := by
+  simp only [count, ← Nat.digits_append_digits hn hd, List.foldl_append]
+  conv => rhs; rw [log_foldl]
+  apply add_comm
 
-theorem count_decompose' (hd : d < 10) : count (10 * n + d) = count n + ⟨1 - d % 2, d % 2⟩ := by
-  rw [← count_of_lt_10 hd, count_decompose hd]
+theorem count_decompose (hn : 0 < n) (hd : d < 10) :
+    count (10 * n + d) = count n + ⟨1 - d % 2, d % 2⟩ := by
+  rw [← count_of_lt_10 hd, count_add hn hd]
 
 def evenOddCount (i : Int) : Tally :=
   count i.natAbs
