@@ -41,10 +41,6 @@ theorem digits_append_digits (hn : 0 < n) (hd : d < 10) :
 
 end Nat
 
-@[simp]
-theorem Int.digits_natAbs_cast (n : Nat) : (n : Int).natAbs.digits = n.digits := by
-  simp [Nat.digits]
-
 structure Tally where
   even : Nat
   odd  : Nat
