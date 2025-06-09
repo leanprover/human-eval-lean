@@ -17,15 +17,6 @@ theorem Nat.toDigits_append_toDigits (hb₁ : 1 < b) (hb₂ : b ≤ 10) (hn : 0 
 
 end Batteries
 
--- TODO: If you want to use induction or recursion here, you probably have to state a lemma for
---       `Nat.toDigitsCore`, too.
-theorem Nat.toDigits_decompose (hb₁ : 1 < b) (hb₂ : b ≤ 10) (hd : d < b) (n : Nat) :
-    toDigits b (b * n + d) = (toDigits b n) ++ (toDigits b d) := by
-  rw [toDigits, toDigitsCore]
-  split
-  · sorry
-  · sorry
-
 abbrev Digit := { c : Char // c.isDigit }
 
 namespace Nat
