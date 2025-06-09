@@ -23,21 +23,14 @@ namespace Nat
 
 def digits (n : Nat) : List Digit :=
   n.toDigits (base := 10)
-    |>.attach
-    |>.map fun ⟨j, h⟩ => ⟨j, Nat.isDigit_of_mem_toDigits (by decide) (by decide) h⟩
+    |>.attachWith (·.isDigit) fun _ h => Nat.isDigit_of_mem_toDigits (by decide) (by decide) h
 
 theorem digits_of_lt_10 (h : n < 10) : n.digits = [⟨n.digitChar, by simp_all⟩] := by
-  simp only [digits, List.map_eq_singleton_iff, Subtype.mk.injEq, Subtype.exists, exists_and_right,
-             exists_eq_right]
-  rw [toDigits_of_lt_base h]
-  exists List.mem_singleton_self _
+  simp [digits, toDigits_of_lt_base h]
 
 theorem digits_append_digits (hn : 0 < n) (hd : d < 10) :
     n.digits ++ d.digits = (10 * n + d).digits := by
-  simp [digits]
-  -- PROBLEM: When appending lists with `attach`es, the membership witnesses change.
-  -- rw [toDigits_10_decompose h]
-  sorry
+  simp [digits, ← toDigits_append_toDigits, *]
 
 end Nat
 
