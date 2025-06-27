@@ -1,3 +1,6 @@
+def fibfib : Unit :=
+  ()
+
 /-!
 ## Prompt
 
