@@ -46,8 +46,6 @@ theorem special_factorial_func_correct {n : Nat} :
   fun_induction special_factorial.go with
   | case1 fact brazil_fact curr h =>
     rw [h₂]
-    unfold special_factorial.go
-    simp [h]
     have : curr = n := by omega
     rw [this]
   | case2 fact brazilFact curr h fact' brazilFact' ih =>
@@ -55,8 +53,7 @@ theorem special_factorial_func_correct {n : Nat} :
     simp only [h₁, Nat.succ_eq_add_one, Nat.factorial_succ, h₂, Nat.brazilianFactorial_succ,
       Nat.succ_le_of_lt h, forall_const, fact', brazilFact'] at ih
     have : ¬ curr >= n := by omega
-    unfold special_factorial.go
-    simp [this, h₁, h₂, ih]
+    grind
 
 theorem test1 : special_factorial 4 = 288 := by native_decide
 theorem test2 : special_factorial 5 = 34560 := by native_decide
