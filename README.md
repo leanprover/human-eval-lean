@@ -17,9 +17,14 @@ Feel free to add your thoughts about
 a problem to the corresponding issue. A rough estimation of the difficulty is already
 helpful; I will add the corresponding label to the issue.
 
-PRs contributing new solutions to both unsolved and solved problems are welcome,
-as are PRs improving the code of existing solutions. Golfing is welcome as long
-as the resulting code can still be considered idiomatic.
+We accept
+
+- PRs adding complete solutions to unsolved problems,
+- PRs adding additional solutions to problems which are already solved,
+- PRs adding partial solutions (for example just the code and the correctness statement, with the correctness proof sorried), and
+- PRs improving the code of existing solutions.
+
+Golfing is welcome as long as the resulting code can still be considered idiomatic.
 
 We use the [Lean 4 standard library style guide and naming convention](https://github.com/leanprover/lean4/tree/master/doc/std),
 but we won't be very strict about enforcing it.
