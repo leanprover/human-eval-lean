@@ -21,7 +21,7 @@ We accept
 
 - PRs adding complete solutions to unsolved problems,
 - PRs adding additional solutions to problems which are already solved,
-- PRs adding partial solutions (for example just the code and the correctness statement, with the correctness proof sorried), and
+- PRs adding partial solutions (for example just the code and the correctness statement, with the correctness proof sorried, or just developing a bit of related theory), and
 - PRs improving the code of existing solutions.
 
 Golfing is welcome as long as the resulting code can still be considered idiomatic.
