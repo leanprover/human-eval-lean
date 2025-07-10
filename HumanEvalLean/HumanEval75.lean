@@ -1,4 +1,4 @@
-def isPrimeM (n : Nat) : Id Bool := do
+def isPrime (n : Nat) : Bool := Id.run do
   let mut i := 2
   while i * i ≤ n do
     if i ∣ n then
@@ -7,9 +7,7 @@ def isPrimeM (n : Nat) : Id Bool := do
       i := i + 1
   return 1 < n
 
-def isPrime (n : Nat) : Bool := isPrimeM n |>.run
-
-def isMultipleOf2Primes (a : Nat) : Id Bool := do
+def isMultipleOf2Primes (a : Nat) : Bool := Id.run do
   let mut i := 2
   while i * i ≤ a do
     if i ∣ a ∧ isPrime i then
@@ -18,7 +16,7 @@ def isMultipleOf2Primes (a : Nat) : Id Bool := do
       i := i + 1
   return false
 
-def isMultipleOf3Primes (a : Nat) : Id Bool := do
+def isMultipleOf3Primes (a : Nat) : Bool := Id.run do
   let mut i := 2
   while i * i * i ≤ a do
     if i ∣ a ∧ isPrime i then
