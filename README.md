@@ -10,7 +10,7 @@ platform.
 ## Contributions
 
 Contributions are welcome! You can
-[look at the open issues](https://github.com/TwoFX/human-eval-lean/issues) to see
+[look at the table](https://github.com/users/TwoFX/projects/2/views/1) to see
 which problems do not currently have a solution.
 
 Feel free to add your thoughts about
