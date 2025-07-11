@@ -1,3 +1,5 @@
+import Std.Tactic.Do
+
 def isPrime (n : Nat) : Bool := Id.run do
   let mut i := 2
   while i * i ≤ n do
@@ -40,8 +42,7 @@ example : isMultiplyPrime (9 * 9 * 9) = false := by native_decide
 def Nat.IsPrime (n : Nat) : Prop :=
   n > 1 ∧ ∀ m, m ∣ n → m = 1 ∨ m = n
 
-theorem isPrime_is_correct (n : Nat) : isPrime n ↔ Nat.IsPrime n := by
-  sorry
+theorem isPrime_is_correct (n : Nat) : isPrime n ↔ Nat.IsPrime n := by sorry
 
 def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
   (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃
