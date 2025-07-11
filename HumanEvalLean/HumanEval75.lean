@@ -10,7 +10,7 @@ def isPrime (n : Nat) : Bool := Id.run do
 def isMultipleOf2Primes (a : Nat) : Bool := Id.run do
   let mut i := 2
   while i * i ≤ a do
-    if i ∣ a ∧ isPrime i then
+    if i ∣ a then
       return isPrime (a / i)
     else
       i := i + 1
@@ -19,15 +19,13 @@ def isMultipleOf2Primes (a : Nat) : Bool := Id.run do
 def isMultipleOf3Primes (a : Nat) : Bool := Id.run do
   let mut i := 2
   while i * i * i ≤ a do
-    if i ∣ a ∧ isPrime i then
+    if i ∣ a then
       return isMultipleOf2Primes (a / i)
     else
       i := i + 1
   return false
 
 def isMultiplyPrime (a : Nat) : Bool :=
-  -- This solution checks if a number is the multiplication of 3 primes,
-  -- not necessarily different using O(a^(1/3)) operations.
   isMultipleOf3Primes a
 
 example : isMultiplyPrime 5 = false := by native_decide
