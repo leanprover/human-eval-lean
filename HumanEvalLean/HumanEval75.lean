@@ -8,19 +8,21 @@ def smallestPrimeFactor (n : Nat) : Nat := Id.run do
       return i
   n
 
-def isMultiplyPrime (a : Nat) : Bool := Id.run do
-  let mut primes := (∅ : Array Nat)
+def isMultipleOfKPrimes (a : Nat) (k : Nat) : Bool := Id.run do
+  let mut total := 0
   let mut a := a
-  for _ in [0:3] do
+  for _ in [0:k] do
 
     if a ≤ 1 then
       return false
 
     let p := smallestPrimeFactor a
     a := a / p
-    primes := primes.push p
+    total := total + 1
 
-  primes.size == 3 && a == 1
+  total == k && a == 1
+
+def isMultiplyPrime (a : Nat) : Bool := isMultipleOfKPrimes a 3
 
 example : isMultiplyPrime 5 = false := by native_decide
 example : isMultiplyPrime 30 = true := by native_decide
@@ -41,7 +43,10 @@ def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
   (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃
 
 theorem isMultiplyPrime_is_correct : IsMultiplyPrimeIff isMultiplyPrime := by
-  sorry
+  intro a
+  constructor
+  · sorry
+  · sorry
 
 /-!
 ## Prompt
