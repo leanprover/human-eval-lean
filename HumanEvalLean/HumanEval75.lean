@@ -1,34 +1,26 @@
 import Std.Tactic.Do
 
-def isPrime (n : Nat) : Bool := Id.run do
-  let mut i := 2
-  while i * i ≤ n do
+def smallestPrimeFactor (n : Nat) : Nat := Id.run do
+  for i in [2:n] do
+    if i * i > n then
+      break
     if i ∣ n then
+      return i
+  n
+
+def isMultiplyPrime (a : Nat) : Bool := Id.run do
+  let mut primes := (∅ : Array Nat)
+  let mut a := a
+  for _ in [0:3] do
+
+    if a ≤ 1 then
       return false
-    else
-      i := i + 1
-  return 1 < n
 
-def isMultipleOf2Primes (a : Nat) : Bool := Id.run do
-  let mut i := 2
-  while i * i ≤ a do
-    if i ∣ a then
-      return isPrime (a / i)
-    else
-      i := i + 1
-  return false
+    let p := smallestPrimeFactor a
+    a := a / p
+    primes := primes.push p
 
-def isMultipleOf3Primes (a : Nat) : Bool := Id.run do
-  let mut i := 2
-  while i * i * i ≤ a do
-    if i ∣ a then
-      return isMultipleOf2Primes (a / i)
-    else
-      i := i + 1
-  return false
-
-def isMultiplyPrime (a : Nat) : Bool :=
-  isMultipleOf3Primes a
+  primes.size == 3 && a == 1
 
 example : isMultiplyPrime 5 = false := by native_decide
 example : isMultiplyPrime 30 = true := by native_decide
@@ -38,11 +30,12 @@ example : isMultiplyPrime 125 = true := by native_decide
 example : isMultiplyPrime (3 * 5 * 7) = true := by native_decide
 example : isMultiplyPrime (3 * 6 * 7) = false := by native_decide
 example : isMultiplyPrime (9 * 9 * 9) = false := by native_decide
+example : isMultiplyPrime (11 * 9 * 9) = false := by native_decide
+example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
+
 
 def Nat.IsPrime (n : Nat) : Prop :=
   n > 1 ∧ ∀ m, m ∣ n → m = 1 ∨ m = n
-
-theorem isPrime_is_correct (n : Nat) : isPrime n ↔ Nat.IsPrime n := by sorry
 
 def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
   (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃
