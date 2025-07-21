@@ -35,18 +35,39 @@ example : isMultiplyPrime (9 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
 
-
 def Nat.IsPrime (n : Nat) : Prop :=
   n > 1 ∧ ∀ m, m ∣ n → m = 1 ∨ m = n
 
 def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
   (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Defs.html#List.prod
+def List.prod {α} [Mul α] [One α] : List α → α :=
+  List.foldr (· * ·) 1
+
+structure PrimeDecomposition (n : Nat) where
+  -- Multiset is only available in mathlib, using List instead
+  ps : List Nat
+  all_prime : ∀ p ∈ ps, p.IsPrime
+  is_decomposition : ps.prod = n
+
+def PrimeDecomposition.length (d : PrimeDecomposition n) : Nat := d.ps.length
+
+theorem isMultipleOfKPrimes_primeDecompositionLength (n k : Nat) :
+  isMultipleOfKPrimes n k ↔ ∃ (d : PrimeDecomposition n), d.length = k := by
+
+
+  sorry
+
+theorem primeDecomposition_length_3 (n : Nat) :
+  (∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = n ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃)
+  ↔ ∃ (d : PrimeDecomposition n), d.length = 3 := by
+  sorry
+
 theorem isMultiplyPrime_is_correct : IsMultiplyPrimeIff isMultiplyPrime := by
   intro a
-  constructor
-  · sorry
-  · sorry
+  rw [primeDecomposition_length_3 a]
+  simp [isMultiplyPrime, isMultipleOfKPrimes_primeDecompositionLength]
 
 /-!
 ## Prompt
