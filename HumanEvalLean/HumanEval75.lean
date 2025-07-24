@@ -53,10 +53,10 @@ example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
 
 -- Section: Is prime
 
-def Nat.IsPrime (n : Nat) : Prop :=
+def Nat.Prime (n : Nat) : Prop :=
   n > 1 ∧ ∀ m, m ∣ n → m = 1 ∨ m = n
 
-theorem Nat.IsPrime.ne_zero (hp : Nat.IsPrime p) : p ≠ 0 := by
+theorem Nat.Prime.ne_zero (hp : Prime p) : p ≠ 0 := by
   intro h
   have h2 : 2 ∣ p := by simp [h]
   apply Or.elim (hp.right 2 h2)
@@ -64,17 +64,17 @@ theorem Nat.IsPrime.ne_zero (hp : Nat.IsPrime p) : p ≠ 0 := by
   rw [h]
   trivial
 
-theorem Nat.IsPrime.zero_lt (hp : Nat.IsPrime p) : 0 < p := by match p with
+theorem Nat.Prime.zero_lt (hp : Prime p) : 0 < p := by match p with
   | p + 1 => simp
-  | 0 => simp [Nat.IsPrime] at hp
+  | 0 => simp [Prime] at hp
 
-theorem Nat.IsPrime.two_le (hp : Nat.IsPrime p) : 2 ≤ p := by sorry
+theorem Nat.Prime.two_le (hp : Prime p) : 2 ≤ p := by sorry
 
 -- Section: Smallest prime factor
 
 theorem Nat.smallestPrimeFactor_dvd (n : Nat) (hn : 1 < n) : smallestPrimeFactor n ∣ n := by sorry
 
-theorem Nat.smallestPrimeFactor_prime {n : Nat} (hn : 1 < n) : Nat.IsPrime (smallestPrimeFactor n) := by sorry
+theorem Nat.smallestPrimeFactor_prime {n : Nat} (hn : 1 < n) : Prime (smallestPrimeFactor n) := by sorry
 
 theorem isMultipleOfKPrimes_zero (k : Nat) : isMultipleOfKPrimes 0 k = false := by
   simp [isMultipleOfKPrimes]
@@ -141,12 +141,12 @@ theorem List.prod_three_mul {a b c : Nat} : [a, b, c].prod = a * b * c := by
 structure PrimeDecomposition (n : Nat) where
   -- Multiset is only available in mathlib, using List instead
   ps : List Nat
-  all_prime : ∀ p ∈ ps, p.IsPrime
+  all_prime : ∀ p ∈ ps, p.Prime
   is_decomposition : ps.prod = n
 
 def PrimeDecomposition.length (d : PrimeDecomposition n) : Nat := d.ps.length
 
-def PrimeDecomposition.push (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrime) : PrimeDecomposition (n * p) :=
+def PrimeDecomposition.push (d : PrimeDecomposition n) (p : Nat) (hp : p.Prime) : PrimeDecomposition (n * p) :=
   ⟨p :: d.ps,
   by
     intro p1 h
@@ -164,7 +164,7 @@ def PrimeDecomposition.erase_head (d : PrimeDecomposition n) : PrimeDecompositio
   | [] => sorry
   | head :: tail => sorry
 
-theorem PrimeDecomposition.prime_mem (d : PrimeDecomposition n) (hp : p.IsPrime) (hd : p ∣ n) : p ∈ d.ps := by
+theorem PrimeDecomposition.prime_mem (d : PrimeDecomposition n) (hp : p.Prime) (hd : p ∣ n) : p ∈ d.ps := by
   let ⟨ps, ha, hb⟩ := d
   induction ps generalizing n with
   | nil =>
@@ -181,15 +181,15 @@ theorem PrimeDecomposition.prime_mem (d : PrimeDecomposition n) (hp : p.IsPrime)
     else
       simp [hp]
       have hh : d.ps.headD 1 = head := by sorry
-      let ih := ih d.PrimeDecomposition.erase_head
+      let ih := ih d.erase_head
       rw [hh] at ih
       have hd : p ∣ n / head := by sorry
-      have hpp : ∀ p ∈ tail, p.IsPrime := by sorry
+      have hpp : ∀ p ∈ tail, p.Prime := by sorry
       apply ih hd hpp
       simp [List.prod_cons] at hb
       sorry
 
-def PrimeDecomposition.erase (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrime) (hd : p ∣ n) : PrimeDecomposition (n / p) :=
+def PrimeDecomposition.erase (d : PrimeDecomposition n) (p : Nat) (hp : p.Prime) (hd : p ∣ n) : PrimeDecomposition (n / p) :=
   ⟨d.ps.erase p,
     fun p1 h1 => d.all_prime p1 (List.mem_of_mem_erase h1),
     by rw [List.prod_erase d.ps p (PrimeDecomposition.prime_mem d hp hd) hp.zero_lt]; simp [d.is_decomposition]⟩
@@ -197,17 +197,14 @@ def PrimeDecomposition.erase (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrim
 theorem PrimeDecomposition.push_length {d : PrimeDecomposition n} : (d.push p hp).length = d.length + 1 := by
   simp [PrimeDecomposition.push, PrimeDecomposition.length]
 
-theorem PrimeDecomposition.erase_length (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrime) (hd : p ∣ n) : (d.erase p hp hd).length = d.length - 1 := by
+theorem PrimeDecomposition.erase_length (d : PrimeDecomposition n) (p : Nat) (hp : p.Prime) (hd : p ∣ n) : (d.erase p hp hd).length = d.length - 1 := by
   simp [PrimeDecomposition.length, PrimeDecomposition.erase]
   rw [List.length_erase_of_mem (PrimeDecomposition.prime_mem d hp hd)]
 
 def PrimeDecomposition.one : PrimeDecomposition 1 := ⟨[], by simp, (by simp [List.prod_nil])⟩
 
-theorem PrimeDecomposition.zero_does_not_exist (d : PrimeDecomposition 0) : False := by
-  apply List.prod_ne_zero d.ps
-  · intro x h
-    exact Nat.IsPrime.ne_zero (d.all_prime x h)
-  exact d.is_decomposition
+theorem PrimeDecomposition.zero_not_exist (d : PrimeDecomposition 0) : False := by
+  exact List.prod_ne_zero d.ps (fun x h => (d.all_prime x h).ne_zero) d.is_decomposition
 
 theorem PrimeDecomposition.one_unique (d : PrimeDecomposition 1) : d = PrimeDecomposition.one := by
   simp [PrimeDecomposition.one]
@@ -226,7 +223,7 @@ theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
       rw [hn₀]
       simp [isMultipleOfKPrimes]
       intro x h
-      exact PrimeDecomposition.zero_does_not_exist x
+      exact PrimeDecomposition.zero_not_exist x
     else
       unfold isMultipleOfKPrimes
       simp [hn₀]
@@ -284,7 +281,7 @@ theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
             rw [x, hd]
 
 theorem PrimeDecomposition.length_three (n : Nat) :
-  (∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = n ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃)
+  (∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = n ∧ p₁.Prime ∧ p₂.Prime ∧ p₃.Prime)
   ↔ ∃ (d : PrimeDecomposition n), d.length = 3 := by
   constructor
   · intro ⟨a, b, c, ⟨h, ha, hb, hc⟩⟩
@@ -311,7 +308,7 @@ theorem PrimeDecomposition.length_three (n : Nat) :
         | a₃ :: rest =>
           simp at hd
           rw [hd] at ha
-          suffices a₁ * a₂ * a₃ = n ∧ a₁.IsPrime ∧ a₂.IsPrime ∧ a₃.IsPrime by
+          suffices a₁ * a₂ * a₃ = n ∧ a₁.Prime ∧ a₂.Prime ∧ a₃.Prime by
             exact ⟨a₁, a₂, a₃, this⟩
           rw [List.prod_three_mul] at ha
           constructor
@@ -329,12 +326,13 @@ theorem PrimeDecomposition.length_three (n : Nat) :
             trivial
 
 def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
-  (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃
+  (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ p₁.Prime ∧ p₂.Prime ∧ p₃.Prime
 
 theorem isMultiplyPrime_correct : IsMultiplyPrimeIff isMultiplyPrime := by
   intro a
   rw [PrimeDecomposition.length_three a]
   simp [isMultiplyPrime, isMultipleOfKPrimes_iff_primeDecomposition_length]
+
 
 /-!
 ## Prompt
