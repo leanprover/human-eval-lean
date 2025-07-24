@@ -69,6 +69,12 @@ theorem Nat.isPrime_ne_zero (hp : Nat.IsPrime p) : p ≠ 0 := by
   rw [h]
   trivial
 
+theorem Nat.IsPrime.zero_lt (hp : Nat.IsPrime p) : 0 < p := by match p with
+  | p + 1 => simp
+  | 0 => simp [Nat.IsPrime] at hp
+
+theorem Nat.IsPrime.two_le (hp : Nat.IsPrime p) : 2 ≤ p := by sorry
+
 def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
   (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ Nat.IsPrime p₁ ∧ Nat.IsPrime p₂ ∧ Nat.IsPrime p₃
 
@@ -79,14 +85,15 @@ def List.prod {α} [Mul α] [One α] : List α → α :=
 theorem List.prod_head_eq_mul {α} [Mul α] [One α] (a : α) (l : List α) : (a :: l).prod = a * l.prod := by
   simp [List.prod]
 
-theorem List.prod_ne_zero {α} [Mul α] [One α] [Zero α] (l : List α) (h : ∀ x ∈ l, x ≠ 0) : l.prod ≠ 0 := by
+theorem List.prod_ne_zero (l : List Nat) (h : ∀ x ∈ l, x ≠ 0) : l.prod ≠ 0 := by
   induction l with
-  | nil =>
-    simp [List.prod]
-    intro h
-    sorry
+  | nil => simp [List.prod]
   | cons x xs ih =>
-    sorry
+    have : (x :: xs).prod = x * xs.prod := by simp [List.prod]
+    rw [this]
+    apply Nat.mul_ne_zero
+    · apply h x; simp
+    · apply ih; intro x1 hx; apply h; simp [hx]
 
 theorem List.prod_nil {α} [Mul α] [One α] : ([] : List α).prod = 1 :=
   rfl
@@ -112,14 +119,82 @@ def PrimeDecomposition.push (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrime
     rw [d.is_decomposition, Nat.mul_comm]
   ⟩
 
+theorem List.prod_cons (a : α) (l : List α) [Mul α] [One α] : (a :: l).prod = a * l.prod := by
+  simp [List.prod]
+
+
+theorem List.dvd_prod {l : List Nat} {n : Nat} (h : n ∈ l) : n ∣ l.prod := by
+  induction l with
+  | nil => contradiction
+  | cons head tail ih =>
+    rw [List.prod_cons]
+    if hd : head = n then
+      simp [hd, Nat.dvd_mul_right]
+    else
+      have ht : n ∈ tail := by
+          simp at h
+          apply Or.elim h
+          intro x; symm at x; contradiction
+          simp
+      exact Nat.dvd_mul_left_of_dvd (ih ht) head
+
+theorem List.prod_erase (l : List Nat) (p : Nat) (h : p ∈ l) (h1 : 0 < p) : (l.erase p).prod = l.prod / p := by
+  induction l with
+  | nil => contradiction
+  | cons head tail ih =>
+    if hp : head = p then
+      simp [hp, List.prod, Nat.mul_comm p, Nat.mul_div_cancel _ h1]
+    else
+      simp [List.prod_cons, hp]
+      have ht : p ∈ tail := by
+        simp at h
+        apply Or.elim h
+        intro x; symm at x; contradiction
+        simp
+      rw [ih ht, ← Nat.mul_div_assoc]
+      exact List.dvd_prod ht
+
+def PrimeDecomposition.erase_cons (d : PrimeDecomposition n) : PrimeDecomposition (n / d.ps.headD 1) := by
+  match d.ps with
+  | [] => sorry
+  | head :: tail => sorry
+
+theorem PrimeDecomposition.prime_mem (d : PrimeDecomposition n) (hp : p.IsPrime) (hd : p ∣ n) : p ∈ d.ps := by
+  let ⟨ps, ha, hb⟩ := d
+  induction ps generalizing n with
+  | nil =>
+    simp [List.prod] at hb
+    symm at hb
+    rw [hb] at hd
+    let c := Nat.le_trans (hp.two_le) (Nat.le_of_dvd (by simp) hd)
+    contradiction
+  | cons head tail ih =>
+    simp
+    simp at ih
+    if hp : p = head then
+      simp [hp]
+    else
+      simp [hp]
+      have hh : d.ps.headD 1 = head := by sorry
+      let ih := ih d.erase_cons
+      rw [hh] at ih
+      have hd : p ∣ n / head := by sorry
+      have hpp : ∀ p ∈ tail, p.IsPrime := by sorry
+      apply ih hd hpp
+      simp [List.prod_cons] at hb
+      sorry
+
 def PrimeDecomposition.erase (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrime) (hd : p ∣ n) : PrimeDecomposition (n / p) :=
-  ⟨d.ps.erase p, by sorry, by sorry⟩
+  ⟨d.ps.erase p,
+    fun p1 h1 => d.all_prime p1 (List.mem_of_mem_erase h1),
+    by rw [List.prod_erase d.ps p (PrimeDecomposition.prime_mem d hp hd) hp.zero_lt]; simp [d.is_decomposition]⟩
 
 theorem PrimeDecomposition.push_length_eq_length_plus_one {d : PrimeDecomposition n} : (d.push p hp).length = d.length + 1 := by
   simp [PrimeDecomposition.push, PrimeDecomposition.length]
 
 theorem PrimeDecomposition.erase_length_eq_length_minus_one (d : PrimeDecomposition n) (p : Nat) (hp : p.IsPrime) (hd : p ∣ n) : (d.erase p hp hd).length = d.length - 1 := by
-  sorry
+  simp [PrimeDecomposition.length, PrimeDecomposition.erase]
+  rw [List.length_erase_of_mem (PrimeDecomposition.prime_mem d hp hd)]
 
 def PrimeDecomposition.one : PrimeDecomposition 1 := ⟨[], by simp, (by simp [List.prod_nil])⟩
 
