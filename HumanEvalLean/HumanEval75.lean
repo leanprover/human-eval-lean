@@ -53,9 +53,11 @@ example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
 
 -- Section: Is prime
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.Prime
 def Nat.Prime (n : Nat) : Prop :=
   n > 1 ∧ ∀ m, m ∣ n → m = 1 ∨ m = n
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Prime/Defs.html#Prime.ne_zero
 theorem Nat.Prime.ne_zero (hp : Prime p) : p ≠ 0 := by
   intro h
   have h2 : 2 ∣ p := by simp [h]
@@ -68,6 +70,7 @@ theorem Nat.Prime.zero_lt (hp : Prime p) : 0 < p := by match p with
   | p + 1 => simp
   | 0 => simp [Prime] at hp
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.Prime.two_le
 theorem Nat.Prime.two_le (hp : Prime p) : 2 ≤ p := by sorry
 
 -- Section: Smallest prime factor
@@ -85,6 +88,7 @@ theorem isMultipleOfKPrimes_zero (k : Nat) : isMultipleOfKPrimes 0 k = false := 
 def List.prod {α} [Mul α] [One α] : List α → α :=
   List.foldr (· * ·) 1
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Ring/List.html#List.prod_ne_zero
 theorem List.prod_ne_zero (l : List Nat) (h : ∀ x ∈ l, x ≠ 0) : l.prod ≠ 0 := by
   induction l with
   | nil => simp [List.prod]
@@ -95,12 +99,15 @@ theorem List.prod_ne_zero (l : List Nat) (h : ∀ x ∈ l, x ≠ 0) : l.prod ≠
     · apply h x; simp
     · apply ih; intro x1 hx; apply h; simp [hx]
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Defs.html#List.prod_nil
 theorem List.prod_nil {α} [Mul α] [One α] : ([] : List α).prod = 1 :=
   rfl
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Defs.html#List.prod_cons
 theorem List.prod_cons (a : α) (l : List α) [Mul α] [One α] : (a :: l).prod = a * l.prod := by
   simp [List.prod]
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Lemmas.html#List.dvd_prod
 theorem List.dvd_prod {l : List Nat} {n : Nat} (h : n ∈ l) : n ∣ l.prod := by
   induction l with
   | nil => contradiction
@@ -116,6 +123,7 @@ theorem List.dvd_prod {l : List Nat} {n : Nat} (h : n ∈ l) : n ∣ l.prod := b
           simp
       exact Nat.dvd_mul_left_of_dvd (ih ht) head
 
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Basic.html#List.prod_erase
 theorem List.prod_erase (l : List Nat) (p : Nat) (h : p ∈ l) (h1 : 0 < p) : (l.erase p).prod = l.prod / p := by
   induction l with
   | nil => contradiction
@@ -332,7 +340,6 @@ theorem isMultiplyPrime_correct : IsMultiplyPrimeIff isMultiplyPrime := by
   intro a
   rw [PrimeDecomposition.length_three a]
   simp [isMultiplyPrime, isMultipleOfKPrimes_iff_primeDecomposition_length]
-
 
 /-!
 ## Prompt
