@@ -51,27 +51,75 @@ example : isMultiplyPrime (9 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
 
--- Section: Is prime
+-- Section: Logic
+
+theorem by_contra {p : Prop} (h : ¬p → False) : p := by
+  if h1 : p then
+    exact h1
+  else
+    simp [h1, h]
+
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Bool/Basic.html#Bool.not_eq_true_eq_eq_false
+theorem Bool.not_eq_true_eq_eq_false {b : Bool} : ¬b = true ↔ b = false := by simp
+
+-- Section: Prime
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.Prime
 def Nat.Prime (n : Nat) : Prop :=
-  n > 1 ∧ ∀ m, m ∣ n → m = 1 ∨ m = n
+  1 < n ∧ ∀ {a b}, n ∣ a * b → n ∣ a ∨ n ∣ b
+
+
+theorem Nat.Prime.one_lt (hp : Prime p) : 1 < p := hp.left
+
+theorem Nat.Prime.zero_lt (hp : Prime p) : 0 < p := Nat.lt_trans (by simp) (hp.one_lt)
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Prime/Defs.html#Prime.ne_zero
-theorem Nat.Prime.ne_zero (hp : Prime p) : p ≠ 0 := by
-  intro h
-  have h2 : 2 ∣ p := by simp [h]
-  apply Or.elim (hp.right 2 h2)
-  trivial
-  rw [h]
-  trivial
+theorem Nat.Prime.ne_zero (hp : Prime p) : p ≠ 0 := Ne.symm (Nat.ne_of_lt hp.zero_lt)
 
-theorem Nat.Prime.zero_lt (hp : Prime p) : 0 < p := by match p with
-  | p + 1 => simp
-  | 0 => simp [Prime] at hp
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Prime/Defs.html#Prime.ne_one
+theorem Nat.Prime.ne_one (hp : Prime p) : p ≠ 1 := Ne.symm (Nat.ne_of_lt hp.one_lt)
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.Prime.two_le
-theorem Nat.Prime.two_le (hp : Prime p) : 2 ≤ p := by sorry
+theorem Nat.Prime.two_le (hp : Prime p) : 2 ≤ p := by
+  match p with
+  | 0 => simp [Prime] at hp
+  | 1 => simp [Prime] at hp
+  | n + 2 => simp
+
+theorem Nat.Prime.eq_one_or_self_of_dvd {a p : Nat} (hb : Prime p) (h : a ∣ p) : a = 1 ∨ a = p := by
+  let ⟨u, hu⟩ := h
+  have hd : p ∣ a * u := by simp [hu]
+  apply Or.elim (hb.right hd)
+  · intro hr; simp [Nat.dvd_antisymm h hr]
+  · intro huu
+    suffices a = 1 by simp [this]
+    let ⟨v, hv⟩ := huu
+    rw [hv, Nat.mul_comm p, ← Nat.mul_assoc] at hu
+    have : a ∣ 1 := by exact ⟨v, Nat.mul_right_cancel hb.zero_lt (by simp; exact hu)⟩
+    exact Nat.dvd_one.mp this
+
+theorem Nat.Prime.not_dvd_of_ne {a b : Nat} (ha : Prime a) (hb : Prime b) (hne : a ≠ b) : ¬a ∣ b :=
+  (fun h => Or.elim (hb.eq_one_or_self_of_dvd h) ha.ne_one hne)
+
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Prime/Defs.html#Prime.dvd_mul
+theorem Nat.Prime.dvd_mul (hp : Prime p) : p ∣ a * b ↔ p ∣ a ∨ p ∣ b := by
+  constructor
+  · exact hp.right
+  · exact (Or.elim · (Nat.dvd_trans · (Nat.dvd_mul_right _ _)) (Nat.dvd_trans · (Nat.dvd_mul_left _ _)))
+
+theorem Nat.Prime.dvd_div_of_dvd_mul {p a b : Nat} (hp : Prime p) (ha : p ∣ a) (hb : ¬p ∣ b) (hab : b ∣ a) : p ∣ a / b := by
+  rcases ha with ⟨u, hu⟩
+  suffices a / b = p * (u / b) by exact ⟨u / b, this⟩
+  suffices b ∣ u by rw [hu, Nat.mul_div_assoc _ this]
+  rw [hu] at hab
+  rcases hab with ⟨v, hv⟩
+  suffices u = b * (v / p) by exact ⟨v / p, this⟩
+  suffices p ∣ v by rw [← Nat.mul_div_assoc _ this, ← hv, Nat.mul_comm, Nat.mul_div_cancel _ hp.zero_lt]
+  have : p ∣ b * v := ⟨u, Eq.symm hv⟩
+  rw [Nat.Prime.dvd_mul hp] at this
+  apply Or.elim this
+  · intro h; contradiction
+  · exact fun x => x
 
 -- Section: Smallest prime factor
 
@@ -116,12 +164,11 @@ theorem List.dvd_prod {l : List Nat} {n : Nat} (h : n ∈ l) : n ∣ l.prod := b
     if hd : head = n then
       simp [hd, Nat.dvd_mul_right]
     else
-      have ht : n ∈ tail := by
-          simp at h
-          apply Or.elim h
-          intro x; symm at x; contradiction
-          simp
-      exact Nat.dvd_mul_left_of_dvd (ih ht) head
+      suffices n ∈ tail by exact Nat.dvd_mul_left_of_dvd (ih this) head
+      simp at h
+      apply Or.elim h
+      · intro x; symm at x; contradiction
+      · simp
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Basic.html#List.prod_erase
 theorem List.prod_erase (l : List Nat) (p : Nat) (h : p ∈ l) (h1 : 0 < p) : (l.erase p).prod = l.prod / p := by
@@ -167,10 +214,17 @@ def PrimeDecomposition.push (d : PrimeDecomposition n) (p : Nat) (hp : p.Prime) 
     rw [d.is_decomposition, Nat.mul_comm]
   ⟩
 
-def PrimeDecomposition.erase_head (d : PrimeDecomposition n) : PrimeDecomposition (n / d.ps.headD 1) := by
-  match d.ps with
-  | [] => sorry
-  | head :: tail => sorry
+def PrimeDecomposition.erase_head (d : PrimeDecomposition n) : PrimeDecomposition (n / d.ps.headD 1) :=
+  let ⟨ps, ha, hb⟩ := d
+  match ps with
+  | [] => ⟨[], ha, by simp; exact hb⟩
+  | head :: tail =>
+    ⟨tail,
+     fun p h => ha p (by simp [h]),
+     by simp
+        simp [List.prod_cons] at hb
+        symm at hb
+        rw [hb, Nat.mul_comm, Nat.mul_div_cancel _ (ha head (by simp)).zero_lt]⟩
 
 theorem PrimeDecomposition.prime_mem (d : PrimeDecomposition n) (hp : p.Prime) (hd : p ∣ n) : p ∈ d.ps := by
   let ⟨ps, ha, hb⟩ := d
@@ -184,18 +238,22 @@ theorem PrimeDecomposition.prime_mem (d : PrimeDecomposition n) (hp : p.Prime) (
   | cons head tail ih =>
     simp
     simp at ih
-    if hp : p = head then
-      simp [hp]
+    if hh : p = head then
+      simp [hh]
     else
-      simp [hp]
-      have hh : d.ps.headD 1 = head := by sorry
-      let ih := ih d.erase_head
-      rw [hh] at ih
-      have hd : p ∣ n / head := by sorry
-      have hpp : ∀ p ∈ tail, p.Prime := by sorry
-      apply ih hd hpp
+      simp [hh]
+      let ih := ih ((⟨head :: tail, ha, hb⟩ : PrimeDecomposition n).erase_head)
+      simp at ih
       simp [List.prod_cons] at hb
-      sorry
+      symm at hb
+      apply ih
+      · apply hp.dvd_div_of_dvd_mul hd (hp.not_dvd_of_ne (ha head (by simp)) hh)
+        simp [hb, Nat.dvd_mul_right]
+      · intro p1 ht
+        specialize ha p1
+        simp [ht] at ha
+        exact ha
+      · rw [hb, Nat.mul_comm, Nat.mul_div_cancel _ (ha head (by simp)).zero_lt]
 
 def PrimeDecomposition.erase (d : PrimeDecomposition n) (p : Nat) (hp : p.Prime) (hd : p ∣ n) : PrimeDecomposition (n / p) :=
   ⟨d.ps.erase p,
@@ -214,16 +272,17 @@ def PrimeDecomposition.one : PrimeDecomposition 1 := ⟨[], by simp, (by simp [L
 theorem PrimeDecomposition.zero_not_exist (d : PrimeDecomposition 0) : False := by
   exact List.prod_ne_zero d.ps (fun x h => (d.all_prime x h).ne_zero) d.is_decomposition
 
-theorem PrimeDecomposition.one_unique (d : PrimeDecomposition 1) : d = PrimeDecomposition.one := by
-  simp [PrimeDecomposition.one]
-  if h : d.ps = [] then
-    sorry
-  else
-    sorry
-
 theorem PrimeDecomposition.one_length (d : PrimeDecomposition 1) : d.length = 0 := by
-  rw [PrimeDecomposition.one_unique d]
-  simp [PrimeDecomposition.length, PrimeDecomposition.one]
+  let ⟨ps, hp, hd⟩ := d
+  simp [PrimeDecomposition.length]
+  apply by_contra
+  intro h
+  rw [← List.isEmpty_iff, Bool.not_eq_true_eq_eq_false, List.isEmpty_eq_false_iff_exists_mem] at h
+  rcases h with ⟨x, hx⟩
+  specialize hp x hx
+  have : x ∣ 1 := by rw [← hd]; exact List.dvd_prod hx
+  let e := Nat.le_trans hp.two_le (Nat.le_of_dvd (by simp) this)
+  contradiction
 
 theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
   isMultipleOfKPrimes n k ↔ ∃ (d : PrimeDecomposition n), d.length = k := by
@@ -321,17 +380,7 @@ theorem PrimeDecomposition.length_three (n : Nat) :
           rw [List.prod_three_mul] at ha
           constructor
           · exact ha
-          constructor
-          · let t := hp a₁
-            simp at t
-            trivial
-          constructor
-          · let t := hp a₂
-            simp at t
-            trivial
-          · let t := hp a₃
-            simp at t
-            trivial
+          exact ⟨by simp [hp a₁], by simp [hp a₂], by simp [hp a₃]⟩
 
 def IsMultiplyPrimeIff (solution : Nat → Bool) : Prop :=
   (a : Nat) → solution a ↔ ∃ (p₁ p₂ p₃ : Nat), p₁ * p₂ * p₃ = a ∧ p₁.Prime ∧ p₂.Prime ∧ p₃.Prime
