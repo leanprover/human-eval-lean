@@ -106,8 +106,7 @@ theorem Nat.Prime.eq_one_or_self_of_dvd {p : Nat} (hb : Prime p) (a : Nat) (h : 
     suffices a = 1 by simp [this]
     let ⟨v, hv⟩ := huu
     rw [hv, Nat.mul_comm p, ← Nat.mul_assoc] at hu
-    have : a ∣ 1 := by exact ⟨v, Nat.mul_right_cancel hb.zero_lt (by simp; exact hu)⟩
-    exact Nat.dvd_one.mp this
+    exact Nat.dvd_one.mp ⟨v, Nat.mul_right_cancel hb.zero_lt (by simp; exact hu)⟩
 
 theorem Nat.prime_def {p : Nat} : p.Prime ↔ 1 < p ∧ ∀ (m : Nat), m ∣ p → m = 1 ∨ m = p := by
   refine ⟨fun h => ⟨h.two_le, h.eq_one_or_self_of_dvd⟩, fun h => ?_⟩
@@ -120,14 +119,8 @@ theorem Nat.prime_def {p : Nat} : p.Prime ↔ 1 < p ∧ ∀ (m : Nat), m ∣ p �
   intro hb
   rw [← Nat.dvd_gcd_mul_iff_dvd_mul, Nat.mul_comm, ← Nat.dvd_gcd_mul_iff_dvd_mul, ha, hb, Nat.mul_one, Nat.dvd_one] at hd
   simp [hd]
-  intro h
-  rw [← h]
-  right
-  simp [Nat.gcd_dvd]
-  intro h
-  rw [← h]
-  left
-  simp [Nat.gcd_dvd]
+  intro h; rw [← h]; right; simp [Nat.gcd_dvd]
+  intro h; rw [← h]; left; simp [Nat.gcd_dvd]
 
 theorem Nat.Prime.not_dvd_of_ne {a b : Nat} (ha : Prime a) (hb : Prime b) (hne : a ≠ b) : ¬a ∣ b :=
   (fun h => Or.elim (hb.eq_one_or_self_of_dvd _ h) ha.ne_one hne)
@@ -156,9 +149,7 @@ theorem Nat.Prime.dvd_div_of_dvd_mul {p a b : Nat} (hp : Prime p) (ha : p ∣ a)
 
 theorem Nat.minFac.go_dvd {n : Nat} : Nat.minFac.go n 2 ∣ n := by
   fun_induction Nat.minFac.go n 2
-  case case1 i hni => simp
-  case case2 => assumption
-  case case3 => assumption
+  simp; assumption; assumption
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac_dvd
 theorem Nat.minFac_dvd (n : Nat) : n.minFac ∣ n := by
@@ -248,7 +239,7 @@ theorem minFac_go_prime
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac_prime
 theorem Nat.minFac_prime {n : Nat} (hn : 1 < n) : Prime (n.minFac) := by
   apply minFac_go_prime hn (by simp)
-  intro k hk1 hk2
+  intro k _ _
   match k with
   | 0 => contradiction
   | 1 => contradiction
@@ -270,10 +261,6 @@ theorem List.prod_ne_zero (l : List Nat) (h : ∀ x ∈ l, x ≠ 0) : l.prod ≠
     apply Nat.mul_ne_zero
     · apply h x; simp
     · apply ih; intro x1 hx; apply h; simp [hx]
-
--- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Defs.html#List.prod_nil
-theorem List.prod_nil {α} [Mul α] [One α] : ([] : List α).prod = 1 :=
-  rfl
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/BigOperators/Group/List/Defs.html#List.prod_cons
 theorem List.prod_cons (a : α) (l : List α) [Mul α] [One α] : (a :: l).prod = a * l.prod := by
@@ -391,7 +378,7 @@ theorem PrimeDecomposition.erase_length (d : PrimeDecomposition n) (p : Nat) (hp
   simp [PrimeDecomposition.length, PrimeDecomposition.erase]
   rw [List.length_erase_of_mem (PrimeDecomposition.prime_mem d hp hd)]
 
-def PrimeDecomposition.one : PrimeDecomposition 1 := ⟨[], by simp, (by simp [List.prod_nil])⟩
+def PrimeDecomposition.one : PrimeDecomposition 1 := ⟨[], by simp, (by simp [List.prod])⟩
 
 theorem PrimeDecomposition.zero_not_exist (d : PrimeDecomposition 0) : False := by
   exact List.prod_ne_zero d.ps (fun x h => (d.all_prime x h).ne_zero) d.is_decomposition
