@@ -1,8 +1,5 @@
-import Std.Tactic.Do
 import Init.Data.Nat.Dvd
 import Init.Data.Nat.Gcd
-
-open Std Do
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac
 def Nat.minFac (n : Nat) : Nat :=
@@ -60,6 +57,7 @@ theorem by_contra {p : Prop} (h : ¬p → False) : p := by
     exact h1
   else
     simp [h1, h]
+    exact h h1
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Bool/Basic.html#Bool.not_eq_true_eq_eq_false
 theorem Bool.not_eq_true_eq_eq_false {b : Bool} : ¬b = true ↔ b = false := by simp
