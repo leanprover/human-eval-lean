@@ -4,7 +4,7 @@ import Init.Data.Nat.Dvd
 open Std Do
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac
-def minFac (n : Nat) : Nat :=
+def Nat.minFac (n : Nat) : Nat :=
   go 2
 where
   go (i : Nat) : Nat :=
@@ -31,7 +31,7 @@ def isMultipleOfKPrimes (n : Nat) (k : Nat) : Bool :=
   else if hn₁ : n = 1 then
     false
   else
-    let p := minFac n
+    let p := n.minFac
     isMultipleOfKPrimes (n / p) (k - 1)
   termination_by k
   decreasing_by
@@ -123,11 +123,14 @@ theorem Nat.Prime.dvd_div_of_dvd_mul {p a b : Nat} (hp : Prime p) (ha : p ∣ a)
 
 -- Section: Smallest prime factor
 
+theorem Nat.minFac.go_dvd {n : Nat} : Nat.minFac.go n 2 ∣ n := by sorry
+
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac_dvd
-theorem Nat.minFactor_dvd (n : Nat) : minFac n ∣ n := by sorry
+theorem Nat.minFactor_dvd (n : Nat) : n.minFac ∣ n := by
+  simp [Nat.minFac, Nat.minFac.go_dvd]
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac_prime
-theorem Nat.minFactor_prime {n : Nat} (hn : 1 < n) : Prime (minFac n) := by sorry
+theorem Nat.minFactor_prime {n : Nat} (hn : 1 < n) : Prime (n.minFac) := by sorry
 
 -- Section: List
 
@@ -314,7 +317,7 @@ theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
             | 0 => trivial
             | 1 => trivial
             | n + 2 => simp
-          let d₁ := d.push (minFac n) (Nat.minFactor_prime hn_ge_1)
+          let d₁ := d.push n.minFac (Nat.minFactor_prime hn_ge_1)
           rw [← Nat.div_mul_cancel (Nat.minFactor_dvd n)]
           suffices d₁.length = k by
             exact ⟨d₁, by simp [this]⟩
@@ -340,10 +343,10 @@ theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
             rw [PrimeDecomposition.one_length d] at hd
             symm at hd
             contradiction
-          · let d2 := d.erase (minFac n) (Nat.minFactor_prime hn_ge_1) (Nat.minFactor_dvd n)
+          · let d2 := d.erase n.minFac (Nat.minFactor_prime hn_ge_1) (Nat.minFactor_dvd n)
             suffices d2.length = k - 1 by
               exact isMultipleOfKPrimes_iff_primeDecomposition_length.mpr ⟨d2, by simp [this]⟩
-            let x := PrimeDecomposition.erase_length d (minFac n) (Nat.minFactor_prime hn_ge_1) (Nat.minFactor_dvd n)
+            let x := PrimeDecomposition.erase_length d n.minFac (Nat.minFactor_prime hn_ge_1) (Nat.minFactor_dvd n)
             rw [x, hd]
 
 theorem PrimeDecomposition.length_three (n : Nat) :
