@@ -1,5 +1,6 @@
 import Std.Tactic.Do
 import Init.Data.Nat.Dvd
+import Init.Data.Nat.Gcd
 
 open Std Do
 
@@ -52,6 +53,17 @@ example : isMultiplyPrime (9 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
 
+-- Section: Logic
+
+theorem by_contra {p : Prop} (h : ¬p → False) : p := by
+  if h1 : p then
+    exact h1
+  else
+    simp [h1, h]
+
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Bool/Basic.html#Bool.not_eq_true_eq_eq_false
+theorem Bool.not_eq_true_eq_eq_false {b : Bool} : ¬b = true ↔ b = false := by simp
+
 -- Section: Nat
 
 theorem Nat.mul_lt_sq_imp_lt {a b : Nat} (h : a * b < d * d) : a < d ∨ b < d := by
@@ -63,17 +75,6 @@ theorem Nat.mul_lt_sq_imp_lt {a b : Nat} (h : a * b < d * d) : a < d ∨ b < d :
     suffices d * b ≤ a * b by
       exact Nat.lt_of_mul_lt_mul_left (Nat.lt_of_le_of_lt this h)
     exact mul_le_mul_right b hn
-
--- Section: Logic
-
-theorem by_contra {p : Prop} (h : ¬p → False) : p := by
-  if h1 : p then
-    exact h1
-  else
-    simp [h1, h]
-
--- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Bool/Basic.html#Bool.not_eq_true_eq_eq_false
-theorem Bool.not_eq_true_eq_eq_false {b : Bool} : ¬b = true ↔ b = false := by simp
 
 -- Section: Prime
 
@@ -98,7 +99,7 @@ theorem Nat.Prime.two_le (hp : Prime p) : 2 ≤ p := by
   | 1 => simp [Prime] at hp
   | n + 2 => simp
 
-theorem Nat.Prime.eq_one_or_self_of_dvd {a p : Nat} (hb : Prime p) (h : a ∣ p) : a = 1 ∨ a = p := by
+theorem Nat.Prime.eq_one_or_self_of_dvd {p : Nat} (hb : Prime p) (a : Nat) (h : a ∣ p) : a = 1 ∨ a = p := by
   let ⟨u, hu⟩ := h
   have hd : p ∣ a * u := by simp [hu]
   apply Or.elim (hb.right hd)
@@ -110,10 +111,28 @@ theorem Nat.Prime.eq_one_or_self_of_dvd {a p : Nat} (hb : Prime p) (h : a ∣ p)
     have : a ∣ 1 := by exact ⟨v, Nat.mul_right_cancel hb.zero_lt (by simp; exact hu)⟩
     exact Nat.dvd_one.mp this
 
-theorem Nat.prime_def {p : Nat} : p.Prime ↔ 1 < p ∧ ∀ (m : Nat), m ∣ p → m = 1 ∨ m = p := by sorry
+theorem Nat.prime_def {p : Nat} : p.Prime ↔ 1 < p ∧ ∀ (m : Nat), m ∣ p → m = 1 ∨ m = p := by
+  refine ⟨fun h => ⟨h.two_le, h.eq_one_or_self_of_dvd⟩, fun h => ?_⟩
+  simp [Nat.Prime, h.1]
+  let ⟨h1, h2⟩ := h
+  intro a b hd
+  apply Or.elim (h2 (Nat.gcd p a) (by simp [Nat.gcd_dvd]))
+  intro ha
+  apply Or.elim (h2 (Nat.gcd p b) (by simp [Nat.gcd_dvd]))
+  intro hb
+  rw [← Nat.dvd_gcd_mul_iff_dvd_mul, Nat.mul_comm, ← Nat.dvd_gcd_mul_iff_dvd_mul, ha, hb, Nat.mul_one, Nat.dvd_one] at hd
+  simp [hd]
+  intro h
+  rw [← h]
+  right
+  simp [Nat.gcd_dvd]
+  intro h
+  rw [← h]
+  left
+  simp [Nat.gcd_dvd]
 
 theorem Nat.Prime.not_dvd_of_ne {a b : Nat} (ha : Prime a) (hb : Prime b) (hne : a ≠ b) : ¬a ∣ b :=
-  (fun h => Or.elim (hb.eq_one_or_self_of_dvd h) ha.ne_one hne)
+  (fun h => Or.elim (hb.eq_one_or_self_of_dvd _ h) ha.ne_one hne)
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/Prime/Defs.html#Prime.dvd_mul
 theorem Nat.Prime.dvd_mul (hp : Prime p) : p ∣ a * b ↔ p ∣ a ∨ p ∣ b := by
