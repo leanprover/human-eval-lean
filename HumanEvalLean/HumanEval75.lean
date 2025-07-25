@@ -52,6 +52,18 @@ example : isMultiplyPrime (9 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 9 * 9) = false := by native_decide
 example : isMultiplyPrime (11 * 13 * 7) = true := by native_decide
 
+-- Section: Nat
+
+theorem Nat.mul_lt_sq_imp_lt {a b : Nat} (h : a * b < d * d) : a < d ∨ b < d := by
+  if hn : a < d then
+    simp [hn]
+  else
+    simp at hn
+    right
+    suffices d * b ≤ a * b by
+      exact Nat.lt_of_mul_lt_mul_left (Nat.lt_of_le_of_lt this h)
+    exact mul_le_mul_right b hn
+
 -- Section: Logic
 
 theorem by_contra {p : Prop} (h : ¬p → False) : p := by
@@ -98,6 +110,8 @@ theorem Nat.Prime.eq_one_or_self_of_dvd {a p : Nat} (hb : Prime p) (h : a ∣ p)
     have : a ∣ 1 := by exact ⟨v, Nat.mul_right_cancel hb.zero_lt (by simp; exact hu)⟩
     exact Nat.dvd_one.mp this
 
+theorem Nat.prime_def {p : Nat} : p.Prime ↔ 1 < p ∧ ∀ (m : Nat), m ∣ p → m = 1 ∨ m = p := by sorry
+
 theorem Nat.Prime.not_dvd_of_ne {a b : Nat} (ha : Prime a) (hb : Prime b) (hne : a ≠ b) : ¬a ∣ b :=
   (fun h => Or.elim (hb.eq_one_or_self_of_dvd h) ha.ne_one hne)
 
@@ -123,14 +137,105 @@ theorem Nat.Prime.dvd_div_of_dvd_mul {p a b : Nat} (hp : Prime p) (ha : p ∣ a)
 
 -- Section: Smallest prime factor
 
-theorem Nat.minFac.go_dvd {n : Nat} : Nat.minFac.go n 2 ∣ n := by sorry
+theorem Nat.minFac.go_dvd {n : Nat} : Nat.minFac.go n 2 ∣ n := by
+  fun_induction Nat.minFac.go n 2
+  case case1 i hni => simp
+  case case2 => assumption
+  case case3 => assumption
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac_dvd
-theorem Nat.minFactor_dvd (n : Nat) : n.minFac ∣ n := by
+theorem Nat.minFac_dvd (n : Nat) : n.minFac ∣ n := by
   simp [Nat.minFac, Nat.minFac.go_dvd]
 
+theorem not_lt_iff_eq_or_lt {a b : Nat} : ¬a < b ↔ a = b ∨ a > b := by
+  simp
+  constructor
+  · intro h
+    match h with
+    | Nat.le.refl => simp
+    | Nat.le.step a => exact Or.inr (Nat.lt_add_one_of_le a)
+  · intro h
+    rcases h with ⟨h1, h2⟩
+    simp
+    omega
+
+theorem minFac_go_prime
+    {n i : Nat} (hn : 1 < n) (hi : 1 < i):
+    (∀ k, 1 < k → k < i → ¬ k ∣ n) →
+      (Nat.minFac.go n i).Prime := by
+  fun_induction Nat.minFac.go n i
+  with
+  | case1 i hlt =>
+    intro h
+    simp [Nat.prime_def, hn]
+    intro m hd
+    if g : m = 1 ∨ m = n then
+      exact g
+    else
+      simp [g]
+      simp at g
+      have hm₁ : 1 < m := by match m with
+        | 0 => rw [Nat.zero_dvd] at hd; rw [hd] at hn; contradiction
+        | 1 => simp at g
+        | _ + 2 => simp
+
+      suffices m < i by
+        specialize h m hm₁ this
+        exact h hd
+
+      let ⟨m', hm'⟩ := hd
+      symm at hm'
+      rw [← hm'] at hlt
+      apply Or.elim (Nat.mul_lt_sq_imp_lt hlt)
+      simp
+      intro hd'
+      have hm₁' : 1 < m' := by match m' with
+        | 0 => simp at hm'; rw [hm']; exact hn
+        | 1 => simp at hm'; rw [hm'] at g; simp at g
+        | _ + 2 => simp
+      specialize h m' hm₁' hd'
+      exfalso
+      apply h
+      rw [← hm']
+      exact ⟨m, by simp [Nat.mul_comm]⟩
+
+  | case2 i hlt hdiv =>
+    intro h
+    simp [Nat.prime_def, hi]
+    intro m hm
+    match m with
+    | 0 => rw [Nat.zero_dvd] at hm; symm at hm; simp [hm]
+    | 1 => simp
+    | m' + 2 =>
+      if he : m' + 2 = i then
+        simp [he]
+      else
+        simp [he]
+        specialize h (m' + 2) (by simp) (Nat.lt_of_le_of_ne (Nat.le_of_dvd (by omega) hm) he)
+        exact h (Nat.dvd_trans hm hdiv)
+  | case3 i h1 h2 ih =>
+    intro hk
+    apply ih (Nat.lt_add_right 1 hi)
+    intro k h3 h4
+    if h5 : k < i then
+      exact hk k h3 h5
+    else if h6 : k = i then
+      rw [h6]; exact h2
+    else
+      exfalso
+      rw [not_lt_iff_eq_or_lt] at h5
+      apply Or.elim h5
+      · exact h6
+      · simp [Nat.le_of_lt_add_one, h4]
+
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Prime/Defs.html#Nat.minFac_prime
-theorem Nat.minFactor_prime {n : Nat} (hn : 1 < n) : Prime (n.minFac) := by sorry
+theorem Nat.minFac_prime {n : Nat} (hn : 1 < n) : Prime (n.minFac) := by
+  apply minFac_go_prime hn (by simp)
+  intro k hk1 hk2
+  match k with
+  | 0 => contradiction
+  | 1 => contradiction
+  | n + 2 => contradiction
 
 -- Section: List
 
@@ -317,8 +422,8 @@ theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
             | 0 => trivial
             | 1 => trivial
             | n + 2 => simp
-          let d₁ := d.push n.minFac (Nat.minFactor_prime hn_ge_1)
-          rw [← Nat.div_mul_cancel (Nat.minFactor_dvd n)]
+          let d₁ := d.push n.minFac (Nat.minFac_prime hn_ge_1)
+          rw [← Nat.div_mul_cancel (Nat.minFac_dvd n)]
           suffices d₁.length = k by
             exact ⟨d₁, by simp [this]⟩
           rw [PrimeDecomposition.push_length, hd]
@@ -343,10 +448,10 @@ theorem isMultipleOfKPrimes_iff_primeDecomposition_length {n k : Nat} :
             rw [PrimeDecomposition.one_length d] at hd
             symm at hd
             contradiction
-          · let d2 := d.erase n.minFac (Nat.minFactor_prime hn_ge_1) (Nat.minFactor_dvd n)
+          · let d2 := d.erase n.minFac (Nat.minFac_prime hn_ge_1) (Nat.minFac_dvd n)
             suffices d2.length = k - 1 by
               exact isMultipleOfKPrimes_iff_primeDecomposition_length.mpr ⟨d2, by simp [this]⟩
-            let x := PrimeDecomposition.erase_length d n.minFac (Nat.minFactor_prime hn_ge_1) (Nat.minFactor_dvd n)
+            let x := PrimeDecomposition.erase_length d n.minFac (Nat.minFac_prime hn_ge_1) (Nat.minFac_dvd n)
             rw [x, hd]
 
 theorem PrimeDecomposition.length_three (n : Nat) :
