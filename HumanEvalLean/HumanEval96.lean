@@ -3,37 +3,69 @@ import HumanEvalLean.ProvedElsewhere
 
 set_option grind.warning false
 
-def Nat.Prime (p : Nat) : Prop := 2 ≤ p ∧ ∀ (m : Nat), m < p → 2 ≤ m → ¬ m ∣ p
+theorem Nat.dvd_def (n m : Nat) : n ∣ m ↔ ∃ c, m = n * c := by rfl
 
-def Nat.relativePrime (p n : Nat) : Prop := 2 ≤ p ∧ ∀ (m : Nat), m < p → m < n → 2 ≤ m → ¬ m ∣ p
+theorem Nat.not_dvd_of_lt_and_pos (n m : Nat) (h : n < m) (h' : 0 < n): ¬ m ∣ n := by
+  simp [Nat.dvd_def]
+  intro x
+  cases x with
+  | zero => grind
+  | succ y =>
+    have : m * (y + 1) = m*y + m := by rfl
+    grind
+
+def Nat.Prime (p : Nat) : Prop := 2 ≤ p ∧ ∀ (m : Nat), 2 ≤ m → m ≠ p → ¬ m ∣ p
+
+def Nat.Prime_ge_2 (p : Nat) (hp : Nat.Prime p) : 2 ≤ p := by
+  simp [Nat.Prime] at hp
+  grind
+
+def Nat.relativePrime (p n : Nat) : Prop := 2 ≤ p ∧ ∀ (m : Nat), m < n → 2 ≤ m → m ≠ p → ¬ m ∣ p
 
 theorem Nat.relativePrimeTo2 (p : Nat) (hp : 2 ≤ p) : Nat.relativePrime p 2 := by
   simp [Nat.relativePrime, hp]
   grind
 
 theorem Nat.relativePrime_succ (p n : Nat) (hn₁ : 2 ≤ n) :
-  Nat.relativePrime p n ∧ p % n ≠ 0 ↔ Nat.relativePrime p (n + 1) := by
+  Nat.relativePrime p n ∧ (¬ n ∣ p ∨ n = p)  ↔ Nat.relativePrime p (n + 1) := by
   simp [relativePrime]
   constructor
   · intro h
     rcases h with ⟨h₁, h₃⟩
     rcases h₁ with ⟨h₁, h₂⟩
     apply And.intro h₁
-    intro m hmp hmn h2m
+    intro m hmn h2m hmp
     have : m < n ∨ m = n := by grind
     cases this with
     | inl h' =>
-      apply h₂ m hmp h' h2m
+      apply h₂ m h' h2m hmp
     | inr h' =>
-      simp [h', Nat.dvd_iff_mod_eq_zero, h₃]
+      grind
   · intro h
     rcases h with ⟨h₁, h₂⟩
     constructor
     · apply And.intro h₁
-      intro m hmp hmn h2m
-      apply h₂ m hmp (by omega) h2m
-    · rw [← Nat.dvd_iff_mod_eq_zero]
-      sorry
+      intro m hmn h2m hmp
+      apply h₂ m (by omega) h2m hmp
+    · by_cases h: n = p
+      · simp [h]
+      · simp [h]
+        apply h₂ _ (by omega) hn₁ h
+
+theorem Nat.prime_iff_relative_prime_of_le (p n : Nat) (h : p ≤ n) :
+    Nat.Prime p ↔ Nat.relativePrime p n := by
+  simp only [Prime, relativePrime]
+  constructor
+  · grind
+  · intro h'
+    rcases h' with ⟨h₁, h₂⟩
+    apply And.intro h₁
+    intro m h2m hmp
+    by_cases h' : m < p
+    · grind
+    · apply not_dvd_of_lt_and_pos
+      · grind
+      · grind
 
 def fillSieve (n : Nat) : Std.HashSet Nat := Std.HashSet.ofList (List.range' 2 (n-2))
 
@@ -62,25 +94,36 @@ theorem mem_eratosthenes_sieve_iff_prime_and_less_than (n m : Nat) :
     m ∈ eratosthenes_sieve n ↔ m.Prime ∧ m < n := by
   simp only [eratosthenes_sieve]
   split
-  · admit
+  · simp
+    intro h
+    have := Nat.Prime_ge_2 m h
+    grind
   · simp only [List.mem_mergeSort, Std.HashSet.mem_toList]
-    suffices ∀ (n curr : Nat) (sieve : Std.HashSet Nat), (∀ (k : Nat), 2 ≤ k → (k ∈ sieve ↔ Nat.relativePrime k curr ∧ k < n)) → curr ≤ n →
+    suffices ∀ (n curr : Nat) (sieve : Std.HashSet Nat), (∀ (k : Nat), (k ∈ sieve ↔ Nat.relativePrime k curr ∧ k < n)) → curr ≤ n →
     (m ∈ eratosthenes_sieve.go n sieve curr ↔ m.Prime ∧ m < n) by
       apply this n 2 (fillSieve n)
-      · intro k hk
-        simp [mem_fillSieve, Nat.relativePrimeTo2, hk]
+      · intro k
+        simp only [mem_fillSieve, ge_iff_le, Nat.relativePrime]
+        grind
       · omega
     intro n curr sieve h₁ h₂
     fun_induction eratosthenes_sieve.go with
     | case1 sieve curr h₄ h₅ ih =>
       unfold eratosthenes_sieve.go
-      sorry
+      simp [h₄, h₅]
+      simp at ih
+      apply ih
+      · simp [Std.HashSet.get_eq]
+        admit
+      · grind
     | case2 sieve curr h₄ h₅ ih =>
       sorry
     | case3 sieve curr h =>
       unfold eratosthenes_sieve.go
-      simp [h]
-      sorry
+      simp [h, h₁]
+      intro hmn
+      rw [Nat.prime_iff_relative_prime_of_le m curr]
+      grind
 
 theorem testCase1 : eratosthenes_sieve 5 = [2, 3] := by native_decide
 theorem testCase2 : eratosthenes_sieve 6 = [2, 3, 5] := by native_decide
