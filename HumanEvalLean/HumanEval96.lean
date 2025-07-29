@@ -26,9 +26,8 @@ theorem Nat.relativePrimeTo2 (p : Nat) (hp : 2 ≤ p) : Nat.relativePrime p 2 :=
   simp [Nat.relativePrime, hp]
   grind
 
-theorem Nat.relativePrime_succ (p n : Nat) (hn₁ : 2 ≤ n) :
-  Nat.relativePrime p n ∧ (¬ n ∣ p ∨ n = p)  ↔ Nat.relativePrime p (n + 1) := by
-  simp [relativePrime]
+theorem Nat.relativePrime_succ (p n : Nat) (hn : 2 ≤ n):
+  Nat.relativePrime p n ∧ (¬ n ∣ p ∨ p = n) ↔ Nat.relativePrime p (n + 1) := by
   constructor
   · intro h
     rcases h with ⟨h₁, h₃⟩
@@ -41,16 +40,16 @@ theorem Nat.relativePrime_succ (p n : Nat) (hn₁ : 2 ≤ n) :
       apply h₂ m h' h2m hmp
     | inr h' =>
       grind
-  · intro h
-    rcases h with ⟨h₁, h₂⟩
+  · intro h'
+    rcases h' with ⟨h₁, h₂⟩
     constructor
     · apply And.intro h₁
       intro m hmn h2m hmp
       apply h₂ m (by omega) h2m hmp
-    · by_cases h: n = p
-      · simp [h]
-      · simp [h]
-        apply h₂ _ (by omega) hn₁ h
+    · by_cases h' : n = p
+      · simp [h']
+      · left
+        apply h₂ _ (by omega) hn h'
 
 theorem Nat.prime_iff_relative_prime_of_le (p n : Nat) (h : p ≤ n) :
     Nat.Prime p ↔ Nat.relativePrime p n := by
@@ -85,7 +84,7 @@ where
     if curr < n
     then
       if curr ∈ sieve
-      then eratosthenes_sieve.go n (sieve.filter (fun x => (x ≤ curr ∨ x % curr != 0))) (curr + 1)
+      then eratosthenes_sieve.go n (sieve.filter (fun x => (x = curr ∨ x % curr != 0))) (curr + 1)
       else eratosthenes_sieve.go n sieve (curr + 1)
     else
       sieve
@@ -99,25 +98,63 @@ theorem mem_eratosthenes_sieve_iff_prime_and_less_than (n m : Nat) :
     have := Nat.Prime_ge_2 m h
     grind
   · simp only [List.mem_mergeSort, Std.HashSet.mem_toList]
-    suffices ∀ (n curr : Nat) (sieve : Std.HashSet Nat), (∀ (k : Nat), (k ∈ sieve ↔ Nat.relativePrime k curr ∧ k < n)) → curr ≤ n →
+    suffices ∀ (n curr : Nat) (hcurr : 2 ≤ curr) (sieve : Std.HashSet Nat), (∀ (k : Nat), (k ∈ sieve ↔ Nat.relativePrime k curr ∧ k < n)) → curr ≤ n →
     (m ∈ eratosthenes_sieve.go n sieve curr ↔ m.Prime ∧ m < n) by
-      apply this n 2 (fillSieve n)
+      apply this n 2 (by omega) (fillSieve n)
       · intro k
         simp only [mem_fillSieve, ge_iff_le, Nat.relativePrime]
         grind
       · omega
-    intro n curr sieve h₁ h₂
+    intro n curr hcurr sieve h₁ h₂
     fun_induction eratosthenes_sieve.go with
     | case1 sieve curr h₄ h₅ ih =>
       unfold eratosthenes_sieve.go
       simp [h₄, h₅]
       simp at ih
       apply ih
-      · simp [Std.HashSet.get_eq]
-        admit
+      · omega
+      · simp only [Std.HashSet.get_eq, exists_prop]
+        intro k
+        rw [h₁, ← Nat.relativePrime_succ _ _ hcurr, Nat.dvd_iff_mod_eq_zero]
+        grind
       · grind
     | case2 sieve curr h₄ h₅ ih =>
-      sorry
+      unfold eratosthenes_sieve.go
+      simp [h₄, h₅]
+      have hcurr' := h₁ curr
+      simp [h₄] at hcurr'
+      simp [hcurr', Nat.relativePrime, hcurr] at h₅
+      rw [ih (by omega)]
+      · intro k
+        rw [h₁]
+        simp
+        intro hk
+        simp [Nat.relativePrime]
+        intro h2k
+        constructor
+        · intro h
+          intro m hmcurr
+          have : m = curr ∨ m < curr := by grind
+          cases this with
+          | inl h' =>
+            rcases h₅ with ⟨x, hx₁, h2x, hx₂, hx₃⟩
+            intro _ _
+            false_or_by_contra
+            rename_i p
+            rw [Nat.dvd_def, h'] at p
+            rcases p with ⟨y, hy⟩
+            specialize h x hx₁ h2x
+            have : ¬ x = k := by
+              false_or_by_contra
+              rename_i q
+              rw [q, Nat.dvd_def] at hx₃
+              sorry
+            sorry
+          | inr h' =>
+            apply h
+            exact h'
+        · grind
+      · grind
     | case3 sieve curr h =>
       unfold eratosthenes_sieve.go
       simp [h, h₁]
