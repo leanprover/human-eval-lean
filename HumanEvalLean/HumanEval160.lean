@@ -9,17 +9,42 @@ inductive Op where
   | div
   | pow
 
+structure Input where
+  ops  : List Op  := []
+  args : List Nat := []
+
+abbrev Priority := Nat
+
 namespace Op
 
-def prio : Op → Nat
-  | add | sub => 1
-  | mul | div => 2
-  | pow       => 3
+def prio : Op → Priority
+  | add | sub => 0
+  | mul | div => 1
+  | pow       => 2
 
-def leftAssoc : Op → Bool
-  | add | sub => true
-  | mul | div => true
-  | pow       => false
+inductive Associativity where
+  | left
+  | right
+
+def assoc : Op → Associativity
+  | add | sub => .left
+  | mul | div => .left
+  | pow       => .right
+
+inductive Side where
+  | left
+  | right
+
+-- Given an `op` and another expression of priority `other` appearing on a given `side` of `op`,
+-- this function indicates whether `op`'s parsing should occur after that of `other`. For example,
+-- if `op` is `+` and `other` appears to the `.right` with a priority of `3`, then `other` should be
+-- parsed before `op`. If however `other` had a priority of `1`, then `op` should be parsed before.
+def after (op : Op) (other : Priority) (side : Side := .right) : Bool :=
+  match op.assoc, side with
+  | .left,  .left  => op.prio ≤ other
+  | .left,  .right => op.prio < other
+  | .right, .left  => op.prio < other
+  | .right, .right => op.prio ≤ other
 
 def interpret : Op → (Nat → Nat → Nat)
   | add => (· + ·)
@@ -48,13 +73,42 @@ def apps : Expr → List Op
   | lit _            => []
   | app op arg₁ arg₂ => arg₁.apps ++ op :: arg₂.apps
 
-structure ParseState where
-  ops    : List Op   := []
-  args   : List Nat  := []
+def prio : Expr → Priority
+  | lit _     => 3
+  | app op .. => op.prio
+
+-- An expression is lawful if its structure adheres to the operator priorities (`Op.prio`) and
+-- associativity rules (`Op.assoc`).
+inductive Lawful : Expr → Prop where
+  | lit (n : Nat) : Lawful (lit n)
+  | app (h₁ : op.after arg₁.prio .left) (h₂ : op.after arg₂.prio .right) :
+      Lawful arg₁ → Lawful arg₂ → Lawful (app op arg₁ arg₂)
+
+-- A given expression is equivalent to a list of operators and arguments if the expression contains
+-- the same symbols when read from left to right while also being well-structured (`lawful`).
+structure Equivalent (e : Expr) (inp : Input) where
+  ops    : e.apps = inp.ops
+  args   : e.lits = inp.args
+  lawful : Lawful e
+
+infix:50 " ≈ " => Equivalent
+
+abbrev Parser := Input → Option Expr
+
+-- This defines what it means for a parser to be correct: It produces a result iff the input is
+-- wellformed (`success`), and when it produces a result it is equivalent to the input (`equiv`).
+structure Parser.Correct (par : Parser) where
+  success : (∃ e, par inp = some e) ↔ (inp.args.length = inp.ops.length + 1)
+  equiv   : (par inp = some e) → e ≈ inp
+
+structure ParseState extends Input where
   hold   : List Op   := []
   output : List Expr := []
 
 namespace ParseState
+
+instance : Coe Input ParseState where
+  coe inp := { inp with }
 
 def lits (σ : ParseState) : List Nat :=
   go σ.output
@@ -87,12 +141,10 @@ def pushOp? (σ : ParseState) (op : Op) : Option ParseState :=
   match _ : σ.hold with
   | [] => some { σ with hold := [op] }
   | top :: hold =>
-    match compare top.prio op.prio, top.leftAssoc with
-    | .lt, _ | .eq, false => some { σ with hold := op :: top :: hold }
-    | .gt, _ | .eq, true =>
-      match σ.output with
-      | arg₂ :: arg₁ :: out => pushOp? { σ with hold, output := app top arg₁ arg₂ :: out } op
-      | _                   => none
+    match top.after op.prio, σ.output with
+    | true,  _                   => some { σ with hold := op :: top :: hold }
+    | false, arg₂ :: arg₁ :: out => pushOp? { σ with hold, output := app top arg₁ arg₂ :: out } op
+    | false, _                   => none
 termination_by σ.hold.length
 
 macro "pushOp?_cases " h:ident : tactic => `(tactic|(
@@ -207,7 +259,7 @@ termination_by σ.hold
 
 theorem finalize_output_length {σ : ParseState} (h : σ.hold.length < σ.output.length) :
     σ.finalize.output.length = σ.output.length - σ.hold.length := by
-  replace ⟨ops, args, hold, output⟩ := σ
+  replace { ops, args, hold, output } := σ
   induction hold generalizing output <;> cases output <;> rw [finalize]
   case cons.cons out => cases out <;> simp_all
   all_goals simp_all
@@ -247,7 +299,7 @@ theorem run?_output_length
   next ops₁ _ _ _ _  σ' h =>
     have hl' := pushOp?_hold_length_le_output_length h <| by simp_all +arith
     have := push?_output_hold_length h hl
-    simp only [run?_output_length hr hl', pushArg, List.length_cons] at *
+    simp only [run?_output_length hr hl'] at *
     omega
   · injection hr with hr
     rw [← hr, finalize_output_length]
@@ -288,24 +340,23 @@ termination_by σ₁.ops.length
 end ParseState
 
 -- Parses an expression based on the "shunting yard algorithm".
-def parse? (ops : List Op) (args : List Nat) : Option Expr :=
-  match h : { ops, args : ParseState }.run? with
+def parse? : Parser := fun inp =>
+  match h : ParseState.run? inp with
   | none   => none
   | some σ => σ.output[0]'(by simp [ParseState.run?_output_singleton h])
 
-theorem parse?_some_to_run?_some (h : parse? ops args = some e) :
-    ∃ σ, { ops, args : ParseState }.run? = some σ := by
+theorem parse?_some_to_run?_some (h : parse? inp = some e) : ∃ σ, ParseState.run? inp = some σ := by
   rw [parse?] at h
   split at h <;> simp_all
 
-theorem parse?_some_iff : (∃ e, parse? ops args = some e) ↔ (args.length = ops.length + 1) where
+theorem parse?_some_iff : (∃ e, parse? inp = some e) ↔ (inp.args.length = inp.ops.length + 1) where
   mp h := parse?_some_to_run?_some h.choose_spec |>.choose_spec |> ParseState.run?_some
   mpr h := by
-    have := ParseState.run?_wf (σ₁ := { ops, args }) ⟨h, rfl⟩
+    have := ParseState.run?_wf (σ₁ := { inp with }) ⟨h, rfl⟩
     rw [parse?]
     split <;> simp_all
 
-theorem parse?_lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
+theorem parse?_lits_eq_args (h : parse? inp = some e) : e.lits = inp.args := by
   rw [parse?] at h
   split at h
   · contradiction
@@ -316,20 +367,23 @@ theorem parse?_lits_eq_args (h : parse? ops args = some e) : e.lits = args := by
     have := ParseState.run?_lits hr
     simp_all [ParseState.lits, ParseState.lits.go]
 
-theorem parse?_apps_eq_ops (h : parse? ops args = some e) : e.apps = ops := by
+theorem parse?_apps_eq_ops (h : parse? inp = some e) : e.apps = inp.ops := by
   sorry
 
-def parse (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1) : Expr :=
-  (parse? ops args).get <| Option.isSome_iff_exists.mpr <| parse?_some_iff.mpr h
+theorem parse?_some_equiv (h : parse? inp = some e) : e ≈ inp where
+  ops    := parse?_apps_eq_ops h
+  args   := parse?_lits_eq_args h
+  lawful := sorry
 
-theorem parse?_eq_parse (h : parse? ops args = some e) :
-    e = parse ops args (parse?_some_iff.mp ⟨e, h⟩) := by
-  simp [parse, h]
+theorem parse?_correct : Parser.Correct parse? where
+  success := Expr.parse?_some_iff
+  equiv   := Expr.parse?_some_equiv
 
 end Expr
 
-def doAlgebra (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1 := by decide) :=
-  Expr.parse ops args h |>.eval
+def doAlgebra (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1 := by decide) : Nat :=
+  have h := Option.isSome_iff_exists.mpr <| Expr.parse?_some_iff.mpr h
+  Expr.parse? { ops, args } |>.get h |>.eval
 
 example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = 9  := by native_decide
 example : doAlgebra [.pow, .mul, .add] [2, 3, 4, 5] = 37 := by native_decide
