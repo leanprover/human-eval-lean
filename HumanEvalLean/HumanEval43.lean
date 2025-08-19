@@ -21,9 +21,9 @@ theorem not_any₂_nil {P : α → α → Prop} : ¬List.Any₂ P [] := by
 @[simp, grind]
 theorem List.any₂_cons {P : α → α → Prop} {x : α} {xs : List α} :
     List.Any₂ P (x::xs) ↔ (∃ y ∈ xs, P x y) ∨ List.Any₂ P xs := by
-  grind [List.any₂_iff_not_pairwise]
+  grind [List.any₂_iff_not_pairwise, pairwise_cons]
 
-@[grind]
+@[simp, grind]
 theorem List.any₂_append {P : α → α → Prop} {xs ys : List α} :
     List.Any₂ P (xs ++ ys) ↔ List.Any₂ P xs ∨ List.Any₂ P ys ∨ (∃ x ∈ xs, ∃ y ∈ ys, P x y) := by
   grind [List.any₂_iff_not_pairwise]
@@ -42,19 +42,16 @@ example : pairsSumToZero [1, 2, 3, 7] = false := by native_decide
 example : pairsSumToZero [2, 4, -5, 3, 5, 7] = true := by native_decide
 example : pairsSumToZero [1] = false := by native_decide
 
--- `simp` does not solve this!!
-example {x : Int} : -x + x = 0 := by omega
-
 theorem pairsSumToZero_go_iff (l : List Int) (seen : HashSet Int) :
     pairsSumToZero.go l seen = true ↔
       l.Any₂ (fun a b => a + b = 0) ∨ ∃ a ∈ seen, ∃ b ∈ l, a + b = 0 := by
-  fun_induction pairsSumToZero.go <;> simp <;> grind
+  fun_induction pairsSumToZero.go <;> simp_all <;> grind
 
 theorem pairsSumToZero_iff (l : List Int) :
     pairsSumToZero l = true ↔ l.Any₂ (fun a b => a + b = 0) := by
   simp [pairsSumToZero, pairsSumToZero_go_iff]
 
-def pairsSumToZero' (l : List Int) : Id Bool := do
+def pairsSumToZero' (l : List Int) : Bool := Id.run do
   let mut seen : HashSet Int := ∅
   for x in l do
     if -x ∈ seen then
@@ -62,38 +59,22 @@ def pairsSumToZero' (l : List Int) : Id Bool := do
     seen := seen.insert x
   return false
 
--- Pain: I have no idea what the system wants from me when building an invariant.
--- What is a PostCond? What does the function I'm returning mean? How are early returns
--- and things like that represented?
-
--- Pain: The need to have the `l = z.pref` trick in the loop invariant. If you don't know this
--- it's hard to make progress. It would be really cool if there was some kind of "interactive"
--- way to build the loop invariant in multiple steps where I only have to input the
--- `(∀ x, x ∈ s ↔ x ∈ z.rpref) ∧ ¬ z.pref.Any₂ (fun a b => a + b = 0)` and
--- `l.Any₂ (fun a b => a + b = 0)` parts and the `o = none/some` and `l = z.pref` gadgets are
--- added automatically.
-
--- Pain: `refine` does not play well with `⇓` it seems
-
--- Pain: mvcgen generated multiple assumptions named `h`, leading to inaccessible names
--- Pain: mvcgen generally creates inaccessible names
-
-@[simp]
-theorem List.Zipper.pref_mk {l : List α} {rpref suff h} :
-    (List.Zipper.mk rpref suff h : List.Zipper l).pref = rpref.reverse := rfl
-
 set_option mvcgen.warning false
 
 theorem pairsSumToZero'_spec (l : List Int) :
-    ⦃⌜True⌝⦄ pairsSumToZero' l ⦃⇓r => r = true ↔ l.Any₂ (fun a b => a + b = 0)⦄ := by
-  mvcgen [pairsSumToZero']
+    pairsSumToZero' l = true ↔ l.Any₂ (fun a b => a + b = 0) := by
+  generalize h : pairsSumToZero' l = r
+  apply Id.of_wp_run_eq h
 
-  case inv =>
-    exact (fun (⟨o, s⟩, z) =>
-      (o = none ∧ (∀ x, x ∈ s ↔ x ∈ z.rpref) ∧ ¬ z.pref.Any₂ (fun a b => a + b = 0)) ∨
-      (o = some true ∧ l.Any₂ (fun a b => a + b = 0) ∧ l = z.pref), ())
+  mvcgen
 
-  all_goals simp_all [List.any₂_append] <;> grind
+  case inv1 =>
+    exact Invariant.withEarlyReturn
+      (onReturn := fun r b => ⌜r = true ∧ l.Any₂ (fun a b => a + b = 0)⌝)
+      (onContinue := fun traversalState seen =>
+        ⌜(∀ x, x ∈ seen ↔ x ∈ traversalState.prefix) ∧ ¬traversalState.prefix.Any₂ (fun a b => a + b = 0)⌝)
+
+  all_goals simp_all <;> grind
 
 /-!
 ## Prompt
@@ -183,7 +164,7 @@ theorem List.any₂_iff_exists (P : α → α → Prop) (l : List α) :
   constructor
   · rintro ⟨h⟩
     induction l with
-    | nil => grind
+    | nil => simp_all
     | cons x xs ih =>
       rw [List.pairwise_cons, Classical.not_and_iff_not_or_not] at h
       simp only [Classical.not_forall, Classical.not_not] at h
