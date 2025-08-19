@@ -32,7 +32,7 @@ theorem largestDivisorSpec_go {n i : Nat} (hi : 2 ≤ i)
   fun_induction largestDivisor.go n i
   case case1 i hni =>
     have := @Nat.mul_self_lt_mul_self_iff i
-    grind [LargestDivisorSpec.one]
+    exact LargestDivisorSpec.one (fun j hj hj' => hi' _ hj (Nat.mul_self_lt_mul_self_iff.1 (by grind)))
   case case2 i hni hni' =>
     grind [LargestDivisorSpec.div]
   case case3 i hni hni' ih =>
