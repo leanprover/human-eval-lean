@@ -1,5 +1,3 @@
-import Std.Data.Iterators.Combinators.FilterMap
-
 def IsSubseq (s₁ : String) (s₂ : String) : Prop :=
   List.Sublist s₁.toList s₂.toList
 
