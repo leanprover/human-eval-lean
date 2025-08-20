@@ -18,6 +18,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Get latest Lean nightly
         run: curl -s release.lean-lang.org | jq -r '.nightly[0].name' | sed 's/^/leanprover\/lean4:/' > lean-toolchain
+      - name: Append empty lines to lake-manifest.json to trick lean-update into leaving the lean-toolchain file alone
+        run: printf '\n%.0s' {1..10} >> lake-manifest.json
       - name: Update Lean project
         uses: leanprover-community/lean-update@main
         with:
