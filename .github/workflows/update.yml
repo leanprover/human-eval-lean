@@ -23,4 +23,4 @@ jobs:
         with:
           update_if_modified: lean-toolchain
           on_update_succeeds: "commit"
-          on_update_fails: "pr"
+          on_update_fails: "issue"
