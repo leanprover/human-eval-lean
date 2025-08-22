@@ -57,6 +57,33 @@ theorem isPrime_eq_true_iff {n : Nat} :
         (List.filter (· ∣ n) (List.takeWhile (fun i => i * i ≤ n) (2...n).toList)).length = 0 := by
   simp [isPrime, ← Iter.foldl_toList]
 
+theorem isPrime_iff_mul_self {n : Nat} :
+    IsPrime n ↔ (2 ≤ n ∧ ∀ (a : Nat), 2 ≤ a ∧ a < n → a ∣ n → n < a * a) := by
+  rw [IsPrime]
+  by_cases hn : 2 ≤ n; rotate_left; grind
+  apply Iff.intro
+  · grind
+  · rintro ⟨hn, h⟩
+    refine ⟨hn, fun d hd => ?_⟩
+    · have : 0 < d := pos_of_divides_of_pos hd (by grind)
+      have : d ≤ n := le_of_divides_of_pos hd (by grind)
+      false_or_by_contra
+      by_cases hsq : d * d ≤ n
+      · specialize h d
+        grind
+      · replace h := h (n / d) ?_ ?_; rotate_left
+        · have : d ≥ 2 := by grind
+          refine ⟨?_, Nat.div_lt_self (n := n) (k := d) (by grind) (by grind)⟩
+          false_or_by_contra; rename_i hc
+          have : n / d * d ≤ 1 * d := Nat.mul_le_mul_right d (Nat.le_of_lt_succ (Nat.lt_of_not_ge hc))
+          grind [Nat.dvd_iff_div_mul_eq]
+        · exact Nat.div_dvd_of_dvd hd
+        simp only [Nat.not_le] at hsq
+        have := Nat.mul_lt_mul_of_lt_of_lt h hsq
+        replace : n * n < ((n / d) * d) * ((n / d) * d) := by grind
+        rw [Nat.dvd_iff_div_mul_eq] at hd
+        grind
+
 theorem ClosedOpen.toList_eq_nil_of_le {m n : Nat} (h : n ≤ m) :
     (m...n).toList = [] := by
   simp [Std.PRange.toList_eq_nil_iff, Std.PRange.BoundedUpwardEnumerable.init?,
@@ -85,36 +112,11 @@ theorem isPrime_eq_true_iff_isPrime {n : Nat} :
     intro a b hab hb
     have := Nat.mul_self_le_mul_self hab
     grind
-  simp only [List.filter_filter, List.length_eq_zero_iff, List.filter_eq_nil_iff, Bool.and_eq_true,
-    decide_eq_true_eq, not_and, Nat.not_le]
-  simp only [Std.PRange.mem_toList_iff_mem, Std.PRange.mem_iff_isSatisfied,
-    Std.PRange.SupportsLowerBound.IsSatisfied, Std.PRange.SupportsUpperBound.IsSatisfied, IsPrime]
-  apply Iff.intro
-  · rintro ⟨_, h⟩
-    apply And.intro
-    · exact hn
-    · intro d hd
-      have : 0 < d := pos_of_divides_of_pos hd (by grind)
-      have : d ≤ n := le_of_divides_of_pos hd (by grind)
-      false_or_by_contra
-      by_cases hsq : d * d ≤ n
-      · specialize h d
-        grind
-      · replace h := h (n / d) ?_ ?_; rotate_left
-        · have : d ≥ 2 := by grind
-          refine ⟨?_, Nat.div_lt_self (n := n) (k := d) (by grind) (by grind)⟩
-          false_or_by_contra; rename_i hc
-          have : n / d * d ≤ 1 * d := Nat.mul_le_mul_right d (Nat.le_of_lt_succ (Nat.lt_of_not_ge hc))
-          grind [Nat.dvd_iff_div_mul_eq]
-        · exact Nat.div_dvd_of_dvd hd
-        simp only [Nat.not_le] at hsq
-        have := Nat.mul_lt_mul_of_lt_of_lt h hsq
-        replace : n * n < ((n / d) * d) * ((n / d) * d) := by grind
-        rw [Nat.dvd_iff_div_mul_eq] at hd
-        grind
-  · grind
+  simp [Std.PRange.mem_toList_iff_mem, Std.PRange.mem_iff_isSatisfied,
+    Std.PRange.SupportsLowerBound.IsSatisfied, Std.PRange.SupportsUpperBound.IsSatisfied,
+    isPrime_iff_mul_self]
 
-open scoped Classical in
+open Classical in
 theorem x_or_y_of_isPrime {n : Int} {x y : α} :
     x_or_y n x y = if n ≥ 0 ∧ IsPrime n.toNat then x else y := by
   generalize hwp : x_or_y n x y = w
