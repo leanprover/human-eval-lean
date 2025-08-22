@@ -13,6 +13,10 @@ structure Input where
   ops  : List Op  := []
   args : List Nat := []
 
+@[simp]
+abbrev Input.Wellformed (inp : Input) : Prop :=
+  inp.args.length = inp.ops.length + 1
+
 abbrev Priority := Nat
 
 namespace Op
@@ -39,12 +43,10 @@ inductive Side where
 -- this function indicates whether `op`'s parsing should occur after that of `other`. For example,
 -- if `op` is `+` and `other` appears to the `.right` with a priority of `3`, then `other` should be
 -- parsed before `op`. If however `other` had a priority of `1`, then `op` should be parsed before.
-def after (op : Op) (other : Priority) (side : Side := .right) : Bool :=
+def after (op : Op) (other : Priority) (side : Side) : Bool :=
   match op.assoc, side with
-  | .left,  .left  => op.prio ≤ other
-  | .left,  .right => op.prio < other
-  | .right, .left  => op.prio < other
-  | .right, .right => op.prio ≤ other
+  | .left, .left  | .right, .right => op.prio ≤ other
+  | .left, .right | .right, .left  => op.prio < other
 
 def interpret : Op → (Nat → Nat → Nat)
   | add => (· + ·)
@@ -98,7 +100,7 @@ abbrev Parser := Input → Option Expr
 -- This defines what it means for a parser to be correct: It produces a result iff the input is
 -- wellformed (`success`), and when it produces a result it is equivalent to the input (`equiv`).
 structure Parser.Correct (par : Parser) where
-  success : (∃ e, par inp = some e) ↔ (inp.args.length = inp.ops.length + 1)
+  success : (∃ e, par inp = some e) ↔ inp.Wellformed
   equiv   : (par inp = some e) → e ≈ inp
 
 structure ParseState extends Input where
@@ -109,6 +111,9 @@ namespace ParseState
 
 instance : Coe Input ParseState where
   coe inp := { inp with }
+
+instance : Coe ParseState Input where
+  coe := toInput
 
 def lits (σ : ParseState) : List Nat :=
   go σ.output
@@ -124,7 +129,7 @@ macro_rules
   | `(tactic| decreasing_tactic) => `(tactic| simp +arith [*])
 
 structure Wellformed (σ : ParseState) where
-  external : σ.args.length = σ.ops.length + 1
+  external : Input.Wellformed σ
   internal : σ.hold.length = σ.output.length
 
 theorem Wellformed.of_external_cons
@@ -133,15 +138,27 @@ theorem Wellformed.of_external_cons
   external := have ⟨_, _⟩ := wf; by simp_all
   internal := wf.internal
 
+structure Lawful (σ : ParseState) where
+  output : ∀ e ∈ σ.output, e.Lawful
+  prios  : ∀ {o os e₁ e₂ es}, (σ.hold = o :: os) → (σ.output = e₂ :: e₁ :: es) →
+            (o.after e₁.prio .left) ∧ (o.after e₂.prio .right)
+
+theorem _root_.Input.lawful (inp : Input) : Lawful inp where
+  output := nofun
+  prios  := nofun
+
 @[simp]
 def pushArg (σ : ParseState) (arg : Nat) : ParseState :=
   { σ with output := (lit arg) :: σ.output }
+
+theorem pushArg_lawful (law : Lawful σ) (arg) : Lawful (σ.pushArg arg) := by
+  sorry
 
 def pushOp? (σ : ParseState) (op : Op) : Option ParseState :=
   match _ : σ.hold with
   | [] => some { σ with hold := [op] }
   | top :: hold =>
-    match top.after op.prio, σ.output with
+    match top.after op.prio .right, σ.output with
     | true,  _                   => some { σ with hold := op :: top :: hold }
     | false, arg₂ :: arg₁ :: out => pushOp? { σ with hold, output := app top arg₁ arg₂ :: out } op
     | false, _                   => none
@@ -200,6 +217,28 @@ theorem pushOp?_some {σ₁ : ParseState} (h : σ₁.hold.length < σ₁.output.
   all_goals simp_all
 termination_by σ₁.hold
 
+theorem pushOp?_lawful (law : Lawful σ₁) (h : σ₁.pushOp? op = some σ₂) : Lawful σ₂ := by
+  constructor
+  case output =>
+    intro e he
+    pushOp?_cases h
+    · rw [← h] at he; exact law.output _ he
+    · rw [← h] at he; exact law.output _ he
+    case _ top hold hh _ _ e₂ e₁ out ha ho =>
+      refine pushOp?_lawful ⟨?_, ?_⟩ h |>.output _ he
+      · have := law.prios hh ho
+        grind [Lawful, Expr.Lawful]
+      · simp
+        intro o os e₁ e₂ es ho ha he
+        simp_all
+        sorry
+  case prios =>
+    pushOp?_cases h
+    · simp; sorry
+    · simp; sorry
+    · sorry
+termination_by σ₁.hold
+
 def push? (σ : ParseState) (arg : Nat) (op : Op) : Option ParseState :=
   σ.pushArg arg |>.pushOp? op
 
@@ -235,11 +274,16 @@ theorem push?_output_length_eq_hold_length
   have := pushOp?_hold_length_le_output_length hp (by simp_all)
   omega
 
+theorem push?_lawful (law : Lawful σ₁) (h : σ₁.push? arg op = some σ₂) : Lawful σ₂ :=
+  pushOp?_lawful (pushArg_lawful law arg) h
+
 theorem push?_wf (wf : Wellformed σ₁) (arg op) : ∃ σ₂, σ₁.push? arg op = some σ₂ :=
   pushOp?_some <| by simp [wf.internal]
 
 theorem Wellformed.push? (hp : σ₁.push? arg op = some σ₂) (wf : Wellformed σ₁) : Wellformed σ₂ where
-  external := push?_args hp ▸ push?_ops hp ▸ wf.external
+  external := by
+    have ⟨ex, _⟩ := wf
+    simp_all [push?_args hp, push?_ops hp]
   internal := push?_output_length_eq_hold_length hp wf.internal
 
 def finalize (σ : ParseState) : ParseState :=
@@ -263,6 +307,9 @@ theorem finalize_output_length {σ : ParseState} (h : σ.hold.length < σ.output
   induction hold generalizing output <;> cases output <;> rw [finalize]
   case cons.cons out => cases out <;> simp_all
   all_goals simp_all
+
+theorem finalize_lawful (law : Lawful σ) : Lawful σ.finalize := by
+  sorry
 
 def run? (σ : ParseState) : Option ParseState :=
   match _ : σ.ops, σ.args with
@@ -311,6 +358,11 @@ termination_by σ₁.ops.length
 theorem run?_output_singleton {ops args} (h : run? { ops, args } = some σ) : σ.output.length = 1 :=
   run?_output_length h .refl
 
+theorem run?_lawful (law : Lawful σ₁) (hr : σ₁.run? = some σ₂) : Lawful σ₂ := by
+  run?_cases hr
+  · sorry
+  · sorry
+
 theorem run?_wf (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := by
   rw [run?]
   repeat split
@@ -326,8 +378,7 @@ theorem run?_wf (wf : Wellformed σ₁) : ∃ σ₂, σ₁.run? = some σ₂ := 
     all_goals simp_all
 termination_by σ₁.ops.length
 
-theorem run?_some {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) :
-    σ₁.args.length = σ₁.ops.length + 1 := by
+theorem run?_some {σ₁ : ParseState} (hr : σ₁.run? = some σ₂) : Input.Wellformed σ₁ := by
   run?_cases hr
   next ops _ _ _ _ σ₂ h =>
     have := run?_some hr
@@ -345,35 +396,43 @@ def parse? : Parser := fun inp =>
   | none   => none
   | some σ => σ.output[0]'(by simp [ParseState.run?_output_singleton h])
 
-theorem parse?_some_to_run?_some (h : parse? inp = some e) : ∃ σ, ParseState.run? inp = some σ := by
-  rw [parse?] at h
-  split at h <;> simp_all
-
-theorem parse?_some_iff : (∃ e, parse? inp = some e) ↔ (inp.args.length = inp.ops.length + 1) where
-  mp h := parse?_some_to_run?_some h.choose_spec |>.choose_spec |> ParseState.run?_some
-  mpr h := by
-    have := ParseState.run?_wf (σ₁ := { inp with }) ⟨h, rfl⟩
-    rw [parse?]
-    split <;> simp_all
-
-theorem parse?_lits_eq_args (h : parse? inp = some e) : e.lits = inp.args := by
+theorem parse?_some_to_run?_some (h : parse? inp = some e) :
+    ∃ σ, ParseState.run? inp = some σ ∧ σ.output = [e] := by
   rw [parse?] at h
   split at h
   · contradiction
   next σ hr =>
-    injection h with h
+    simp_all only [Option.some.injEq, exists_eq_left']
     have hs := ParseState.run?_output_singleton hr
-    have : σ.output = [e] := h ▸ List.length_one_eq_getElem_zero hs
-    have := ParseState.run?_lits hr
-    simp_all [ParseState.lits, ParseState.lits.go]
+    exact h ▸ List.length_one_eq_getElem_zero hs
+
+theorem parse?_some_iff : (∃ e, parse? inp = some e) ↔ inp.Wellformed where
+  mp h := by
+    have ⟨_, h, _⟩ := parse?_some_to_run?_some h.choose_spec
+    exact ParseState.run?_some h
+  mpr h := by
+    have := @ParseState.run?_wf inp ⟨h, rfl⟩
+    rw [parse?]
+    split <;> simp_all
+
+theorem parse?_lits_eq_args (h : parse? inp = some e) : e.lits = inp.args := by
+  have ⟨_, h, _⟩ := parse?_some_to_run?_some h
+  have := ParseState.run?_lits h
+  simp_all [ParseState.lits, ParseState.lits.go]
 
 theorem parse?_apps_eq_ops (h : parse? inp = some e) : e.apps = inp.ops := by
+  have ⟨σ, h, ho⟩ := parse?_some_to_run?_some h
   sorry
+
+theorem parse?_lawful (h : parse? inp = some e) : Lawful e := by
+  have ⟨_, h, _⟩ := parse?_some_to_run?_some h
+  have := ParseState.run?_lawful inp.lawful h
+  grind [ParseState.Lawful, Expr.Lawful]
 
 theorem parse?_some_equiv (h : parse? inp = some e) : e ≈ inp where
   ops    := parse?_apps_eq_ops h
   args   := parse?_lits_eq_args h
-  lawful := sorry
+  lawful := parse?_lawful h
 
 theorem parse?_correct : Parser.Correct parse? where
   success := Expr.parse?_some_iff
@@ -381,9 +440,9 @@ theorem parse?_correct : Parser.Correct parse? where
 
 end Expr
 
-def doAlgebra (ops : List Op) (args : List Nat) (h : args.length = ops.length + 1 := by decide) : Nat :=
-  have h := Option.isSome_iff_exists.mpr <| Expr.parse?_some_iff.mpr h
-  Expr.parse? { ops, args } |>.get h |>.eval
+def doAlgebra (ops : List Op) (args : List Nat) (h : Input.Wellformed { ops, args } := by decide) : Nat :=
+  have parse?_isSome := Option.isSome_iff_exists.mpr <| Expr.parse?_some_iff.mpr h
+  Expr.parse? { ops, args } |>.get parse?_isSome |>.eval
 
 example : doAlgebra [.add, .mul, .sub] [2, 3, 4, 5] = 9  := by native_decide
 example : doAlgebra [.pow, .mul, .add] [2, 3, 4, 5] = 37 := by native_decide
