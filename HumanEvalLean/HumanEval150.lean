@@ -9,8 +9,8 @@ open Std.Iterators
 -/
 
 def isPrime (n : Nat) : Bool :=
-    let divisors := (1...<n).iter.filter (· ∣ n)
-    divisors.fold (init := 0) (fun count _ => count + 1) = 1
+    let divisors := (2...<n).iter.takeWhile (fun i => i * i ≤ n) |>.filter (· ∣ n)
+    2 ≤ n ∧ divisors.fold (init := 0) (fun count _ => count + 1) = 0
 
 def x_or_y (n : Int) (x y : α) : α := Id.run do
   let some n := n.toNat? | return y
@@ -42,7 +42,7 @@ example : x_or_y 2 2 0 = 2 := by native_decide
 -/
 
 def IsPrime (n : Nat) : Prop :=
-  1 < n ∧ ∀ d : Nat, d ∣ n → d = 1 ∨ d = n
+  2 ≤ n ∧ ∀ d : Nat, d ∣ n → d = 1 ∨ d = n
 
 theorem pos_of_divides_of_pos {k n : Nat} (h : k ∣ n) (h' : n > 0) : k > 0 := by
   grind [Nat.dvd_iff_div_mul_eq]
@@ -53,7 +53,8 @@ theorem le_of_divides_of_pos {k n : Nat} (h : k ∣ n) (h' : n > 0) : k ≤ n :=
   grind [Nat.dvd_iff_div_mul_eq]
 
 theorem isPrime_eq_true_iff {n : Nat} :
-    isPrime n = true ↔ (List.filter (fun x => decide (x ∣ n)) (1...n).toList).length = 1 := by
+    isPrime n = true ↔ 2 ≤ n ∧
+        (List.filter (· ∣ n) (List.takeWhile (fun i => i * i ≤ n) (2...n).toList)).length = 0 := by
   simp [isPrime, ← Iter.foldl_toList]
 
 theorem ClosedOpen.toList_eq_nil_of_le {m n : Nat} (h : n ≤ m) :
@@ -61,77 +62,104 @@ theorem ClosedOpen.toList_eq_nil_of_le {m n : Nat} (h : n ≤ m) :
   simp [Std.PRange.toList_eq_nil_iff, Std.PRange.BoundedUpwardEnumerable.init?,
     Std.PRange.SupportsUpperBound.IsSatisfied, show n ≤ m by grind]
 
-theorem ClosedOpen.toList_self_eq_nil {n : Nat} :
-    (n...n).toList = [] := by
-  simp [toList_eq_nil_of_le]
+-- theorem ClosedOpen.toList_self_eq_nil {n : Nat} :
+--     (n...n).toList = [] := by
+--   simp [toList_eq_nil_of_le]
 
-theorem ClosedOpen.toList_succ_eq_append {m n : Nat} (h : m ≤ n) :
-    (m...(n + 1)).toList = (m...n).toList ++ [n] := by
-  rw [show n = m + (n - m) by grind] at ⊢
-  rw [show n = m + (n - m) by grind] at h
-  generalize n - m = n at ⊢ h
-  induction n generalizing m with
-  | zero =>
-    simp only [Nat.add_zero]
-    simp [Std.PRange.toList_eq_match (r := m...(m + 1)),
-      Std.PRange.toList_eq_match (r := m<...(m + 1)),
-      Std.PRange.SupportsUpperBound.IsSatisfied,
-      show m < m + 1 by grind, show ¬ m + 1 < m + 1 by grind,
-      toList_self_eq_nil]
-  | succ n ih =>
-    simp only [show m + (n + 1) = m + n + 1 by grind,
-      Std.PRange.toList_eq_match (r := m...(m + n + 2)),
-      Std.PRange.toList_eq_match (r := m...(m + n + 1)),
-      Std.PRange.SupportsUpperBound.IsSatisfied,
-      show m < m + n + 2 by grind, show m < m + n + 1 by grind, ↓reduceIte,
-      List.cons_append, List.cons.injEq, true_and]
-    rw [Std.PRange.toList_open_eq_toList_closed_of_isSome_succ?,
-      Std.PRange.toList_open_eq_toList_closed_of_isSome_succ?]
-    · simp only [Std.PRange.UpwardEnumerable.succ?, Option.get_some,
-      show m + n + 1 = (m + 1) + n by grind, show m + n + 2 = (m + 1) + n + 1 by grind]
-      apply ih
-      grind
-    · simp [Std.PRange.UpwardEnumerable.succ?]
-    · simp [Std.PRange.UpwardEnumerable.succ?]
+-- theorem ClosedOpen.toList_succ_eq_append {m n : Nat} (h : m ≤ n) :
+--     (m...(n + 1)).toList = (m...n).toList ++ [n] := by
+--   rw [show n = m + (n - m) by grind] at ⊢
+--   rw [show n = m + (n - m) by grind] at h
+--   generalize n - m = n at ⊢ h
+--   induction n generalizing m with
+--   | zero =>
+--     simp only [Nat.add_zero]
+--     simp [Std.PRange.toList_eq_match (r := m...(m + 1)),
+--       Std.PRange.toList_eq_match (r := m<...(m + 1)),
+--       Std.PRange.SupportsUpperBound.IsSatisfied,
+--       show m < m + 1 by grind, show ¬ m + 1 < m + 1 by grind,
+--       toList_self_eq_nil]
+--   | succ n ih =>
+--     simp only [show m + (n + 1) = m + n + 1 by grind,
+--       Std.PRange.toList_eq_match (r := m...(m + n + 2)),
+--       Std.PRange.toList_eq_match (r := m...(m + n + 1)),
+--       Std.PRange.SupportsUpperBound.IsSatisfied,
+--       show m < m + n + 2 by grind, show m < m + n + 1 by grind, ↓reduceIte,
+--       List.cons_append, List.cons.injEq, true_and]
+--     rw [Std.PRange.toList_open_eq_toList_closed_of_isSome_succ?,
+--       Std.PRange.toList_open_eq_toList_closed_of_isSome_succ?]
+--     · simp only [Std.PRange.UpwardEnumerable.succ?, Option.get_some,
+--       show m + n + 1 = (m + 1) + n by grind, show m + n + 2 = (m + 1) + n + 1 by grind]
+--       apply ih
+--       grind
+--     · simp [Std.PRange.UpwardEnumerable.succ?]
+--     · simp [Std.PRange.UpwardEnumerable.succ?]
 
-theorem toList_rangeMk_closed_open_append_toList_rangeMk_closed_open (l m n : Nat)
-    (hlm : l ≤ m) (hmn : m ≤ n) :
-    (l...m).toList ++ (m...n).toList = (l...n).toList := by
-  rw [show n = m + (n - m) by grind]
-  generalize n - m = n
-  induction n with
-  | zero =>
-    suffices (m...m).toList = [] by simp [this]
-    simp [Std.PRange.toList_eq_nil_iff, Std.PRange.BoundedUpwardEnumerable.init?,
-        Std.PRange.SupportsUpperBound.IsSatisfied]
-  | succ n ih =>
-    rw [show m + (n + 1) = (m + n) + 1 by grind]
-    rw [ClosedOpen.toList_succ_eq_append (by grind), ClosedOpen.toList_succ_eq_append (by grind)]
-    simp [← ih]
+-- theorem toList_rangeMk_closed_open_append_toList_rangeMk_closed_open (l m n : Nat)
+--     (hlm : l ≤ m) (hmn : m ≤ n) :
+--     (l...m).toList ++ (m...n).toList = (l...n).toList := by
+--   rw [show n = m + (n - m) by grind]
+--   generalize n - m = n
+--   induction n with
+--   | zero =>
+--     suffices (m...m).toList = [] by simp [this]
+--     simp [Std.PRange.toList_eq_nil_iff, Std.PRange.BoundedUpwardEnumerable.init?,
+--         Std.PRange.SupportsUpperBound.IsSatisfied]
+--   | succ n ih =>
+--     rw [show m + (n + 1) = (m + n) + 1 by grind]
+--     rw [ClosedOpen.toList_succ_eq_append (by grind), ClosedOpen.toList_succ_eq_append (by grind)]
+--     simp [← ih]
+
+theorem List.takeWhile_eq_filter {P : α → Bool} {xs : List α}
+    (h : xs.Pairwise (fun x y => P y → P x)) :
+    xs.takeWhile P = xs.filter P := by
+  induction xs with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [takeWhile_cons, filter_cons]
+    simp only [pairwise_cons] at h
+    split
+    · simp [*]
+    · simpa [*] using h
 
 theorem isPrime_iff {n : Nat} :
     isPrime n ↔ IsPrime n := by
   simp only [isPrime_eq_true_iff]
-  by_cases hn : n ≥ 2; rotate_left
+  by_cases hn : 2 ≤ n; rotate_left
   · rw [ClosedOpen.toList_eq_nil_of_le (by grind)]
     grind [IsPrime]
-  have := toList_rangeMk_closed_open_append_toList_rangeMk_closed_open 1 2 n
-    (by grind) (by grind [IsPrime])
-  simp only [← this, ClosedOpen.toList_succ_eq_append (Nat.le_refl 1), ClosedOpen.toList_self_eq_nil]
-  simp only [List.nil_append, List.cons_append, Nat.one_dvd, decide_true, List.filter_cons_of_pos,
-    List.length_cons, Nat.add_eq_right, List.length_eq_zero_iff, List.filter_eq_nil_iff,
-    decide_eq_true_eq] -- these come from `simp?`
+  rw [List.takeWhile_eq_filter]; rotate_left
+  · apply Std.PRange.pairwise_toList_le.imp
+    intro a b hab hb
+    have := Nat.mul_self_le_mul_self hab
+    grind
+  simp only [List.filter_filter, List.length_eq_zero_iff, List.filter_eq_nil_iff, Bool.and_eq_true,
+    decide_eq_true_eq, not_and, Nat.not_le]
   simp only [Std.PRange.mem_toList_iff_mem, Std.PRange.mem_iff_isSatisfied,
     Std.PRange.SupportsLowerBound.IsSatisfied, Std.PRange.SupportsUpperBound.IsSatisfied, IsPrime]
   apply Iff.intro
-  · intro h
+  · rintro ⟨_, h⟩
     apply And.intro
     · exact hn
     · intro d hd
       have : 0 < d := pos_of_divides_of_pos hd (by grind)
       have : d ≤ n := le_of_divides_of_pos hd (by grind)
-      specialize h d
-      grind
+      false_or_by_contra
+      by_cases hsq : d * d ≤ n
+      · specialize h d
+        grind
+      · replace h := h (n / d) ?_ ?_; rotate_left
+        · have : d ≥ 2 := by grind
+          refine ⟨?_, Nat.div_lt_self (n := n) (k := d) (by grind) (by grind)⟩
+          false_or_by_contra; rename_i hc
+          have : n / d * d ≤ 1 * d := Nat.mul_le_mul_right d (Nat.le_of_lt_succ (Nat.lt_of_not_ge hc))
+          grind [Nat.dvd_iff_div_mul_eq]
+        · exact Nat.div_dvd_of_dvd hd
+        simp only [Nat.not_le] at hsq
+        have := Nat.mul_lt_mul_of_lt_of_lt h hsq
+        replace : n * n < ((n / d) * d) * ((n / d) * d) := by grind
+        rw [Nat.dvd_iff_div_mul_eq] at hd
+        grind
   · grind
 
 open scoped Classical in
