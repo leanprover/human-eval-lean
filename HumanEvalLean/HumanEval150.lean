@@ -74,7 +74,7 @@ theorem List.takeWhile_eq_filter {P : α → Bool} {xs : List α}
     · simp [*]
     · simpa [*] using h
 
-theorem isPrime_iff {n : Nat} :
+theorem isPrime_eq_true_iff_isPrime {n : Nat} :
     isPrime n ↔ IsPrime n := by
   simp only [isPrime_eq_true_iff]
   by_cases hn : 2 ≤ n; rotate_left
@@ -120,8 +120,8 @@ theorem x_or_y_of_isPrime {n : Int} {x y : α} :
   generalize hwp : x_or_y n x y = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  · grind [isPrime_iff, Int.mem_toNat?]
-  · grind [isPrime_iff, Int.mem_toNat?]
+  · grind [isPrime_eq_true_iff_isPrime, Int.mem_toNat?]
+  · grind [isPrime_eq_true_iff_isPrime, Int.mem_toNat?]
   · suffices n < 0 by grind
     rename_i _ h₁ h₂
     specialize h₁ n.toNat
