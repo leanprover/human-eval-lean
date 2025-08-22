@@ -62,54 +62,6 @@ theorem ClosedOpen.toList_eq_nil_of_le {m n : Nat} (h : n ≤ m) :
   simp [Std.PRange.toList_eq_nil_iff, Std.PRange.BoundedUpwardEnumerable.init?,
     Std.PRange.SupportsUpperBound.IsSatisfied, show n ≤ m by grind]
 
--- theorem ClosedOpen.toList_self_eq_nil {n : Nat} :
---     (n...n).toList = [] := by
---   simp [toList_eq_nil_of_le]
-
--- theorem ClosedOpen.toList_succ_eq_append {m n : Nat} (h : m ≤ n) :
---     (m...(n + 1)).toList = (m...n).toList ++ [n] := by
---   rw [show n = m + (n - m) by grind] at ⊢
---   rw [show n = m + (n - m) by grind] at h
---   generalize n - m = n at ⊢ h
---   induction n generalizing m with
---   | zero =>
---     simp only [Nat.add_zero]
---     simp [Std.PRange.toList_eq_match (r := m...(m + 1)),
---       Std.PRange.toList_eq_match (r := m<...(m + 1)),
---       Std.PRange.SupportsUpperBound.IsSatisfied,
---       show m < m + 1 by grind, show ¬ m + 1 < m + 1 by grind,
---       toList_self_eq_nil]
---   | succ n ih =>
---     simp only [show m + (n + 1) = m + n + 1 by grind,
---       Std.PRange.toList_eq_match (r := m...(m + n + 2)),
---       Std.PRange.toList_eq_match (r := m...(m + n + 1)),
---       Std.PRange.SupportsUpperBound.IsSatisfied,
---       show m < m + n + 2 by grind, show m < m + n + 1 by grind, ↓reduceIte,
---       List.cons_append, List.cons.injEq, true_and]
---     rw [Std.PRange.toList_open_eq_toList_closed_of_isSome_succ?,
---       Std.PRange.toList_open_eq_toList_closed_of_isSome_succ?]
---     · simp only [Std.PRange.UpwardEnumerable.succ?, Option.get_some,
---       show m + n + 1 = (m + 1) + n by grind, show m + n + 2 = (m + 1) + n + 1 by grind]
---       apply ih
---       grind
---     · simp [Std.PRange.UpwardEnumerable.succ?]
---     · simp [Std.PRange.UpwardEnumerable.succ?]
-
--- theorem toList_rangeMk_closed_open_append_toList_rangeMk_closed_open (l m n : Nat)
---     (hlm : l ≤ m) (hmn : m ≤ n) :
---     (l...m).toList ++ (m...n).toList = (l...n).toList := by
---   rw [show n = m + (n - m) by grind]
---   generalize n - m = n
---   induction n with
---   | zero =>
---     suffices (m...m).toList = [] by simp [this]
---     simp [Std.PRange.toList_eq_nil_iff, Std.PRange.BoundedUpwardEnumerable.init?,
---         Std.PRange.SupportsUpperBound.IsSatisfied]
---   | succ n ih =>
---     rw [show m + (n + 1) = (m + n) + 1 by grind]
---     rw [ClosedOpen.toList_succ_eq_append (by grind), ClosedOpen.toList_succ_eq_append (by grind)]
---     simp [← ih]
-
 theorem List.takeWhile_eq_filter {P : α → Bool} {xs : List α}
     (h : xs.Pairwise (fun x y => P y → P x)) :
     xs.takeWhile P = xs.filter P := by
