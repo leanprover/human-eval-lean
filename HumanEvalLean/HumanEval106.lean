@@ -1,5 +1,30 @@
-def f : Unit :=
-  ()
+def f (n : Nat) : List Nat := Id.run do
+  let mut ret : List Nat := []
+  for i in 1...=n do
+    if i % 2 = 0 then
+      let mut x := 1
+      for j in 1...=i do x := x * j
+      ret := x :: ret
+    else
+      let mut x := 0
+      for j in 1...=i do x := x + j
+      ret := x :: ret
+  return ret.reverse
+
+/-!
+## Tests
+-/
+
+example : f 5 = [1, 2, 6, 24, 15] := by native_decide
+example : f 7 = [1, 2, 6, 24, 15, 720, 28] := by native_decide
+example : f 1 = [1] := by native_decide
+example : f 3 = [1, 2, 6] := by native_decide
+
+/-!
+## Verification
+
+TODO
+-/
 
 /-!
 ## Prompt
