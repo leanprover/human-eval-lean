@@ -61,21 +61,45 @@ theorem Nat.size_Rcc {a b : Nat} :
     Std.PRange.Internal.iter, Std.Iterators.Iter.toIterM, Std.PRange.RangeSize.size]
 
 theorem Std.PRange.getElem?_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEnumerable α]
-    [SupportsUpperBound su α]
+    [SupportsUpperBound su α] [LawfulUpwardEnumerableUpperBound su α]
     [LawfulUpwardEnumerableLE α] [HasFiniteRanges su α]
     {r : PRange ⟨.closed, su⟩ α} {i} :
     r.toList[i]? = (UpwardEnumerable.succMany? i r.lower).filter (SupportsUpperBound.IsSatisfied r.upper) := by
-  sorry
+  induction i generalizing r
+  · rw [PRange.toList_eq_match, UpwardEnumerable.succMany?_zero]
+    simp only [Option.filter_some, decide_eq_true_eq]
+    split <;> simp
+  · rename_i n ih
+    rw [PRange.toList_eq_match]
+    simp
+    split
+    · simp [LawfulUpwardEnumerable.succMany?_succ_eq_succ?_bind_succMany?]
+      cases hs : UpwardEnumerable.succ? r.lower
+      · rw [PRange.toList_eq_match]
+        simp [BoundedUpwardEnumerable.init?, hs]
+      · rw [toList_open_eq_toList_closed_of_isSome_succ? (by grind)]
+        rw [ih]
+        simp [hs]
+    · simp [*]
+      cases hs : UpwardEnumerable.succMany? (n + 1) r.lower
+      · grind
+      · rename_i hl a
+        simp [Option.filter_some]
+        have : UpwardEnumerable.LE r.lower a := ⟨n + 1, hs⟩
+        intro ha
+        exact hl.elim <| LawfulUpwardEnumerableUpperBound.isSatisfied_of_le r.upper _ _ ha this (α := α)
 
 theorem Std.PRange.succMany?_isSome_of_lt_length_toList [LE α] [UpwardEnumerable α]
-    [LawfulUpwardEnumerable α] [SupportsUpperBound su α]
+    [LawfulUpwardEnumerable α] [SupportsUpperBound su α] [LawfulUpwardEnumerableUpperBound su α]
     [LawfulUpwardEnumerableLE α] [HasFiniteRanges su α]
     {r : PRange ⟨.closed, su⟩ α} {i} (h : i < r.toList.length) :
     (UpwardEnumerable.succMany? i r.lower).isSome := by
-  sorry
+  have : r.toList[i]?.isSome := by grind
+  simp only [getElem?_Rcx_eq, Option.isSome_filter] at this
+  exact Option.isSome_of_any this
 
 theorem Std.PRange.getElem_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEnumerable α]
-    [SupportsUpperBound su α]
+    [SupportsUpperBound su α] [LawfulUpwardEnumerableUpperBound su α]
     [LawfulUpwardEnumerableLE α] [HasFiniteRanges su α]
     {r : PRange ⟨.closed, su⟩ α} {i h} :
     r.toList[i]'h = (UpwardEnumerable.succMany? i r.lower).get
@@ -156,7 +180,10 @@ theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) (hmod : k % 2 = 1) :
     simp_all
     intro h
     rename_i pref cur suff _ _ _ _ _ _  h' _
-    have : cur = pref.length + 1 := sorry
+    have : cur = pref.length + 1 := by
+      have : cur = (1...=n).toList[pref.length]'(by simp [*]) := by simp [*]
+      simp [this, Std.PRange.getElem_Rcx_eq, Std.PRange.UpwardEnumerable.succMany?]
+      grind
     obtain ⟨h', h''⟩ := h'
     simp_all
     rw [List.getElem_cons]
@@ -166,14 +193,17 @@ theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) (hmod : k % 2 = 1) :
     · simp_all
       refine Eq.trans ?_ (h'' ?_)
       · grind
-      · grind only -- `grind` fails, see #10233
+      · grind only -- `grind` without `only` fails, see #10233
   case vc7 => simp
   case vc8 => simp
   case vc9 =>
     simp_all
     intro h
     rename_i pref cur suff _ _ _ _ _ h''
-    have : cur = pref.length + 1 := sorry
+    have : cur = pref.length + 1 := by
+      have : cur = (1...=n).toList[pref.length]'(by simp [*]) := by simp [*]
+      simp [this, Std.PRange.getElem_Rcx_eq, Std.PRange.UpwardEnumerable.succMany?]
+      grind
     refine Eq.trans ?_ (h''.2 ?_)
     simp_all
     rw [List.getElem_cons]
