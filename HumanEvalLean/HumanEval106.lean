@@ -1,8 +1,8 @@
 module
 
 import Std.Tactic.Do
--- Sadly, it's apparently impossible to easily prove the size of a
--- `Nat` range without unfolding internal stuff.
+-- Sadly, it's apparently currently impossible to easily prove the size of a
+-- `Nat` range without unfolding internal stuff. This should be fixed in the standard library.
 import all Init.Data.Iterators.Consumers.Loop
 
 open Std.Do
@@ -30,15 +30,10 @@ example : f 1 = [1] := by native_decide
 example : f 3 = [1, 2, 6] := by native_decide
 
 /-!
-## Verification
+## Standard library wishlist
+
+The following lemmas halp with the verification and would be nice to have in the standard library.
 -/
-
-def factorial : Nat → Nat
-  | 0 => 1
-  | n + 1 => factorial n * (n + 1)
-
-example : factorial 1 = 1 := by decide
-example : factorial 3 = 6 := by decide
 
 @[simp]
 theorem Std.PRange.length_toList_eq_size [UpwardEnumerable α] [LawfulUpwardEnumerable α]
@@ -89,7 +84,7 @@ theorem Std.PRange.getElem?_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEn
         intro ha
         exact hl.elim <| LawfulUpwardEnumerableUpperBound.isSatisfied_of_le r.upper _ _ ha this (α := α)
 
-theorem Std.PRange.succMany?_isSome_of_lt_length_toList [LE α] [UpwardEnumerable α]
+theorem Std.PRange.isSome_succMany?_of_lt_length_toList [LE α] [UpwardEnumerable α]
     [LawfulUpwardEnumerable α] [SupportsUpperBound su α] [LawfulUpwardEnumerableUpperBound su α]
     [LawfulUpwardEnumerableLE α] [HasFiniteRanges su α]
     {r : PRange ⟨.closed, su⟩ α} {i} (h : i < r.toList.length) :
@@ -103,8 +98,35 @@ theorem Std.PRange.getElem_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEnu
     [LawfulUpwardEnumerableLE α] [HasFiniteRanges su α]
     {r : PRange ⟨.closed, su⟩ α} {i h} :
     r.toList[i]'h = (UpwardEnumerable.succMany? i r.lower).get
-        (succMany?_isSome_of_lt_length_toList h) := by
+        (isSome_succMany?_of_lt_length_toList h) := by
   simp [List.getElem_eq_getElem?_get, getElem?_Rcx_eq]
+
+theorem Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons [LE α]
+    [UpwardEnumerable α] [LawfulUpwardEnumerable α] [LawfulUpwardEnumerableLE α]
+    [SupportsUpperBound su α] [HasFiniteRanges su α] [LawfulUpwardEnumerableUpperBound su α]
+    {r : PRange ⟨.closed, su⟩ α} {pref suff : List α} {cur : α} (h : r.toList = pref ++ cur :: suff) :
+    cur = (UpwardEnumerable.succMany? pref.length r.lower).get
+        (isSome_succMany?_of_lt_length_toList (by grind)) := by
+  have : cur = (pref ++ cur :: suff)[pref.length] := by grind
+  simp only [← h] at this
+  simp [this, getElem_Rcx_eq]
+
+/-!
+## Verification
+-/
+
+def factorial : Nat → Nat
+  | 0 => 1
+  | n + 1 => factorial n * (n + 1)
+
+def triangle : Nat → Nat
+  | 0 => 0
+  | n + 1 => triangle n + (n + 1)
+
+example : factorial 1 = 1 := by decide
+example : factorial 4 = 24 := by decide
+example : triangle 1 = 1 := by decide
+example : triangle 4 = 10 := by decide
 
 theorem length_f {n : Nat} :
     (f n).length = n := by
@@ -122,99 +144,62 @@ theorem length_f {n : Nat} :
     exact ⇓⟨cur, xs⟩ => ⌜True⌝
   all_goals simp_all -- relies on `Nat.size_Rcc`
 
-abbrev SVal' (σs : List (Type u)) (α : Type u) : Type u := match σs with
-  | [] => α
-  | σ :: σs => σ → SVal σs α
-
-abbrev SPred' (σs : List (Type u)) : Type u := SVal σs (ULift Prop)
-
-def pure {σs : List (Type u)} (P : Prop) : SPred' σs := match σs with
-  | [] => ULift.up P
-  | _ :: _ => fun _ => pure P
-
--- open Std PRange in
--- @[spec]
--- theorem Spec.forIn'_prange {α β : Type u}
---     [Monad m] [WPMonad m ps]
---     [UpwardEnumerable α]
---     [SupportsUpperBound su α] [SupportsLowerBound sl α] [HasFiniteRanges su α]
---     [BoundedUpwardEnumerable sl α] [LawfulUpwardEnumerable α]
---     [LawfulUpwardEnumerableLowerBound sl α] [LawfulUpwardEnumerableUpperBound su α]
---     {xs : PRange ⟨sl, su⟩ α} {init : β} {f : (a : α) → a ∈ xs → β → m (ForInStep β)}
---     (inv : Invariant xs.toList β ps)
---     (step : ∀ pref cur suff (h : xs.toList = pref ++ cur :: suff) b,
---       Triple
---         (f cur (by simp [←mem_toList_iff_mem, h]) b)
---         (inv.1 (⟨pref, cur::suff, h.symm⟩, b))
---         (fun r => match r with
---           | .yield b' => inv.1 (⟨pref ++ [cur], suff, by simp [h]⟩, b')
---           | .done b' => inv.1 (⟨xs.toList, [], by simp⟩, b'), inv.2)) :
---     Triple (forIn' xs init f) (inv.1 (⟨[], xs.toList, rfl⟩, init)) (fun b => inv.1 (⟨xs.toList, [], by simp⟩, b), inv.2) := by
---   simp only [forIn'_eq_forIn'_toList]
---   apply Spec.forIn'_list inv step
-
-theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) (hmod : k % 2 = 1) :
-    (f n)[k]'(by grind [length_f]) = factorial (k + 1) := by
+theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
+    (f n)[k]'(by grind [length_f]) = if k % 2 = 0 then triangle (k + 1) else factorial (k + 1) := by
   rw [List.getElem_eq_iff]
   generalize hwp : f n = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
   all_goals try infer_instance
+
+  -- OUTER LOOP
   case inv1 =>
-    exact ⇓⟨cur, xs⟩ => ⌜xs.length = cur.prefix.length ∧ ((_ : k < xs.length) → xs[xs.length - 1 - k] = factorial (k + 1))⌝
-  case inv2 =>
-    -- factorial loop
-    exact ⇓⟨cur, x⟩ => ⌜x = factorial cur.prefix.length⌝
-  case inv3 =>
-    -- sum loop => irrelevant
-    exact ⇓⟨cur, xs⟩ => ⌜True⌝
-  case vc3 =>
-    simp_all [factorial]
-    rename_i cur _ _ _ _ pref' cur' suff' h' _ _ _
-    have : cur' = (1...=cur).toList[pref'.length]'(by simp [h']) := by simp [h']
-    rw [this, Std.PRange.getElem_Rcx_eq]
-    simp only [Std.PRange.UpwardEnumerable.succMany?, Option.get_some]
-    grind
-  case vc4 => simp [factorial]
-  case vc5 =>
-    simp_all
-    intro h
-    rename_i pref cur suff _ _ _ _ _ _  h' _
-    have : cur = pref.length + 1 := by
-      have : cur = (1...=n).toList[pref.length]'(by simp [*]) := by simp [*]
-      simp [this, Std.PRange.getElem_Rcx_eq, Std.PRange.UpwardEnumerable.succMany?]
-      grind
-    obtain ⟨h', h''⟩ := h'
-    simp_all
-    rw [List.getElem_cons]
-    split
-    · simp_all
-      grind
-    · simp_all
-      refine Eq.trans ?_ (h'' ?_)
-      · grind
-      · grind only -- `grind` without `only` fails, see #10233
-  case vc7 => simp
-  case vc8 => simp
-  case vc9 =>
-    simp_all
-    intro h
-    rename_i pref cur suff _ _ _ _ _ h''
-    have : cur = pref.length + 1 := by
-      have : cur = (1...=n).toList[pref.length]'(by simp [*]) := by simp [*]
-      simp [this, Std.PRange.getElem_Rcx_eq, Std.PRange.UpwardEnumerable.succMany?]
-      grind
-    refine Eq.trans ?_ (h''.2 ?_)
-    simp_all
-    rw [List.getElem_cons]
-    · rw [dif_neg (by grind only)]
-      grind
-    · grind
-  case vc10 => simp
-  case vc11 =>
+    exact ⇓⟨cur, xs⟩ => ⌜xs.length = cur.prefix.length ∧
+        ((_ : k < xs.length) → xs[xs.length - 1 - k] =
+          if k % 2 = 0 then triangle (k + 1) else factorial (k + 1))⌝
+  case vc10 => simp -- base case
+  case vc11 => -- postcondition
     rename_i h
     obtain ⟨h, h'⟩ := h
     simp_all
+
+  -- FACTORIAL LOOP
+  case inv2 => exact ⇓⟨cur, x⟩ => ⌜x = factorial cur.prefix.length⌝
+  case vc4 => simp [factorial] -- base case
+  case vc5 => -- postcondition
+    simp_all only [Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›,
+      Std.PRange.UpwardEnumerable.succMany?, SPred.down_pure,
+      Std.PRange.length_toList_eq_size, Nat.size_Rcc, List.length_cons,
+      List.length_append, List.length_nil, true_and, List.getElem_cons]
+    split
+    · simp_all only [SPred.down_pure, Std.PRange.length_toList_eq_size, Nat.size_Rcc]
+      grind
+    · rename_i h' _ _
+      refine fun _ =>
+        Eq.trans ?_ (h'.2 ?_) <;> grind only -- `grind` without `only` fails, see #10233
+  case vc3.step => -- step
+    have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+    simp_all [Std.PRange.UpwardEnumerable.succMany?, Option.get_some, factorial]
+    grind [factorial]
+
+  -- SUM LOOP
+  case inv3 => exact ⇓⟨cur, x⟩ => ⌜x = triangle cur.prefix.length⌝
+  case vc8 => simp [triangle] -- base case
+  case vc9 => -- postcondition
+    simp_all only [Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›,
+      Std.PRange.UpwardEnumerable.succMany?, SPred.down_pure,
+      Std.PRange.length_toList_eq_size, Nat.size_Rcc, List.length_cons,
+      List.length_append, List.length_nil, true_and, List.getElem_cons]
+    split
+    · simp_all only [SPred.down_pure, Std.PRange.length_toList_eq_size, Nat.size_Rcc]
+      grind
+    · rename_i h' _ _
+      refine fun _ =>
+        Eq.trans ?_ (h'.2 ?_) <;> grind only -- `grind` without `only` fails, see #10233
+  case vc7.step => -- step
+    have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+    simp_all [Std.PRange.UpwardEnumerable.succMany?, Option.get_some, factorial]
+    grind [triangle]
 
 /-!
 ## Prompt
