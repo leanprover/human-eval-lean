@@ -66,7 +66,7 @@ theorem Std.PRange.getElem?_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEn
     split <;> simp
   · rename_i n ih
     rw [PRange.toList_eq_match]
-    simp
+    simp only
     split
     · simp [LawfulUpwardEnumerable.succMany?_succ_eq_succ?_bind_succMany?]
       cases hs : UpwardEnumerable.succ? r.lower
@@ -75,7 +75,7 @@ theorem Std.PRange.getElem?_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEn
       · rw [toList_open_eq_toList_closed_of_isSome_succ? (by grind)]
         rw [ih]
         simp [hs]
-    · simp [*]
+    · simp only [List.length_nil, Nat.not_lt_zero, not_false_eq_true, getElem?_neg]
       cases hs : UpwardEnumerable.succMany? (n + 1) r.lower
       · grind
       · rename_i hl a
