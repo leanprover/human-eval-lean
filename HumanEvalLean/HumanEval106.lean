@@ -79,7 +79,7 @@ theorem Std.PRange.getElem?_Rcx_eq [LE α] [UpwardEnumerable α] [LawfulUpwardEn
       cases hs : UpwardEnumerable.succMany? (n + 1) r.lower
       · grind
       · rename_i hl a
-        simp [Option.filter_some]
+        simp only [Option.filter_some, decide_eq_true_eq, right_eq_ite_iff]
         have : UpwardEnumerable.LE r.lower a := ⟨n + 1, hs⟩
         intro ha
         exact hl.elim <| LawfulUpwardEnumerableUpperBound.isSatisfied_of_le r.upper _ _ ha this (α := α)
@@ -179,7 +179,8 @@ theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
         Eq.trans ?_ (h'.2 ?_) <;> grind only -- `grind` without `only` fails, see #10233
   case vc3.step => -- step
     have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
-    simp_all [Std.PRange.UpwardEnumerable.succMany?, Option.get_some, factorial]
+    simp_all only [factorial, SPred.down_pure, Std.PRange.UpwardEnumerable.succMany?,
+      Option.get_some]
     grind [factorial]
 
   -- SUM LOOP
@@ -198,7 +199,8 @@ theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
         Eq.trans ?_ (h'.2 ?_) <;> grind only -- `grind` without `only` fails, see #10233
   case vc7.step => -- step
     have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
-    simp_all [Std.PRange.UpwardEnumerable.succMany?, Option.get_some, factorial]
+    simp_all only [factorial, SPred.down_pure, Std.PRange.UpwardEnumerable.succMany?,
+      Option.get_some]
     grind [triangle]
 
 /-!
