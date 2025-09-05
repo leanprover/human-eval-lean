@@ -270,9 +270,10 @@ theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
   case inv1 =>
     exact ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ ∀ j : Nat, (_ : j < xs.size) →
         (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
-  case vc1 => -- verification of the early return
-    simp_all only [List.extract_toArray, Nat.sub_zero, List.drop_zero, List.size_toArray,
-      List.length_take, List.length_cons, List.length_nil, Nat.min_eq_left, getElem?_pos]
+  case vc1 hn => -- verification of the early return
+    simp only [List.extract_toArray, Nat.sub_zero,
+      List.drop_zero, List.size_toArray, List.length_take, List.length_cons, List.length_nil,
+      Nat.min_eq_left, getElem?_pos, Option.some.injEq, hn, hlt]
     match k with
     | 0 => simp [triangle]
     | 1 => simp [factorial]
