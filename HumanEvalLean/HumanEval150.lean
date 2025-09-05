@@ -9,8 +9,8 @@ open Std.Iterators
 -/
 
 def isPrime (n : Nat) : Bool :=
-    let divisors := (2...<n).iter.takeWhile (fun i => i * i ≤ n) |>.filter (· ∣ n)
-    2 ≤ n ∧ divisors.fold (init := 0) (fun count _ => count + 1) = 0
+  let divisors := (2...<n).iter.takeWhile (fun i => i * i ≤ n) |>.filter (· ∣ n)
+  2 ≤ n ∧ divisors.fold (init := 0) (fun count _ => count + 1) = 0
 
 def x_or_y (n : Int) (x y : α) : α := Id.run do
   let some n := n.toNat? | return y
@@ -44,9 +44,6 @@ example : x_or_y 2 2 0 = 2 := by native_decide
 def IsPrime (n : Nat) : Prop :=
   2 ≤ n ∧ ∀ d : Nat, d ∣ n → d = 1 ∨ d = n
 
-theorem pos_of_divides_of_pos {k n : Nat} (h : k ∣ n) (h' : n > 0) : k > 0 := by
-  grind [Nat.dvd_iff_div_mul_eq]
-
 theorem le_of_divides_of_pos {k n : Nat} (h : k ∣ n) (h' : n > 0) : k ≤ n := by
   false_or_by_contra
   have : n / k = 0 := by grind [Nat.div_eq_zero_iff]
@@ -65,8 +62,8 @@ theorem isPrime_iff_mul_self {n : Nat} :
   · grind
   · rintro ⟨hn, h⟩
     refine ⟨hn, fun d hd => ?_⟩
-    · have : 0 < d := pos_of_divides_of_pos hd (by grind)
-      have : d ≤ n := le_of_divides_of_pos hd (by grind)
+    · have : 0 < d := Nat.pos_of_dvd_of_pos hd (by grind)
+      have : d ≤ n := Nat.le_of_dvd (by grind) hd
       false_or_by_contra
       by_cases hsq : d * d ≤ n
       · specialize h d
