@@ -271,19 +271,16 @@ theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
     exact ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ ∀ j : Nat, (_ : j < xs.size) →
         (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
   case vc1 => -- verification of the early return
-    simp_all only [Array.take_eq_extract, List.extract_toArray, List.extract_eq_drop_take,
-      Nat.sub_zero, List.drop_zero, List.size_toArray, List.length_take, List.length_cons,
-      List.length_nil, Nat.zero_add, Nat.reduceAdd, Nat.min_eq_left, getElem?_pos,
-      List.getElem_toArray, List.getElem_take, Option.some.injEq]
+    simp_all only [List.extract_toArray, Nat.sub_zero, List.drop_zero, List.size_toArray,
+      List.length_take, List.length_cons, List.length_nil, Nat.min_eq_left, getElem?_pos]
     match k with
     | 0 => simp [triangle]
     | 1 => simp [factorial]
     | n + 2 => grind
   case vc5 => -- base case of the loop
     mleave
-    simp_all only [Nat.not_le, Array.emptyWithCapacity_eq, List.push_toArray, List.nil_append,
-      List.cons_append, List.size_toArray, List.length_cons, List.length_nil, Nat.zero_add,
-      Nat.reduceAdd, List.getElem_toArray, true_and]
+    simp only [Array.emptyWithCapacity_eq, List.push_toArray, List.nil_append, List.cons_append,
+      List.size_toArray, List.length_cons, true_and]
     intro k hk
     match k with
     | 0 => simp [triangle]
@@ -302,7 +299,7 @@ theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
     simp only [Array.size_push, List.length_append, List.length_cons, List.length_nil, Nat.zero_add]
     grind [triangle]
   case vc6 => -- postcondition
-    simp_all
+    simp only [Nat.not_le, Std.PRange.length_toList_eq_size, Nat.size_Rco, SPred.down_pure] at *
     grind
 
 end EfficientImpl
