@@ -44,11 +44,6 @@ example : x_or_y 2 2 0 = 2 := by native_decide
 def IsPrime (n : Nat) : Prop :=
   2 ≤ n ∧ ∀ d : Nat, d ∣ n → d = 1 ∨ d = n
 
-theorem le_of_divides_of_pos {k n : Nat} (h : k ∣ n) (h' : n > 0) : k ≤ n := by
-  false_or_by_contra
-  have : n / k = 0 := by grind [Nat.div_eq_zero_iff]
-  grind [Nat.dvd_iff_div_mul_eq]
-
 theorem isPrime_eq_true_iff {n : Nat} :
     isPrime n = true ↔ 2 ≤ n ∧
         (List.filter (· ∣ n) (List.takeWhile (fun i => i * i ≤ n) (2...n).toList)).length = 0 := by
