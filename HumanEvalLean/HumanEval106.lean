@@ -28,8 +28,9 @@ theorem Std.PRange.length_toList_eq_size [UpwardEnumerable α] [LawfulUpwardEnum
 @[simp]
 theorem Nat.size_Rco {a b : Nat} :
     (a...b).size = b - a := by
-  simp [Std.PRange.size, Std.Iterators.Iter.size, Std.Iterators.IteratorSize.size,
-    Std.PRange.Internal.iter, Std.Iterators.Iter.toIterM, Std.PRange.RangeSize.size]
+  simp only [Std.PRange.size, Std.Iterators.Iter.size, Std.Iterators.IteratorSize.size,
+    Std.Iterators.Iter.toIterM, Std.PRange.Internal.iter, Std.PRange.RangeSize.size, Id.run_pure]
+  grind
 
 @[simp]
 theorem Nat.size_Rcc {a b : Nat} :
