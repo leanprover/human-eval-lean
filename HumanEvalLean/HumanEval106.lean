@@ -5,29 +5,11 @@ import Std.Tactic.Do
 -- `Nat` range without unfolding internal stuff. This should be fixed in the standard library.
 import all Init.Data.Iterators.Consumers.Loop
 
-open Std.Do
-
-def f (n : Nat) : List Nat := Id.run do
-  let mut ret : List Nat := []
-  for i in 1...=n do
-    if i % 2 = 0 then
-      let mut x := 1
-      for j in 1...=i do x := x * j
-      ret := x :: ret
-    else
-      let mut x := 0
-      for j in 1...=i do x := x + j
-      ret := x :: ret
-  return ret.reverse
-
 /-!
-## Tests
+This file provides two solutions for problem 106: a naïve one and an efficient one.
 -/
 
-example : f 5 = [1, 2, 6, 24, 15] := by native_decide
-example : f 7 = [1, 2, 6, 24, 15, 720, 28] := by native_decide
-example : f 1 = [1] := by native_decide
-example : f 3 = [1, 2, 6] := by native_decide
+open Std.Do
 
 /-!
 ## Standard library wishlist
@@ -51,7 +33,7 @@ theorem Nat.size_Rco {a b : Nat} :
 
 @[simp]
 theorem Nat.size_Rcc {a b : Nat} :
-    (a...=b).size = b + 1- a := by
+    (a...=b).size = b + 1 - a := by
   simp [Std.PRange.size, Std.Iterators.Iter.size, Std.Iterators.IteratorSize.size,
     Std.PRange.Internal.iter, Std.Iterators.Iter.toIterM, Std.PRange.RangeSize.size]
 
@@ -111,8 +93,36 @@ theorem Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons [LE α]
   simp only [← h] at this
   simp [this, getElem_Rcx_eq]
 
+section NaiveImpl
+
 /-!
-## Verification
+## A naïve implementation
+-/
+
+def f (n : Nat) : List Nat := Id.run do
+  let mut ret : List Nat := []
+  for i in 1...=n do
+    if i % 2 = 0 then
+      let mut x := 1
+      for j in 1...=i do x := x * j
+      ret := x :: ret
+    else
+      let mut x := 0
+      for j in 1...=i do x := x + j
+      ret := x :: ret
+  return ret.reverse
+
+/-!
+### Tests
+-/
+
+example : f 5 = [1, 2, 6, 24, 15] := by native_decide
+example : f 7 = [1, 2, 6, 24, 15, 720, 28] := by native_decide
+example : f 1 = [1] := by native_decide
+example : f 3 = [1, 2, 6] := by native_decide
+
+/-!
+### Verification
 -/
 
 def factorial : Nat → Nat
@@ -202,6 +212,145 @@ theorem f_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
     simp_all only [factorial, SPred.down_pure, Std.PRange.UpwardEnumerable.succMany?,
       Option.get_some]
     grind [triangle]
+
+end NaiveImpl
+
+section EfficientImpl
+
+/-!
+## An efficient implementation
+-/
+
+def f' (n : Nat) : Array Nat := Id.run do
+  if n ≤ 2 then
+    return #[1, 2].take n
+  let mut ret : Array Nat := .emptyWithCapacity n
+  ret := ret.push 1 -- 1st entry should be `triangle 1`
+  ret := ret.push 2 -- 2nd entry should be `factorial 2`
+  for i in 2...<n do
+    if i % 2 = 1 then
+      ret := ret.push (ret[i - 2]! * i * (i + 1))
+    else
+      ret := ret.push (ret[i - 2]! + 2 * i + 1)
+  return ret
+
+/-!
+### Tests
+-/
+
+example : f' 5 = #[1, 2, 6, 24, 15] := by native_decide
+example : f' 7 = #[1, 2, 6, 24, 15, 720, 28] := by native_decide
+example : f' 1 = #[1] := by native_decide
+example : f' 3 = #[1, 2, 6] := by native_decide
+
+/-!
+### Verification
+-/
+
+theorem size_f' {n : Nat} :
+    (f' n).size = n := by
+  generalize hwp : f' n = w
+  apply Std.Do.Id.of_wp_run_eq hwp
+  mvcgen
+  all_goals try infer_instance
+  case inv1 => exact ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2⌝
+  all_goals try simp_all; done -- relies on `Nat.size_Rcc`
+  simp_all only [Nat.not_le, Std.PRange.length_toList_eq_size, Nat.size_Rco, SPred.down_pure]
+  grind
+
+theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
+    (f' n)[k]'(by grind [size_f']) = if k % 2 = 0 then triangle (k + 1) else factorial (k + 1) := by
+  rw [Array.getElem_eq_iff]
+  generalize hwp : f' n = w
+  apply Std.Do.Id.of_wp_run_eq hwp
+  mvcgen
+  all_goals try infer_instance
+  case inv1 =>
+    exact ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ ∀ j : Nat, (_ : j < xs.size) →
+        (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
+  case vc1 =>
+    simp_all only [Array.take_eq_extract, List.extract_toArray, List.extract_eq_drop_take,
+      Nat.sub_zero, List.drop_zero, List.size_toArray, List.length_take, List.length_cons,
+      List.length_nil, Nat.zero_add, Nat.reduceAdd, Nat.min_eq_left, getElem?_pos,
+      List.getElem_toArray, List.getElem_take, Option.some.injEq]
+    match k with
+    | 0 => simp [triangle]
+    | 1 => simp [factorial]
+    | n + 2 => grind
+  case vc5 =>
+    simp_all
+    intro k hk
+    match k with
+    | 0 => simp [triangle]
+    | 1 => simp [factorial]
+    | n + 2 => grind
+  case vc3 =>
+    simp_all
+    intro j _
+    apply And.intro
+    · intro _
+      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+      simp [Std.PRange.UpwardEnumerable.succMany?] at this
+      rw [getElem!_pos]
+      · rename_i b h _ _ _ _ _
+        simp at h
+        simp_all
+        rw [Array.getElem_push]
+        split
+        · exact (h.2 j (by grind)).1 (by grind)
+        · have : j = b.size := by grind
+          cases this
+          rw [h.1]
+          grind [factorial]
+      · simp_all
+    · intro _
+      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+      simp [Std.PRange.UpwardEnumerable.succMany?] at this
+      rw [getElem!_pos]
+      · rename_i b h _ _ _ _ _
+        simp at h
+        simp_all
+        rw [Array.getElem_push]
+        split
+        · exact (h.2 j (by grind)).2 (by grind)
+        · grind
+      · simp_all
+  case vc4 =>
+    simp_all
+    intro j _
+    apply And.intro
+    · intro _
+      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+      simp [Std.PRange.UpwardEnumerable.succMany?] at this
+      rw [getElem!_pos]
+      · rename_i b h _ _ _ _ _
+        simp at h
+        simp_all
+        rw [Array.getElem_push]
+        split
+        · exact (h.2 j (by grind)).1 (by grind)
+        · grind
+      · simp_all
+    · intro _
+      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+      simp [Std.PRange.UpwardEnumerable.succMany?] at this
+      rw [getElem!_pos]
+      · rename_i b h _ _ _ _ _
+        simp at h
+        simp_all
+        rw [Array.getElem_push]
+        split
+        · exact (h.2 j (by grind)).2 (by grind)
+        · have : j = b.size := by grind
+          cases this
+          rw [h.1]
+          grind [triangle]
+      · simp_all
+  case vc6 =>
+    simp_all
+    grind
+
+end EfficientImpl
 
 /-!
 ## Prompt
