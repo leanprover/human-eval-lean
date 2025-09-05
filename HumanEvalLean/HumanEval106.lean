@@ -229,6 +229,8 @@ def f' (n : Nat) : Array Nat := Id.run do
   ret := ret.push 2 -- 2nd entry should be `factorial 2`
   for i in 2...<n do
     if i % 2 = 1 then
+      -- It would be nicer if we could use `ret[i - 2]`, but it is unclear how to use the
+      -- invariants `ret.size ≥ 2` and `i = ret.size` intrinsically.
       ret := ret.push (ret[i - 2]! * i * (i + 1))
     else
       ret := ret.push (ret[i - 2]! + 2 * i + 1)
@@ -268,7 +270,7 @@ theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
   case inv1 =>
     exact ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ ∀ j : Nat, (_ : j < xs.size) →
         (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
-  case vc1 =>
+  case vc1 => -- verification of the early return
     simp_all only [Array.take_eq_extract, List.extract_toArray, List.extract_eq_drop_take,
       Nat.sub_zero, List.drop_zero, List.size_toArray, List.length_take, List.length_cons,
       List.length_nil, Nat.zero_add, Nat.reduceAdd, Nat.min_eq_left, getElem?_pos,
@@ -277,76 +279,29 @@ theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
     | 0 => simp [triangle]
     | 1 => simp [factorial]
     | n + 2 => grind
-  case vc5 =>
-    simp_all
+  case vc5 => -- base case of the loop
+    mleave
+    simp_all only [Nat.not_le, Array.emptyWithCapacity_eq, List.push_toArray, List.nil_append,
+      List.cons_append, List.size_toArray, List.length_cons, List.length_nil, Nat.zero_add,
+      Nat.reduceAdd, List.getElem_toArray, true_and]
     intro k hk
     match k with
     | 0 => simp [triangle]
     | 1 => simp [factorial]
     | n + 2 => grind
-  case vc3 =>
-    simp_all
-    intro j _
-    apply And.intro
-    · intro _
-      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
-      simp [Std.PRange.UpwardEnumerable.succMany?] at this
-      rw [getElem!_pos]
-      · rename_i b h _ _ _ _ _
-        simp at h
-        simp_all
-        rw [Array.getElem_push]
-        split
-        · exact (h.2 j (by grind)).1 (by grind)
-        · have : j = b.size := by grind
-          cases this
-          rw [h.1]
-          grind [factorial]
-      · simp_all
-    · intro _
-      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
-      simp [Std.PRange.UpwardEnumerable.succMany?] at this
-      rw [getElem!_pos]
-      · rename_i b h _ _ _ _ _
-        simp at h
-        simp_all
-        rw [Array.getElem_push]
-        split
-        · exact (h.2 j (by grind)).2 (by grind)
-        · grind
-      · simp_all
-  case vc4 =>
-    simp_all
-    intro j _
-    apply And.intro
-    · intro _
-      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
-      simp [Std.PRange.UpwardEnumerable.succMany?] at this
-      rw [getElem!_pos]
-      · rename_i b h _ _ _ _ _
-        simp at h
-        simp_all
-        rw [Array.getElem_push]
-        split
-        · exact (h.2 j (by grind)).1 (by grind)
-        · grind
-      · simp_all
-    · intro _
-      have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
-      simp [Std.PRange.UpwardEnumerable.succMany?] at this
-      rw [getElem!_pos]
-      · rename_i b h _ _ _ _ _
-        simp at h
-        simp_all
-        rw [Array.getElem_push]
-        split
-        · exact (h.2 j (by grind)).2 (by grind)
-        · have : j = b.size := by grind
-          cases this
-          rw [h.1]
-          grind [triangle]
-      · simp_all
-  case vc6 =>
+  case vc3 hmod h => -- `then` branch
+    mleave
+    have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+    simp only [Std.PRange.UpwardEnumerable.succMany?, Option.get_some] at this
+    simp only [Array.size_push, List.length_append, List.length_cons, List.length_nil, Nat.zero_add]
+    grind [factorial]
+  case vc4 => -- `else` branch
+    mleave
+    have := Std.PRange.eq_succMany?_of_toList_Rcx_eq_append_cons ‹_›
+    simp only [Std.PRange.UpwardEnumerable.succMany?, Option.get_some] at this
+    simp only [Array.size_push, List.length_append, List.length_cons, List.length_nil, Nat.zero_add]
+    grind [triangle]
+  case vc6 => -- postcondition
     simp_all
     grind
 
