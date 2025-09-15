@@ -2,6 +2,9 @@ name = "human-eval-lean"
 version = "0.1.0"
 defaultTargets = ["HumanEvalLean", "create-scaffold"]
 
+[leanOptions]
+experimental.module = true
+
 [[lean_lib]]
 name = "HumanEvalLean"
 globs = ["HumanEvalLean.*"]
