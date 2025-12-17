@@ -9,6 +9,8 @@ import all Init.Data.Iterators.Consumers.Loop
 This file provides two solutions for problem 106: a naïve one and an efficient one.
 -/
 
+set_option mvcgen.warning false
+
 open Std.Do
 
 section NaiveImpl
