@@ -138,17 +138,6 @@ def check(candidate):
 theorem List.exists_append (l : List α) (n : Nat) (h : n ≤ l.length) : ∃ xs ys, ys.length = n ∧ l = xs ++ ys :=
   ⟨l.take (l.length - n), l.drop (l.length - n), by grind, by simp⟩
 
-@[simp]
-theorem Std.HashSet.toList_emptyWithCapacity {α : Type u} [BEq α] [Hashable α]
-    [EquivBEq α] [LawfulHashable α] {n : Nat} :
-    (HashSet.emptyWithCapacity n : HashSet α).toList = [] := by
-  simp [← List.isEmpty_iff]
-
-@[simp]
-theorem Std.HashSet.toList_empty {α : Type u} [BEq α] [Hashable α]
-    [EquivBEq α] [LawfulHashable α] : (∅ : HashSet α).toList = [] := by
-  simp [← List.isEmpty_iff]
-
 theorem List.Any₂.append_left {P : α → α → Prop} (xs : List α) {ys : List α} (h : ys.Any₂ P) : (xs ++ ys).Any₂ P :=
   List.any₂_append.2 (by simp [h])
 

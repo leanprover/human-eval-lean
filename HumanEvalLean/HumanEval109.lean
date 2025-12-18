@@ -63,7 +63,7 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
         rw [List.sum_eq_zero]
         intro x hx
         specialize h (x+1)
-        simp only [Nat.add_lt_add_iff_right, Nat.right_eq_add, Nat.add_eq_zero, Nat.succ_ne_self,
+        simp only [Nat.add_lt_add_iff_right, Nat.right_eq_add, Nat.add_eq_zero_iff, Nat.succ_ne_self,
           and_false, not_false_eq_true, getElem_cons_succ, forall_const] at h
         apply h
         exact hx
@@ -72,7 +72,7 @@ theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i
         left
         constructor
         · specialize h 0
-          simp only [Nat.zero_lt_succ, Nat.add_eq_zero, Nat.succ_ne_self, and_false,
+          simp only [Nat.zero_lt_succ, Nat.add_eq_zero_iff, Nat.succ_ne_self, and_false,
             not_false_eq_true, getElem_cons_zero, forall_const] at h
           assumption
         · rw [ih]
@@ -158,7 +158,7 @@ theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
             rw [List.sum_eq_one_iff] at htl
             rcases htl with ⟨i, hi,hi', _⟩
             exists (i+1)
-            simp only [Nat.right_eq_add, Nat.add_eq_zero, Nat.succ_ne_self, and_false,
+            simp only [Nat.right_eq_add, Nat.add_eq_zero_iff, Nat.succ_ne_self, and_false,
               not_false_eq_true, getElem_cons_succ, Nat.add_lt_add_iff_right, true_and]
             exists hi
         · intro h₁
