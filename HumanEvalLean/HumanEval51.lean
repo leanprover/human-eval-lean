@@ -14,7 +14,7 @@ def RemoveVowelsIff (solution : String → String) : Prop :=
     (s x : String) → (solution s = x) → MaximalFor (fun i => NoVowels i ∧ IsSubseq i s) (String.length) x
 
 def removeVowels (s : String) : String :=
-    String.mk (s.toList.filter (· ∉ vowels))
+    String.ofList (s.toList.filter (· ∉ vowels))
 
 example : removeVowels "abcdef" = "bcdf" := by native_decide
 example : removeVowels "abcdef\nghijklm" = "bcdf\nghjklm" := by native_decide
@@ -27,8 +27,8 @@ theorem IsSubseq.length_le {s t : String} (hst : IsSubseq s t) :
   List.Sublist.length_le hst
 
 theorem IsSubseq.removeVowels {s t : String} (hst : IsSubseq s t) :
-    IsSubseq (removeVowels s) (removeVowels t) :=
-  hst.filter _
+    IsSubseq (removeVowels s) (removeVowels t) := by
+  simpa [IsSubseq, _root_.removeVowels] using hst.filter _
 
 theorem removeVowels_eq_self {s : String} :
     removeVowels s = s ↔ NoVowels s := by
