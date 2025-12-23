@@ -3,9 +3,9 @@ module
 public import Std
 
 public def isExchangePossible (xs ys : Array Int) : String :=
-    let need := xs.iter.filter (· % 2 == 1) |>.count
-    let available := ys.iter.filter (· % 2 == 0) |>.count
-    if need ≤ available then "YES" else "NO"
+  let need := xs.iter.filter (· % 2 == 1) |>.count
+  let available := ys.iter.filter (· % 2 == 0) |>.count
+  if need ≤ available then "YES" else "NO"
 
 /-!
 ## Prerequisites
@@ -20,9 +20,7 @@ theorem Vector.forall_mem_iff_forall_getElem (P : α → Prop) (xs : Vector α n
   grind [mem_iff_getElem]
 
 /-!
-## Specification
-
-The specification is a very direct formalization of the problem statement.
+## Verification
 -/
 
 attribute [grind =] Vector.countP_set
@@ -42,6 +40,16 @@ public def VectorPair.concat (p : VectorPair m n) : Vector Int (m + n) :=
 public def VectorPair.exchange {m n} (p : VectorPair m n) (e : Exchange m n) :
     VectorPair m n :=
   ⟨p.1.set e.1 p.2[e.2], p.2.set e.2 p.1[e.1]⟩
+
+@[grind =]
+public theorem VectorPair.fst_exchange {m n} {p : VectorPair m n} {e : Exchange m n} :
+    (p.exchange e).fst = p.1.set e.1 p.2[e.2] := by
+  grind [exchange]
+
+@[grind =]
+public theorem VectorPair.snd_exchange {m n} {p : VectorPair m n} {e : Exchange m n} :
+    (p.exchange e).snd = p.2.set e.2 p.1[e.1] := by
+  grind [exchange]
 
 public theorem VectorPair.concat_exchange_eq_swap {p : VectorPair m n} {e : Exchange m n} :
     (p.exchange e).concat = p.concat.swap e.1 (m + e.2) := by
@@ -86,10 +94,10 @@ public theorem Vector.countP_add_countP_not {xs : Vector Int m} {P} :
   simp only [← Vector.countP_toList]
   grind
 
-public theorem b {xs : Vector Int m} {ys : Vector Int n} :
-    xs.countP (· % 2 == 1) ≤ ys.countP (· % 2 == 0) ↔
-      m ≤ (VectorPair.mk xs ys).concat.countP (· %  2 == 0) := by
-  conv => rhs; lhs; rw [← Vector.countP_add_countP_not (xs := xs) (P := (· % 2 == 1))]
+public theorem VectorPair.countP_le_countP_iff_size_le_countP {p : VectorPair m n} :
+    p.1.countP (· % 2 == 1) ≤ p.2.countP (· % 2 == 0) ↔
+      m ≤ p.concat.countP (· %  2 == 0) := by
+  conv => rhs; lhs; rw [← Vector.countP_add_countP_not (xs := p.1) (P := (· % 2 == 1))]
   have : ∀ x : Int, (x % 2 == 0) = (! x % 2 == 1) := by grind
   simp only [this, VectorPair.concat, Vector.countP_append]
   grind
@@ -100,38 +108,33 @@ public theorem Vector.Perm.countP_eq {xs ys : Vector α n} {P}
   simp only [Vector.countP, ← Array.countP_toList, Vector.toList_toArray]
   grind [List.Perm.countP_eq, Array.Perm.toList, Vector.Perm.toArray]
 
-public theorem core {xs : Vector Int m} {ys : Vector Int n} :
-    xs.countP (· % 2 == 1) ≤ ys.countP (· % 2 == 0) ↔
-      ∃ es, (VectorPair.exchanges ⟨xs, ys⟩ es).1.all (· % 2 == 0) := by
+public theorem VectorPair.countP_le_countP_iff_exists {p : VectorPair m n} :
+    p.1.countP (· % 2 == 1) ≤ p.2.countP (· % 2 == 0) ↔
+      ∃ es, (VectorPair.exchanges p es).1.all (· % 2 == 0) := by
   constructor
-  · induction hn : xs.countP (· % 2 == 1) generalizing xs ys
+  · induction hn : p.1.countP (· % 2 == 1) generalizing p
     · simp only [Nat.zero_le, true_imp_iff]
       refine ⟨[], ?_⟩
-      simp [VectorPair.exchanges]
-      simp at hn
-      intro i hi
-      have : xs[i] ∈ xs := by grind
+      have : ∀ (i : Nat) hi, p.1[i]'hi ∈ p.1 := by grind
       grind
     · rename_i n ih
       · intro h
-        have hx : xs.countP (· % 2 == 1) > 0 := by grind
-        have hy : ys.countP (· % 2 == 0) > 0 := by grind
+        have hx : p.1.countP (· % 2 == 1) > 0 := by grind
+        have hy : p.2.countP (· % 2 == 0) > 0 := by grind
         simp only [Vector.countP_pos_iff, Vector.exists_mem_iff_exists_getElem] at hx hy
+        -- There are indices `ix`, `iy` such that `p.fst[ix] % 2 = 1` and `p.snd[iy] % 2 = 0`.
+        -- By exchanging these, we can decrease the number of odd numbers in the first vector,
+        -- enabling the application of the inductive hypothesis.
         obtain ⟨ix, hix, hx⟩ := hx
         obtain ⟨iy, hiy, hy⟩ := hy
-        -- let p := exchange (xs, ys) ⟨ix, hix⟩ ⟨iy, hiy⟩
-        let xs' := xs.set ix ys[iy]
-        let ys' := ys.set iy xs[ix]
-        specialize ih (xs := xs') (ys := ys') (by grind)
-        have : n ≤ ys'.countP (· % 2 == 0) := by grind
+        let p' := p.exchange ⟨⟨ix, hix⟩, ⟨iy, hiy⟩⟩
+        specialize ih (p := p') (by grind)
+        have : n ≤ p'.2.countP (· % 2 == 0) := by grind
         simp only [this, true_imp_iff] at ih
         obtain ⟨es', hes'⟩ := ih
-        refine ⟨⟨⟨ix, hix⟩, ⟨iy, hiy⟩⟩ :: es', ?_⟩
-        simp only [VectorPair.exchanges_cons]
-        exact hes' -- TODO: this is defeq abuse
-  · rw [b]
+        exact ⟨⟨⟨ix, hix⟩, ⟨iy, hiy⟩⟩ :: es', (by grind)⟩
+  · rw [VectorPair.countP_le_countP_iff_size_le_countP]
     rintro ⟨es, hes⟩
-    generalize VectorPair.mk xs ys = p at *
     have : m ≤ (p.exchanges es).concat.countP (· % 2 == 0) := by
       simp only [VectorPair.concat, Vector.countP_append]
       rw [Vector.countP_eq_size.mpr]
@@ -144,13 +147,13 @@ public theorem core {xs : Vector Int m} {ys : Vector Int n} :
 public theorem isExchangePossible_correct {xs ys : Array Int} :
     isExchangePossible xs ys = "YES" ↔
       ∃ es, (VectorPair.exchanges ⟨xs.toVector, ys.toVector⟩ es).1.all (· % 2 == 0) := by
-  simp only [isExchangePossible, ite_eq_left_iff, Nat.not_le, String.reduceEq,
-    imp_false, Nat.not_lt]
-  simp only [← Std.Iter.length_toList_eq_count, Std.Iter.toList_filter, Array.toList_iter,
-    ← List.countP_eq_length_filter, Array.countP_toList]
-  conv => lhs; rw [← Vector.toArray_mk (xs := xs), ← Vector.toArray_mk (xs := ys)]
-  rw [← Array.toVector, ← Array.toVector, Vector.countP_toArray, Vector.countP_toArray]
-  rw [core]
+  -- package `xs`, `ys` into a `VectorPair`
+  generalize h : VectorPair.mk xs.toVector ys.toVector = p
+  simp only [show xs = p.1.toArray by grind, show ys = p.2.toArray by grind]
+  -- prove the actual statement
+  simp only [isExchangePossible, ← Std.Iter.length_toList_eq_count, Std.Iter.toList_filter,
+    Array.toList_iter, ← List.countP_eq_length_filter]
+  grind [VectorPair.countP_le_countP_iff_exists, List.countP_eq_length_filter]
 
 /-!
 ## Prompt
