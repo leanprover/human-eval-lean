@@ -1,5 +1,177 @@
-def max_fill : Unit :=
-  ()
+module
+
+public import Std
+open Std
+
+/-!
+## Implementation
+-/
+
+def maxFill (grid : Array (Vector Nat n)) (capacity : Nat) : Nat :=
+  grid.iter.map (fun well => (well.sum + capacity - 1) / capacity) |>.fold (init := 0) (· + ·)
+
+/-!
+# Tests
+-/
+
+example : maxFill #[#v[0,0,1,0], #v[0,1,0,0], #v[1,1,1,1]]              1 = 6 := by native_decide
+example : maxFill #[#v[0,0,1,1], #v[0,0,0,0], #v[1,1,1,1], #v[0,1,1,1]] 2 = 5 := by native_decide
+example : maxFill #[#v[0,0,0],   #v[0,0,0]]                             5 = 0 := by native_decide
+example : maxFill #[#v[1,1,1,1], #v[1,1,1,1]]                           2 = 4 := by native_decide
+example : maxFill #[#v[1,1,1,1], #v[1,1,1,1]]                           9 = 2 := by native_decide
+
+/-!
+## Verification
+
+This problem's implementation is not very complex and it is not clear how a specification
+should look like.
+-/
+
+def Vector.modify (xs : Vector α n) (i : Nat) (f : α → α) : Vector α n :=
+  ⟨xs.toArray.modify i f, by grind⟩
+
+def WellAction (n c : Nat) := { mask : Vector Nat n // mask.sum ≤ c }
+def WellAction.apply (a : WellAction n c) (well : Vector Nat n) : Vector Nat n :=
+  (well.zip a.val).map (fun (given, lower) => given - lower)
+
+def Action (m n c : Nat) := Fin m × WellAction n c
+def Action.apply (a : Action m n c) (grid : Vector (Vector Nat n) m) : Vector (Vector Nat n) m :=
+  grid.modify a.1 a.2.apply
+
+def IsWellEmpty (well : Vector Nat n) : Bool := well.all (· = 0)
+def IsGridEmpty (grid : Vector (Vector Nat n) m) : Bool := grid.all IsWellEmpty
+
+def IsMin (P : Nat → Prop) (n : Nat) : Prop := P n ∧ ∀ m, P m → n ≤ m
+
+noncomputable def MinimalGridActions (grid : Vector (Vector Nat n) m) (c : Nat) (result : Nat) : Prop :=
+  IsMin
+    (fun r => ∃ as : List (Action m n c),
+        IsGridEmpty (as.foldr (init := grid) Action.apply) ∧ r = as.length)
+    result
+
+noncomputable def MinimalWellActions (well : Vector Nat n) (c : Nat) (result : Nat) : Prop :=
+  IsMin
+    (fun r => ∃ as : List (WellAction n c),
+        IsWellEmpty (as.foldr (init := well) WellAction.apply) ∧ r = as.length)
+    result
+
+def nextAction (well : Vector Nat n) (c : Nat) (d : Nat) (h : c ≤ d) : WellAction n d :=
+  let inner := go well.toList c
+  ⟨⟨inner.val.toArray, ?ha⟩, ?hb⟩
+where
+  go (ws : List Nat) (c : Nat) : { ws' : List Nat // ws'.length = ws.length ∧ ws'.sum = min ws.sum c ∧ ∀ (i : Nat) h h', ws'[i]'h ≤ ws[i]'h' } :=
+    match ws with
+    | [] => ⟨[], rfl, by grind⟩
+    | w :: ws =>
+      ⟨min w c :: go ws (c - min w c), by simp [(go ws (c - min w c)).property], by have := (go ws (c - min w c)).property.2; generalize (go ws (c - min w c)).val = k at *; grind⟩
+  finally
+    case ha => simpa using inner.property.1
+    case hb =>
+      have := inner.property.2
+      simp only [Vector.sum_mk, List.sum_toArray, this, ge_iff_le]
+      omega
+
+theorem e {well : Vector Nat n} {c d : Nat} (h : c ≤ d) {i : Nat} {h'} :
+    (nextAction well c d h).val[i]'h' + ((nextAction well c d h).apply well)[i]'h' = well[i] := by
+  have := (nextAction.go well.toList c).property.2.2
+  simp only [nextAction, Vector.getElem_mk, List.getElem_toArray, WellAction.apply,
+    Vector.getElem_map, Vector.getElem_zip]
+  grind
+
+theorem f {well : Vector Nat n} {c d : Nat} (h : c ≤ d) :
+    (nextAction well c d h).val.sum + ((nextAction well c d h).apply well).sum = well.sum := by
+  sorry
+
+@[grind =]
+theorem Vector.sum_toList {xs : Vector Nat α} :
+    xs.toList.sum = xs.sum := by
+  sorry
+
+def optActions (well : Vector Nat n) (c : Nat) (d : Nat) (h : c ≤ d) : List (WellAction n d) :=
+  let a := nextAction well c d h
+  if a.val.sum > 0 then
+    optActions (a.apply well) c d h
+  else
+    []
+termination_by well.toList.sum
+decreasing_by
+  grind [f]
+
+theorem c {well : Vector Nat n} {c : Nat} (hc : 0 < c) :
+    IsWellEmpty ((optActions well c c (by grind)).foldr (init := well) WellAction.apply) := by
+  sorry
+
+theorem b {well : Vector Nat n} {r} (h : MinimalWellActions well c r) :
+    r = (well.sum + c - 1) / c := by
+  apply Nat.le_antisymm
+  · apply h.2
+    let as : List (WellAction n c) :=
+
+theorem List.sum_length_filter {xs : List α} {f : α → Fin n} :
+    (Vector.ofFn (fun i : Fin n => xs.filter (f · = i) |>.length)).sum = xs.length := by
+  sorry
+
+theorem Vector.map_ofFn {f : Fin n → α} {g : α → β} :
+    (Vector.ofFn f).map g = Vector.ofFn (g ∘ f) := by
+  sorry
+
+theorem bla {grid : Vector (Vector Nat n) m} {as : List (Action m n)} {i : Fin m} :
+    (as.foldr (init := grid) Action.apply)[i.val] = (as.filter (·.1 = i) |>.map (·.2) |>.foldr (init := grid[i.val]) WellAction.apply) := by
+  simp only [List.foldr_map, List.foldr_filter]
+  apply Eq.symm
+  apply List.foldr_hom (f := fun g => g[i.val])
+  simp [Action.apply, Vector.modify, Array.getElem_modify, Fin.val_inj]
+
+theorem bla' {grid : Vector (Vector Nat n) m} {as : List (Action m n)} :
+    (as.foldr (init := grid) Action.apply) = Vector.ofFn (fun i => (as.filter (·.1 = i) |>.map (·.2) |>.foldr (init := grid[i.val]) WellAction.apply)) := by
+  grind [bla]
+
+theorem a {grid : Vector (Vector Nat n) m} {r} :
+    MinimalGridActions grid r ↔
+      ∃ rs : Vector Nat m, r = rs.sum ∧ ∀ i : Fin m, MinimalWellActions grid[i] (rs[i]) := by
+  simp only [MinimalGridActions, MinimalWellActions, bla', IsGridEmpty, Fin.getElem_fin]
+  apply Iff.intro
+  · intro h
+    obtain ⟨as, has, rfl⟩ := h.1
+    let partition := Vector.ofFn (fun i : Fin m => as.filter (·.1 = i))
+    have hrs := List.sum_length_filter (xs := as) (f := (·.1))
+    refine ⟨partition.map (·.length), by simpa [partition, Vector.map_ofFn] using hrs.symm, ?_⟩
+    intro i
+    apply And.intro
+    · refine ⟨partition[i].map (·.2), ?_, ?_⟩
+      · simp [partition]
+        simp at has
+        specialize has i.val i.isLt
+        simpa using has
+      · simp
+    · rintro _ ⟨as', has', rfl⟩
+      have := h.2 (as.length + as'.length - (Vector.map (fun x => x.length) partition)[↑i])
+      simp at this
+
+  apply Iff.intro
+  · intro h
+    obtain ⟨as, has, rfl⟩ := h.1
+    let partition := Vector.ofFn (fun i : Fin m => as.filter (·.1 = i))
+    have hrs := List.sum_length_filter (xs := as) (f := (·.1))
+    refine ⟨partition.map (·.length), by simpa [partition, Vector.map_ofFn] using hrs.symm, ?_⟩
+    intro i
+    apply And.intro
+    · refine ⟨partition[i].map (·.2), ?_⟩
+      apply And.intro
+      · simp only [Fin.getElem_fin, Vector.getElem_ofFn, partition]
+        let g₂ (a : Action m n) (w : Vector Nat n) : Vector Nat n :=
+          if a.fst = i then a.snd.apply w else w
+        simp [IsGridEmpty] at has
+        specialize has i.val i.isLt
+        rw [← List.foldr_hom (f := fun gr => gr[i.val]) (g₂ := g₂)] at has; rotate_left
+        · simp [Action.apply, Vector.modify, g₂, Array.getElem_modify, Fin.val_inj]
+        simp only [g₂] at has
+        simpa [List.foldr_map, List.foldr_filter]
+      · simp
+    · rintro k ⟨as', has'⟩
+      sorry
+
+
 
 /-!
 ## Prompt
@@ -11,25 +183,25 @@ def max_fill(grid, capacity):
     """
     You are given a rectangular grid of wells. Each row represents a single well,
     and each 1 in a row represents a single unit of water.
-    Each well has a corresponding bucket that can be used to extract water from it, 
+    Each well has a corresponding bucket that can be used to extract water from it,
     and all buckets have the same capacity.
     Your task is to use the buckets to empty the wells.
     Output the number of times you need to lower the buckets.
 
     Example 1:
-        Input: 
+        Input:
             grid : [[0,0,1,0], [0,1,0,0], [1,1,1,1]]
             bucket_capacity : 1
         Output: 6
 
     Example 2:
-        Input: 
+        Input:
             grid : [[0,0,1,1], [0,0,0,0], [1,1,1,1], [0,1,1,1]]
             bucket_capacity : 2
         Output: 5
-    
+
     Example 3:
-        Input: 
+        Input:
             grid : [[0,0,0], [0,0,0]]
             bucket_capacity : 5
         Output: 0
