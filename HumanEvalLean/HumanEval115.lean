@@ -43,17 +43,204 @@ def IsGridEmpty (grid : Vector (Vector Nat n) m) : Bool := grid.all IsWellEmpty
 
 def IsMin (P : Nat → Prop) (n : Nat) : Prop := P n ∧ ∀ m, P m → n ≤ m
 
-noncomputable def MinimalGridActions (grid : Vector (Vector Nat n) m) (c : Nat) (result : Nat) : Prop :=
+def MinimalGridActions (grid : Vector (Vector Nat n) m) (c : Nat) (result : Nat) : Prop :=
   IsMin
     (fun r => ∃ as : List (Action m n c),
         IsGridEmpty (as.foldr (init := grid) Action.apply) ∧ r = as.length)
     result
 
-noncomputable def MinimalWellActions (well : Vector Nat n) (c : Nat) (result : Nat) : Prop :=
+def MinimalWellActions (well : Vector Nat n) (c : Nat) (result : Nat) : Prop :=
   IsMin
     (fun r => ∃ as : List (WellAction n c),
         IsWellEmpty (as.foldr (init := well) WellAction.apply) ∧ r = as.length)
     result
+
+@[ext]
+structure AbstractWell where
+  val : Nat
+
+abbrev AbstractWell.IsEmpty (well : AbstractWell) : Prop :=
+  well.val = 0
+
+def AbstractWellAction (c : Nat) := Fin (c + 1)
+def AbstractWellAction.apply (a : AbstractWellAction c) (well : AbstractWell) : AbstractWell :=
+  AbstractWell.mk (well.val - a.val)
+
+def MinimalAbstractWellActions (well : AbstractWell) (c : Nat) (result : Nat) : Prop :=
+  IsMin (fun r => ∃ as : List (AbstractWellAction c),
+      (as.foldr (init := well) AbstractWellAction.apply).IsEmpty ∧ r = as.length) result
+
+def abstract (well : Vector Nat n) : AbstractWell :=
+  AbstractWell.mk well.sum
+
+def liftAction.go (xs : List Nat) (k : Nat) : List Nat :=
+  match xs with
+  | [] => []
+  | x :: xs => min x k :: liftAction.go xs (k - min x k)
+
+theorem liftAction.length_go {xs k} :
+    (liftAction.go xs k).length = xs.length := by
+  induction xs generalizing k <;> grind [go]
+
+theorem liftAction.sum_go {xs k} :
+    (liftAction.go xs k).sum = min k xs.sum := by
+  induction xs generalizing k <;> grind [go]
+
+-- theorem liftAction.sum_go {xs k} (h : k ≤ xs.sum) :
+--     (liftAction.go xs k).sum = k := by
+--   induction xs generalizing k <;> grind [go]
+
+@[simp, grind =]
+theorem Vector.sum_toList {xs : Vector Nat α} :
+    xs.toList.sum = xs.sum := by
+  sorry
+
+@[simp, grind =]
+theorem Vector.toList_zip {as : Vector α n} {bs : Vector β n} :
+    (Vector.zip as bs).toList = List.zip as.toList bs.toList := by
+  rcases as with ⟨as, rfl⟩
+  rcases bs with ⟨bs, h⟩
+  simp
+
+def AbstractWellAction.lift (well : Vector Nat n) (a : AbstractWellAction c) : WellAction n c :=
+  ⟨⟨(liftAction.go well.toList a.val).toArray,
+      by grind [liftAction.length_go]⟩, by grind [liftAction.sum_go, Vector.sum_mk]⟩
+
+theorem sum_sub_sum_apply_lt {well : Vector Nat n} {a : WellAction n c} :
+    well.sum - (a.apply well).sum < c + 1 := by
+  simp only [WellAction.apply, ← Vector.sum_toList, Vector.toList_map, Vector.toList_zip]
+  have : well.toList.length = n := by grind
+  generalize well.toList = ws at *
+  clear well
+  induction ws generalizing n a c
+  · grind
+  · rename_i w ws ih
+    match a with
+    | ⟨⟨⟨[]⟩, _⟩, _⟩ => grind
+    | ⟨⟨⟨a :: as⟩, _⟩, _⟩ =>
+      specialize ih (n := n - 1) (c := c - a) (a := ⟨⟨⟨as⟩, by grind⟩, by grind [Vector.sum_mk]⟩)
+      grind [List.zip_cons_cons, Vector.sum_mk]
+
+def abstractAction (well : Vector Nat n) (a : WellAction n c) : AbstractWellAction c :=
+  ⟨well.sum - (a.apply well).sum, by apply sum_sub_sum_apply_lt⟩
+
+theorem abstract_apply_liftAction {well : Vector Nat n} {a : AbstractWellAction c} :
+    abstract ((a.lift well).apply well) = a.apply (abstract well) := by
+  ext
+  simp only [abstract, WellAction.apply, AbstractWellAction.apply]
+  simp only [← Vector.sum_toList, Vector.toList_map, Vector.toList_zip, AbstractWellAction.lift,
+    Vector.toList_mk]
+  induction well.toList generalizing a
+  · grind [liftAction.go, List.zip_nil_right]
+  · rename_i w ws ih
+    specialize ih (a := ⟨a.val - min w a.val, by grind⟩)
+    grind [liftAction.go, List.zip_cons_cons]
+
+theorem apply_abstractAction_abstract {well : Vector Nat n} {a : WellAction n c} :
+    (abstractAction well a).apply (abstract well) = abstract (a.apply well) := by
+  ext
+  simp only [abstract, WellAction.apply, AbstractWellAction.apply, abstractAction]
+  simp only [← Vector.sum_toList, Vector.toList_map, Vector.toList_zip]
+  have : well.toList.length = n := by grind
+  generalize well.toList = ws at *
+  clear well
+  induction ws generalizing n a c
+  · grind [List.zip_nil_left]
+  · rename_i w ws ih
+    match a with
+    | ⟨⟨⟨[]⟩, _⟩, _⟩ => grind
+    | ⟨⟨⟨a :: as⟩, _⟩, _⟩ =>
+      specialize ih (n := n - 1) (c := c - a) (a := ⟨⟨⟨as⟩, by grind⟩, by grind [Vector.sum_mk]⟩)
+      grind [List.zip_cons_cons, Vector.sum_mk]
+
+def liftActions (well : Vector Nat n) (as : List (AbstractWellAction c)) :
+    List (WellAction n c) :=
+  match as with
+  | [] => []
+  | a :: as => a.lift ((liftActions well as).foldr (init := well) WellAction.apply) :: liftActions well as
+
+def abstractActions (well : Vector Nat n) (as : List (WellAction n c)) :
+    List (AbstractWellAction c) :=
+  match as with
+  | [] => []
+  | a :: as => abstractAction (as.foldr (init := well) WellAction.apply) a :: abstractActions well as
+
+theorem abstract_apply_liftActions {well : Vector Nat n} {as : List (AbstractWellAction c)} :
+    abstract (((liftActions well as).foldr (init := well) WellAction.apply)) = as.foldr (init := abstract well) AbstractWellAction.apply := by
+  induction as
+  · grind [liftActions]
+  · grind [liftActions, abstract_apply_liftAction]
+
+theorem apply_abstractActions_abstract {well : Vector Nat n} {as : List (WellAction n c)} :
+    (abstractActions well as).foldr (init := abstract well) AbstractWellAction.apply = abstract (as.foldr (init := well) WellAction.apply) := by
+  induction as
+  · grind [abstractActions]
+  · grind [abstractActions, apply_abstractAction_abstract]
+
+def optimalAbstractActions (well : AbstractWell) (c : Nat) : List (AbstractWellAction c) :=
+  List.replicate ((well.val + c - 1) / c) ⟨c, by grind⟩
+
+theorem AbstractWellAction.apply_list {well : AbstractWell} {as : List (AbstractWellAction c)} :
+    as.foldr (init := well) AbstractWellAction.apply = AbstractWell.mk (well.val - (as.map (·.val)).sum) := by
+  induction as generalizing well
+  · simp
+  · grind [AbstractWellAction.apply]
+
+theorem isEmpty_apply_optimalAbstractActions {well : AbstractWell} {c : Nat} (hc : c > 0) :
+    ((optimalAbstractActions well c).foldr (init := well) AbstractWellAction.apply).IsEmpty := by
+  rw [AbstractWellAction.apply_list]
+  simp [AbstractWell.IsEmpty, optimalAbstractActions]
+  sorry
+
+def optimalActions (well : Vector Nat n) (c : Nat) : List (WellAction n c) :=
+  liftActions well (optimalAbstractActions (abstract well) c)
+
+theorem List.exists_mem_and {P : α → Prop} {l : List α} :
+    (∃ a, a ∈ l ∧ P a) ↔ (∃ (n : Nat), ∃ h, P (l[n]'h)) := by
+  refine ⟨fun ⟨a, h, h'⟩ => ?_, fun ⟨n, h, h'⟩ => ⟨l[n], by simp, h'⟩⟩
+  obtain ⟨i, h'', rfl⟩ := List.getElem_of_mem h
+  exact ⟨_, _, h'⟩
+
+theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
+    ∀ (i : Nat) (hi : i < l.length), l[i] = 0 := by
+  rw [← Decidable.not_iff_not]
+  simp [← Nat.pos_iff_ne_zero, Nat.sum_pos_iff_exists_pos, List.exists_mem_and]
+
+theorem Vector.sum_eq_zero {xs : Vector Nat n} : xs.sum = 0 ↔ ∀ (i : Nat) (hi : i < n), xs[i] = 0 := by
+  rw [← Vector.sum_toList, List.sum_eq_zero]
+  grind
+
+theorem isWellEmpty_iff_isEmpty_abstract {well : Vector Nat n} :
+    IsWellEmpty well ↔ (abstract well).IsEmpty := by
+  grind [abstract, IsWellEmpty, Vector.sum_eq_zero]
+
+theorem isWellEmpty_apply_optimalActions {well : Vector Nat n} {c : Nat} (hc : c > 0) :
+    IsWellEmpty ((optimalActions well c).foldr (init := well) WellAction.apply) := by
+  grind [isWellEmpty_iff_isEmpty_abstract, optimalActions, abstract_apply_liftActions,
+    isEmpty_apply_optimalAbstractActions]
+
+theorem length_optimalAbstractActions {well : AbstractWell} {c : Nat} :
+    (optimalAbstractActions well c).length = (well.val + c - 1) / c := by
+  grind [optimalAbstractActions]
+
+theorem length_liftActions {well : Vector Nat n} {as : List (AbstractWellAction c)} :
+    (liftActions well as).length = as.length := by
+  induction as <;> grind [liftActions]
+
+theorem length_optimalActions {well : Vector Nat n} {c : Nat} :
+    (optimalActions well c).length = (well.sum + c - 1) / c := by
+  grind [optimalActions, length_liftActions, length_optimalAbstractActions, abstract]
+
+theorem val_le_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
+    (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) :
+    well.val ≤ (as.map (·.val)).sum := by
+  grind [AbstractWellAction.apply_list]
+
+theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
+    (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) :
+    (well.val + c - 1) / c ≤ as.length := by
+  have := val_le_of_isEmpty_apply_list h
+
 
 def nextAction (well : Vector Nat n) (c : Nat) (d : Nat) (h : c ≤ d) : WellAction n d :=
   let inner := go well.toList c
@@ -80,11 +267,6 @@ theorem e {well : Vector Nat n} {c d : Nat} (h : c ≤ d) {i : Nat} {h'} :
 
 theorem f {well : Vector Nat n} {c d : Nat} (h : c ≤ d) :
     (nextAction well c d h).val.sum + ((nextAction well c d h).apply well).sum = well.sum := by
-  sorry
-
-@[grind =]
-theorem Vector.sum_toList {xs : Vector Nat α} :
-    xs.toList.sum = xs.sum := by
   sorry
 
 def optActions (well : Vector Nat n) (c : Nat) (d : Nat) (h : c ≤ d) : List (WellAction n d) :=
