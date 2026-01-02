@@ -148,29 +148,31 @@ theorem isMinSuffixSum₀_append_singleton_eq {xs : List Int} {x minSuff : Int}
       · simp only [IsMinSuffixSum₀] at h
         grind [List.drop_append_of_le_length]
 
--- theorem List.min_le_zero_of_sum_le_zero {xs : List Int} (hne : xs ≠ []) (h : xs.sum ≤ 0) :
---     xs.min hne ≤ 0 := by
---   induction xs
---   · grind
---   · rename_i x xs ih
---     cases xs
---     · simp_all [List.min_eq_get_min?]
---     · grind [min?_cons, min_eq_get_min?]
+theorem List.zero_le_min_of_zero_le_sum {xs : List Int} (hne : xs ≠ []) (h : xs.sum ≤ 0) :
+    xs.min hne ≤ 0 := by
+  induction xs
+  · grind
+  · rename_i x xs ih
+    cases xs
+    · simp_all [List.min_eq_get_min?]
+    · grind [min?_cons, min_eq_get_min?]
 
--- theorem min_eq_zero_of_isMinSubarraySum₀ {xs : List Int} (hne : xs ≠ [])
---     (h : IsMinSubarraySum₀ xs 0) :
---     xs.min hne = 0 := by
---   apply Int.le_antisymm
---   · obtain ⟨i, j, hi, hj, h₁⟩ := h.1
---     have := List.min_le_zero_of_sum_le_zero
---   · simp only [List.le_min_iff]
---     simp only [List.mem_iff_getElem]
---     rintro x ⟨i, _, hi⟩
---     have := h.2 i (i + 1)
---     simp only [List.toList_mkSlice_rco, List.take_add_one] at this
---     grind
+theorem List.length_mul_le_sum {xs : List Int} {m : Int} (h : ∀ x, x ∈ xs → m ≤ x) :
+    xs.length * m ≤ xs.sum := by
+  induction xs
+  · grind
+  · rename_i x xs ih
+    simp only [mem_cons, forall_eq_or_imp, length_cons] at *
+    grind
 
--- @[grind →, grind <=]
+theorem this_should_not_be_so_hard (a : Int) (b : Nat) (h : 0 ≤ a) (h' : 0 < b) :
+    a ≤ b * a := by
+  match b with
+  | 0 => grind
+  | b + 1 =>
+    induction b <;> grind
+
+@[grind →, grind <=]
 theorem isMinSubarraySum_of_nonneg {xs : List Int} {minSum : Int}
     (h : IsMinSubarraySum₀ xs minSum)  (hs : minSum ≥ 0) :
     IsMinSubarraySum xs (xs.minD 0) := by
@@ -178,26 +180,26 @@ theorem isMinSubarraySum_of_nonneg {xs : List Int} {minSum : Int}
   split
   · simp [*]
   · have : minSum = 0 := by grind
-    --have : xs.min (by grind) = 0 := by grind [min_eq_zero_of_isMinSubarraySum₀]
     have := this
     rw [List.minD, List.min?_eq_some_min (by grind), Option.getD_some]
+    have hmin : xs.min (by grind) = xs.min (by grind) := rfl
+    rw [List.min_eq_iff, List.mem_iff_getElem] at hmin
+    have : 0 ≤ xs.min (by grind) := by
+      false_or_by_contra
+      obtain ⟨i, _, hi⟩ := hmin.1
+      have := h.2 i (i + 1) (by grind) (by grind)
+      simp only [List.toList_mkSlice_rco, List.take_add_one] at this
+      grind
     apply And.intro
-    · simp only [IsMinSubarraySum₀] at h
-      simp only [List.min_eq_iff, List.mem_iff_getElem] at this
-      obtain ⟨i, _, hi⟩ := this.1
-      refine ⟨i, i + 1, by grind, by grind, ?_⟩
-      obtain ⟨i, j, hi, hj, h₁⟩ := h.1
-      simp [*, List.take_add_one]
-      rw [List.drop_append_of_le_length (by grind), List.drop_take_self]
-      simp
+    · obtain ⟨i, _, hi⟩ := hmin.1
+      exact ⟨i, i + 1, by grind, by grind, by grind [List.take_add_one]⟩
     · intro i j hi hj
+      have : ∀ a, a ∈ (xs.take j).drop i → xs.min (by grind) ≤ a := by grind
+      have := List.length_mul_le_sum this
       simp only [List.toList_mkSlice_rco, *]
-      have : ∀ (y : Int), y ∈ (xs.take j).drop i → 0 ≤ y := by grind
-      generalize (xs.take j).drop i = ys at *
-      induction ys
-      · grind
-      · simp only [List.mem_cons, forall_eq_or_imp] at this
-        grind
+      refine Int.le_trans ?_ this
+      simp only [List.length_drop, List.length_take]
+      apply this_should_not_be_so_hard <;> grind
 
 theorem isMinSubarraySum_minSubarraySum {xs : Array Int} :
     IsMinSubarraySum xs.toList (minSubarraySum xs) := by
