@@ -2,16 +2,59 @@ import Std.Tactic.Do
 open Std.Do
 set_option mvcgen.warning false
 
-attribute [grind =] List.toList_mkSlice_rco List.toList_mkSlice_rci List.le_min_iff
-attribute [grind →] List.mem_of_mem_take List.mem_of_mem_drop
+/-!
+## Implementation
+-/
 
 @[grind]
 def Array.minD [Min α] (xs : Array α) (fallback : α) : α :=
-    xs.toList.min?.getD fallback
+  xs.toList.min?.getD fallback
 
 @[grind]
 def List.minD [Min α] (xs : List α) (fallback : α) : α :=
-    xs.min?.getD fallback
+  xs.min?.getD fallback
+
+def minSubarraySum (xs : Array Int) : Int := Id.run do
+  let mut minSum := 0
+  let mut s := 0
+  for num in xs do
+      s := min 0 (s + num)
+      minSum := min s minSum
+  if minSum < 0 then
+      return minSum
+  else
+      return xs.minD 0
+
+/-!
+## Tests
+-/
+
+example : minSubarraySum #[2, 3, 4, 1, 2, 4] = 1 := by decide
+example : minSubarraySum #[-1, -2, -3] = -6 := by decide
+example : minSubarraySum #[-1, -2, -3, 2, -10] = -14 := by decide
+example : minSubarraySum #[-9999999999999999] = -9999999999999999 := by decide
+example : minSubarraySum #[0, 10, 20, 1000000] = 0 := by decide
+example : minSubarraySum #[-1, -2, -3, 10, -5] = -6 := by decide
+example : minSubarraySum #[100, -1, -2, -3, 10, -5] = -6 := by decide
+example : minSubarraySum #[10, 11, 13, 8, 3, 4] = 3 := by decide
+example : minSubarraySum #[100, -33, 32, -1, 0, -2] = -33 := by decide
+example : minSubarraySum #[-10] = -10 := by decide
+example : minSubarraySum #[7] = 7 := by decide
+example : minSubarraySum #[1, -1] = -1 := by decide
+
+-- This edge case is unspecified in the task description.
+example : minSubarraySum #[] = 0 := by decide
+
+/-!
+## Verification
+-/
+
+/-!
+### Missing API
+-/
+
+attribute [grind =] List.toList_mkSlice_rco List.toList_mkSlice_rci List.le_min_iff
+attribute [grind →] List.mem_of_mem_take List.mem_of_mem_drop
 
 @[simp, grind =]
 theorem Array.minD_empty [Min α] {fallback : α} :
@@ -27,28 +70,30 @@ theorem List.minD_nil [Min α] {fallback : α} :
 theorem List.sum_append_int {l₁ l₂ : List Int} : (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
   induction l₁ generalizing l₂ <;> simp_all [Int.add_assoc]
 
-def minSubarraySum (xs : Array Int) : Int := Id.run do
-    let mut minSum := 0
-    let mut s := 0
-    for num in xs do
-        s := min 0 (s + num)
-        minSum := min s minSum
-    if minSum < 0 then
-        return minSum
-    else
-        return xs.minD 0
+/-!
+### Helper lemmas
+-/
 
 @[simp, grind =]
 theorem minSubarraySum_empty : minSubarraySum #[] = 0 := by simp [minSubarraySum]
 
+/--
+`s` is the minimum sum of every possibly empty subarray of `xs`.
+-/
 def IsMinSubarraySum₀ (xs : List Int) (s : Int) : Prop :=
   (∃ (i j : Nat), i ≤ j ∧ j ≤ xs.length ∧ s = xs[i...j].toList.sum) ∧
     (∀ (i j : Nat), i ≤ j → j ≤ xs.length → s ≤ xs[i...j].toList.sum)
 
+/--
+`s` is the minimum sum of every possibly empty suffix of `xs`.
+-/
 def IsMinSuffixSum₀ (xs : List Int) (s : Int) : Prop :=
   (∃ (i : Nat), i ≤ xs.length ∧ s = xs[i...*].toList.sum) ∧
     (∀ (i : Nat), i ≤ xs.length → s ≤ xs[i...*].toList.sum)
 
+/--
+`s` is the minimum sum of every nonempty subarray of `xs`.
+-/
 def IsMinSubarraySum (xs : List Int) (s : Int) : Prop :=
   if xs = [] then s = 0 else
     (∃ (i j : Nat), i < j ∧ j ≤ xs.length ∧ s = xs[i...j].toList.sum) ∧
@@ -63,11 +108,6 @@ theorem isMinSubarraySum₀_nil :
 theorem isMinSuffixSum₀_nil :
     IsMinSuffixSum₀ [] 0 :=
   ⟨⟨0, by grind, by grind⟩, fun i hi => by grind⟩
-
-@[simp, grind .]
-theorem isMinSubarraySum_nil :
-    IsMinSubarraySum [] 0 := by
-  grind [IsMinSubarraySum]
 
 @[grind →]
 theorem isMinSubarraySum₀_le_zero {xs : List Int} {s : Int} :
@@ -201,6 +241,10 @@ theorem isMinSubarraySum_of_nonneg {xs : List Int} {minSum : Int}
       simp only [List.length_drop, List.length_take]
       apply this_should_not_be_so_hard <;> grind
 
+/-!
+### Final theorems
+-/
+
 theorem isMinSubarraySum_minSubarraySum {xs : Array Int} :
     IsMinSubarraySum xs.toList (minSubarraySum xs) := by
   generalize hwp : minSubarraySum xs = w
@@ -209,8 +253,11 @@ theorem isMinSubarraySum_minSubarraySum {xs : Array Int} :
   case inv1 => exact .noThrow fun ⟨cursor, minSum, minSuff⟩ =>
       ⌜IsMinSubarraySum₀ cursor.prefix minSum ∧
         IsMinSuffixSum₀ cursor.prefix minSuff⌝
-  all_goals try grind
-  mleave
+  all_goals grind
+
+theorem isMinSubarraySum_nil :
+    IsMinSubarraySum [] 0 := by
+  grind [IsMinSubarraySum]
 
 /-!
 ## Prompt
