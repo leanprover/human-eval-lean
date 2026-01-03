@@ -248,12 +248,17 @@ theorem val_le_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List 
   grind [AbstractWellAction.apply_list]
 
 theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
-    (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) :
+    (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) (hc : c > 0) :
     (well.val + c - 1) / c ≤ as.length := by
   have := val_le_of_isEmpty_apply_list h
-  have : (as.map (·.val)).sum ≤ as.length * c := by sorry
+  have : (as.map (·.val)).sum ≤ as.length * c := by
+    sorry
   have : well.val ≤ as.length * c := by grind
-  sorry
+  have : well.val + c - 1 ≤ as.length * c + c - 1 := by grind
+  have : (well.val + c - 1) / c ≤ (as.length * c + c - 1) / c := Nat.div_le_div_right this
+  have : (as.length * c + c - 1) / c ≤ as.length := (Nat.div_le_iff_le_mul hc).mpr (le_refl _)
+  grind
+
 
 /-!
 ### Determining the minimal number of actions
