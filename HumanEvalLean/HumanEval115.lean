@@ -76,9 +76,6 @@ theorem Nat.le_add_sub_one_div (a b : Nat) (hb : b > 0) :
     apply Nat.mul_le_mul_right
     apply Nat.div_add_div_le_add_div
 
-def Vector.modify (xs : Vector α n) (i : Nat) (f : α → α) : Vector α n :=
-  ⟨xs.toArray.modify i f, by grind⟩
-
 @[simp, grind =]
 theorem Vector.sum_toList {xs : Vector Nat α} :
     xs.toList.sum = xs.sum := by
@@ -143,8 +140,15 @@ def WellAction.apply (a : WellAction n c) (well : Vector Nat n) : Vector Nat n :
 
 def IsWellEmpty (well : Vector Nat n) : Bool := well.all (· = 0)
 
+/--
+`n` is the unique smallest natural number satisfying the predicate `P`.
+-/
 def IsMin (P : Nat → Prop) (n : Nat) : Prop := P n ∧ ∀ m, P m → n ≤ m
 
+/--
+`result` is the minimal number of actions needed to empty the well `well`, assuming a
+capacity of `c`.
+-/
 def MinimalWellActions (well : Vector Nat n) (c : Nat) (result : Nat) : Prop :=
   IsMin
     (fun r => ∃ as : List (WellAction n c),
@@ -160,15 +164,19 @@ as will be shown.
 
 @[ext]
 structure AbstractWell where
-  val : Nat
+  totalWater : Nat
 
 abbrev AbstractWell.IsEmpty (well : AbstractWell) : Prop :=
-  well.val = 0
+  well.totalWater = 0
 
 def AbstractWellAction (c : Nat) := Fin (c + 1)
 def AbstractWellAction.apply (a : AbstractWellAction c) (well : AbstractWell) : AbstractWell :=
-  AbstractWell.mk (well.val - a.val)
+  AbstractWell.mk (well.totalWater - a.val)
 
+/--
+`result` is the minimal number of actions needed to empty the well `well`, assuming a
+capacity of `c`.
+-/
 def MinimalAbstractWellActions (well : AbstractWell) (c : Nat) (result : Nat) : Prop :=
   IsMin (fun r => ∃ as : List (AbstractWellAction c),
       (as.foldr (init := well) AbstractWellAction.apply).IsEmpty ∧ r = as.length) result
@@ -228,7 +236,8 @@ theorem length_liftActions {well : Vector Nat n} {as : List (AbstractWellAction 
 
 @[grind =]
 theorem abstract_apply_liftActions {well : Vector Nat n} {as : List (AbstractWellAction c)} :
-    abstract (((liftActions well as).foldr (init := well) WellAction.apply)) = as.foldr (init := abstract well) AbstractWellAction.apply := by
+    abstract (((liftActions well as).foldr (init := well) WellAction.apply)) =
+      as.foldr (init := abstract well) AbstractWellAction.apply := by
   induction as <;> grind [liftActions]
 
 theorem WellAction.sum_sub_sum_apply_lt {well : Vector Nat n} {a : WellAction n c} :
@@ -280,11 +289,13 @@ theorem length_abstractActions {well : Vector Nat n} {as : List (WellAction n c)
 
 @[grind =]
 theorem apply_abstractActions_abstract {well : Vector Nat n} {as : List (WellAction n c)} :
-    (abstractActions well as).foldr (init := abstract well) AbstractWellAction.apply = abstract (as.foldr (init := well) WellAction.apply) := by
+    (abstractActions well as).foldr (init := abstract well) AbstractWellAction.apply =
+      abstract (as.foldr (init := well) WellAction.apply) := by
   induction as <;> grind [abstractActions]
 
 theorem AbstractWellAction.apply_list {well : AbstractWell} {as : List (AbstractWellAction c)} :
-    as.foldr (init := well) AbstractWellAction.apply = AbstractWell.mk (well.val - (as.map (·.val)).sum) := by
+    as.foldr (init := well) AbstractWellAction.apply =
+      AbstractWell.mk (well.totalWater - (as.map (·.val)).sum) := by
   induction as generalizing well
   · simp
   · grind [AbstractWellAction.apply]
@@ -306,12 +317,13 @@ theorem minimalAbstractWellActions_abstract_iff {well : Vector Nat n} {c : Nat} 
 
 theorem val_le_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
     (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) :
-    well.val ≤ (as.map (·.val)).sum := by
+    well.totalWater ≤ (as.map (·.val)).sum := by
   grind [AbstractWellAction.apply_list]
 
-theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
+theorem le_length_of_isEmpty_apply_list
+    {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
     (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) (hc : c > 0) :
-    (well.val + c - 1) / c ≤ as.length := by
+    (well.totalWater + c - 1) / c ≤ as.length := by
   have : (as.map (·.val)).sum ≤ as.length * c := by
     clear h
     induction as
@@ -319,7 +331,7 @@ theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : Li
     · simp only [List.length_cons]
       grind
   have := val_le_of_isEmpty_apply_list h
-  have : (well.val + c - 1) / c ≤ (as.length * c + c - 1) / c := Nat.div_le_div_right (by grind)
+  have : (well.totalWater + c - 1) / c ≤ (as.length * c + c - 1) / c := Nat.div_le_div_right (by grind)
   have : (as.length * c + c - 1) / c ≤ as.length := (Nat.div_le_iff_le_mul hc).mpr (le_refl _)
   grind
 
@@ -328,10 +340,10 @@ theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : Li
 -/
 
 def optimalAbstractActions (well : AbstractWell) (c : Nat) : List (AbstractWellAction c) :=
-  List.replicate ((well.val + c - 1) / c) ⟨c, by grind⟩
+  List.replicate ((well.totalWater + c - 1) / c) ⟨c, by grind⟩
 
 theorem length_optimalAbstractActions {well : AbstractWell} {c : Nat} :
-    (optimalAbstractActions well c).length = (well.val + c - 1) / c := by
+    (optimalAbstractActions well c).length = (well.totalWater + c - 1) / c := by
   grind [optimalAbstractActions]
 
 theorem isEmpty_apply_optimalAbstractActions {well : AbstractWell} {c : Nat} (hc : c > 0) :
@@ -342,7 +354,7 @@ theorem isEmpty_apply_optimalAbstractActions {well : AbstractWell} {c : Nat} (hc
   exact hc
 
 theorem minimalAbstractWellActions {well : AbstractWell} {c : Nat} (hc : 0 < c) :
-    MinimalAbstractWellActions well c ((well.val + c - 1) / c) := by
+    MinimalAbstractWellActions well c ((well.totalWater + c - 1) / c) := by
   apply And.intro
   · exact ⟨optimalAbstractActions well c,
       isEmpty_apply_optimalAbstractActions hc, length_optimalAbstractActions.symm⟩
