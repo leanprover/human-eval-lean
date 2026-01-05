@@ -250,15 +250,16 @@ theorem val_le_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List 
 theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : List (AbstractWellAction c)}
     (h : (as.foldr (init := well) AbstractWellAction.apply).IsEmpty) (hc : c > 0) :
     (well.val + c - 1) / c ≤ as.length := by
-  have := val_le_of_isEmpty_apply_list h
   have : (as.map (·.val)).sum ≤ as.length * c := by
-    sorry
-  have : well.val ≤ as.length * c := by grind
-  have : well.val + c - 1 ≤ as.length * c + c - 1 := by grind
-  have : (well.val + c - 1) / c ≤ (as.length * c + c - 1) / c := Nat.div_le_div_right this
+    clear h
+    induction as
+    · grind
+    · simp only [List.length_cons]
+      grind
+  have := val_le_of_isEmpty_apply_list h
+  have : (well.val + c - 1) / c ≤ (as.length * c + c - 1) / c := Nat.div_le_div_right (by grind)
   have : (as.length * c + c - 1) / c ≤ as.length := (Nat.div_le_iff_le_mul hc).mpr (le_refl _)
   grind
-
 
 /-!
 ### Determining the minimal number of actions
@@ -267,11 +268,44 @@ theorem le_length_of_isEmpty_apply_list {well : AbstractWell} {c : Nat} {as : Li
 def optimalAbstractActions (well : AbstractWell) (c : Nat) : List (AbstractWellAction c) :=
   List.replicate ((well.val + c - 1) / c) ⟨c, by grind⟩
 
+-- this is in Mathlib
+theorem Nat.div_add_div_le_add_div (a b c : Nat) : a / c + b / c ≤ (a + b) / c := by
+  by_cases h : 0 < c
+  · rw [← (Nat.mul_le_mul_right_iff (show 0 < c by grind)), Nat.add_mul]
+    simp only [Nat.div_mul_self_eq_mod_sub_self]
+    have (a b c d : Nat) (h : b ≤ a) (h' : d ≤ c) : (a - b) + (c - d) = (a + c) - (b + d) := by grind
+    rw [this, Nat.sub_le_sub_iff_left]
+    · rw [Nat.add_mod]
+      apply Nat.mod_le
+    · apply Nat.mod_le
+    · apply Nat.mod_le
+    · apply Nat.mod_le
+  · grind
+
+theorem Nat.le_add_sub_one_div (a b : Nat) (hb : b > 0) :
+    a ≤ (a + b - 1) / b * b := by
+  have := Nat.div_add_mod' a b |>.symm
+  rw [this, Nat.add_sub_assoc hb, Nat.add_assoc]
+  refine Nat.le_trans (m := a / b * b / b * b + (a % b + (b - 1)) / b * b) ?_ ?_
+  · rw [Nat.mul_div_cancel _ hb, Nat.add_le_add_iff_left]
+    by_cases h : a % b = 0
+    · grind
+    · have : b ≤ a % b + (b - 1) := by grind
+      have : b ≤ (a % b + (b - 1)) / b * b := by
+        apply Nat.le_mul_of_pos_left
+        exact Nat.div_pos this hb
+      have : a % b < b := by exact Nat.mod_lt a hb
+      grind
+  · rw [← Nat.add_mul]
+    apply Nat.mul_le_mul_right
+    apply Nat.div_add_div_le_add_div
+
 theorem isEmpty_apply_optimalAbstractActions {well : AbstractWell} {c : Nat} (hc : c > 0) :
     ((optimalAbstractActions well c).foldr (init := well) AbstractWellAction.apply).IsEmpty := by
   rw [AbstractWellAction.apply_list]
-  simp [AbstractWell.IsEmpty, optimalAbstractActions]
-  sorry
+  simp [AbstractWell.IsEmpty, optimalAbstractActions, Nat.sub_eq_zero_iff_le]
+  apply Nat.le_add_sub_one_div
+  exact hc
 
 theorem length_optimalAbstractActions {well : AbstractWell} {c : Nat} :
     (optimalAbstractActions well c).length = (well.val + c - 1) / c := by
@@ -283,8 +317,7 @@ theorem minimalAbstractWellActions {well : AbstractWell} {c : Nat} (hc : 0 < c) 
   · exact ⟨optimalAbstractActions well c,
       isEmpty_apply_optimalAbstractActions hc, length_optimalAbstractActions.symm⟩
   · rintro _ ⟨as', has', rfl⟩
-    apply le_length_of_isEmpty_apply_list
-    exact has'
+    exact le_length_of_isEmpty_apply_list has' hc
 
 theorem minimalWellActions {well : Vector Nat n} {c : Nat} (hc : 0 < c) :
     MinimalWellActions well c ((well.sum + c - 1) / c) := by
