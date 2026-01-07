@@ -9,6 +9,17 @@ open Std
 def argmax [LE β] [DecidableLE β] (f : α → β) (x y : α) : α :=
   if f y ≤ f x then x else y
 
+/-
+`List.argmax` exists in mathlib, but:
+* it returns an `Option`, so it should actually be named `argmax?`
+* it relies on mathlib's `Preorder` type class and `DecidableLT`. In the standard library,
+  it would be more consistent to use `LE` and `DecidableLE`.
+
+Moreover, lemmas such as `List.index_of_argmax` aren't easily applicable because one would need
+`BEq α` and `LawfulBEq α` in order to use `idxOf`. Moreover, some API about `idxOf` and `findIdx`
+is still missing. In this file, we avoid these difficulties by not relying on `idxOf` and `findIdx`
+at all.
+-/
 def List.argmax [LE β] [DecidableLE β] (xs : List α) (f : α → β) (h : xs ≠ []) : α :=
   match xs with
   | x :: xs => xs.foldl (init := x) (_root_.argmax f)
@@ -56,10 +67,6 @@ theorem List.argmax_cons
   match xs with
   | [] => simp
   | y :: xs => simp [foldl_assoc]
-
-theorem List.foldl_etaExpand {α : Type u} {β : Type v} {f : α → β → α} {init : α} {xs : List β} :
-    xs.foldl (init := init) f = xs.foldl (init := init) fun a b => f a b := by
-  rfl
 
 theorem argmax_eq_or [LE β] [DecidableLE β] {f : α → β} {x y : α} :
     argmax f x y = x ∨ argmax f x y = y := by
@@ -119,7 +126,7 @@ theorem List.argmax_append [LE β] [DecidableLE β] [IsLinearPreorder β] {xs ys
 `List.argmax xs f h` comes before any other element in `xs` where `f` attains its maximum.
 -/
 theorem List.argmax_left_leaning
-    [LE β] [DecidableLE β] [IsLinearPreorder β] (xs : List α) (f : α → β) (h : xs ≠ []) :
+    [LE β] [DecidableLE β] [IsLinearPreorder β] {xs : List α} {f : α → β} (h : xs ≠ []) :
     ∃ j : Fin xs.length, xs[j] = xs.argmax f h ∧
       ∀ i : Fin j, ¬ f (xs.argmax f h) ≤ f xs[i] := by
   simp only [List.argmax]
