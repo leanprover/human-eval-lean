@@ -1,3 +1,7 @@
+module
+
+open Std
+
 /-!
 ## Implementation
 -/
@@ -19,22 +23,16 @@ def longest? (xs : List String) : Option String :=
   xs.argmax? String.length
 
 /-!
+## Tests
+-/
+
+example : longest? [] = none := by native_decide
+example : longest? ["x", "y", "z"] = some "x" := by native_decide
+example : longest? ["x", "yyy", "zzzz", "www", "kkkk", "abc"] = some "zzzz" := by native_decide
+
+/-!
 ## Verification
 -/
-
-/--
-A list attains its maximum (with respect to function `f`) at element `x` if `x` appears in
-the list and the function applied to all elements is at most the function applied to `x`.
--/
-def AttainsMaximumAt [LE β] (xs : List α) (f : α → β) (x : α) : Prop :=
-  x ∈ xs ∧ ∀ y ∈ xs, f y ≤ f x
-
-/--
-A string has maximum length in a list if it appears in the list and all strings in the
-list are at most as long.
--/
-def HasMaxLength (s : String) (xs : List String) : Prop :=
-  s ∈ xs ∧ ∀ t ∈ xs, t.length ≤ s.length
 
 @[grind =]
 theorem List.argmax_singleton [LE β] [DecidableLE β] {x : α} {f : α → β} :
@@ -42,16 +40,18 @@ theorem List.argmax_singleton [LE β] [DecidableLE β] {x : α} {f : α → β} 
   grind [argmax]
 
 @[grind =]
-theorem argmax_assoc [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {x y z : α} :
+theorem argmax_assoc [LE β] [DecidableLE β] [IsLinearPreorder β] {f : α → β} {x y z : α} :
     argmax f (argmax f x y) z = argmax f x (argmax f y z) := by
   grind [argmax]
 
-instance [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} :
-    Std.Associative (argmax f) where
+instance [LE β] [DecidableLE β] [IsLinearPreorder β] {f : α → β} :
+    Associative (argmax f) where
   assoc := by apply argmax_assoc
 
-theorem List.argmax_cons [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {x : α} {xs : List α} {f : α → β} :
-    (x :: xs).argmax f (by grind) = if h : xs = [] then x else _root_.argmax f x (xs.argmax f h) := by
+theorem List.argmax_cons
+    [LE β] [DecidableLE β] [IsLinearPreorder β] {x : α} {xs : List α} {f : α → β} :
+    (x :: xs).argmax f (by grind) =
+      if h : xs = [] then x else _root_.argmax f x (xs.argmax f h) := by
   simp only [argmax]
   match xs with
   | [] => simp
@@ -66,7 +66,7 @@ theorem argmax_eq_or [LE β] [DecidableLE β] {f : α → β} {x y : α} :
   grind [argmax]
 
 @[grind =]
-theorem argmax_self [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {x : α} :
+theorem argmax_self [LE β] [DecidableLE β] [IsLinearPreorder β] {f : α → β} {x : α} :
     argmax f x x = x := by
   grind [argmax]
 
@@ -81,25 +81,26 @@ theorem argmax_eq_right [LE β] [DecidableLE β] {f : α → β} {x y : α} (h :
   grind [argmax]
 
 @[grind =>]
-theorem apply_left_le_apply_argmax [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {x y : α} :
-    f x ≤ f (argmax f x y) := by
+theorem apply_left_le_apply_argmax [LE β] [DecidableLE β] [IsLinearPreorder β] {f : α → β}
+    {x y : α} : f x ≤ f (argmax f x y) := by
   grind [argmax]
 
 @[grind =>]
-theorem apply_right_le_apply_argmax [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {x y : α} :
-    f y ≤ f (argmax f x y) := by
+theorem apply_right_le_apply_argmax [LE β] [DecidableLE β] [IsLinearPreorder β]
+    {f : α → β} {x y : α} : f y ≤ f (argmax f x y) := by
   grind [argmax]
 
 @[grind .]
-theorem List.argmax_mem [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs : List α} {f : α → β} {h : xs ≠ []} :
-    xs.argmax f h ∈ xs := by
+theorem List.argmax_mem [LE β] [DecidableLE β] [IsLinearPreorder β] {xs : List α}
+    {f : α → β} {h : xs ≠ []} : xs.argmax f h ∈ xs := by
   simp only [List.argmax]
   match xs with
   | x :: xs =>
     fun_induction xs.foldl (init := x) (_root_.argmax f) <;> grind [argmax_eq_or]
 
 @[grind =>]
-theorem List.le_apply_argmax_of_mem [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs : List α} {f : α → β} {y : α} (hx : y ∈ xs) :
+theorem List.le_apply_argmax_of_mem [LE β] [DecidableLE β] [IsLinearPreorder β]
+    {xs : List α} {f : α → β} {y : α} (hx : y ∈ xs) :
     f y ≤ f (xs.argmax f (List.ne_nil_of_mem hx)) := by
   have h : xs ≠ [] := List.ne_nil_of_mem hx
   simp only [List.argmax]
@@ -107,16 +108,12 @@ theorem List.le_apply_argmax_of_mem [LE β] [DecidableLE β] [Std.IsLinearPreord
   | x :: xs =>
     fun_induction xs.foldl (init := x) (_root_.argmax f) generalizing y <;> grind
 
-/-- `List.argmax xs f h` returns an element that attains the maximum of `f` over `xs`. -/
-theorem List.argmax_attainsMaximum [LE β] [DecidableLE β] [Std.IsLinearPreorder β] (xs : List α) (f : α → β) (h : xs ≠ []) :
-    AttainsMaximumAt xs f (xs.argmax f h) := by
-  sorry
-
 /--
 `List.argmax xs f h` returns the first element that attains the maximum any other element
 that attains the maximum appears at an index greater than or equal to the returned element's index.
 -/
-theorem List.argmax_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder β] (xs : List α) (f : α → β) (h : xs ≠ []) :
+theorem List.argmax_left_leaning
+    [LE β] [DecidableLE β] [IsLinearPreorder β] (xs : List α) (f : α → β) (h : xs ≠ []) :
     ∃ j : Fin xs.length, xs[j] = xs.argmax f h ∧
       ∀ i : Fin j, ¬ f (xs.argmax f h) ≤ f xs[i] := by
   simp only [List.argmax]
@@ -143,7 +140,7 @@ theorem List.argmax_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder 
           grind
 
 @[grind =]
-theorem List.argmax_append [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs ys : List α}
+theorem List.argmax_append [LE β] [DecidableLE β] [IsLinearPreorder β] {xs ys : List α}
     {f : α → β} (hxs : xs ≠ []) (hys : ys ≠ []) :
     (xs ++ ys).argmax f (by simp [hxs]) = _root_.argmax f (xs.argmax f hxs) (ys.argmax f hys) := by
   match xs, ys with
@@ -156,26 +153,26 @@ theorem List.argmax?_nil [LE β] [DecidableLE β] {f : α → β} :
   simp [argmax?]
 
 @[grind =]
-theorem List.argmax?_cons [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {x : α} {xs : List α} :
+theorem List.argmax?_cons
+    [LE β] [DecidableLE β] [IsLinearPreorder β] {f : α → β} {x : α} {xs : List α} :
     (x :: xs).argmax? f = (xs.argmax? f).elim x (_root_.argmax f x) := by
   grind [argmax?, argmax_cons]
 
 @[grind =>]
-theorem List.isSome_argmax?_of_mem [LE β] [DecidableLE β] {f : α → β} {xs : List α} {x : α} (h : x ∈ xs) :
+theorem List.isSome_argmax?_of_mem
+    [LE β] [DecidableLE β] {f : α → β} {xs : List α} {x : α} (h : x ∈ xs) :
     (xs.argmax? f).isSome := by
   grind [argmax?]
 
-theorem List.le_apply_argmax?_get_of_mem [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {xs : List α} {x : α} (h : x ∈ xs) :
+theorem List.le_apply_argmax?_get_of_mem
+    [LE β] [DecidableLE β] [IsLinearPreorder β] {f : α → β} {xs : List α} {x : α} (h : x ∈ xs) :
     f x ≤ f ((xs.argmax? f).get (isSome_argmax?_of_mem h)) := by
   grind [argmax?]
 
--- The suggested patterns all involve `IsLinearPreorder`, which is a problem.
+-- The suggested patterns are not useful because all involve `IsLinearPreorder`.
 grind_pattern List.le_apply_argmax?_get_of_mem => x ∈ xs, (xs.argmax? f).get _
 
-/--
-When `List.argmax? xs f` returns `some x`, the element `x` is the first that attains the maximum.
--/
-theorem List.argmax?_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs : List α} {f : α → β} {x : α}
+theorem List.argmax?_left_leaning [LE β] [DecidableLE β] [IsLinearPreorder β] {xs : List α} {f : α → β} {x : α}
     (hx : xs.argmax? f = some x) :
     ∃ j : Fin xs.length, xs[j] = x ∧ ∀ i : Fin j, ¬ f x ≤ f xs[i] := by
   simp only [argmax?] at hx
@@ -186,17 +183,21 @@ theorem List.argmax?_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder
   · grind
 
 @[grind =]
-theorem List.argmax?_append [LE β] [DecidableLE β] [Std.IsLinearPreorder β] (xs ys : List α) (f : α → β) :
+theorem List.argmax?_append [LE β] [DecidableLE β] [IsLinearPreorder β] (xs ys : List α) (f : α → β) :
     (xs ++ ys).argmax? f =
       (xs.argmax? f).merge (_root_.argmax f) (ys.argmax? f) := by
   grind [argmax?, append_eq_nil_iff]
 
-theorem List.attainsMaximum_argmax? [LE β] [DecidableLE β] {xs : List α} {f : α → β} {x : α}
-    (hx : xs.argmax? f = some x) :
-    AttainsMaximumAt xs f x := by
-  sorry
+/-!
+### Main theorems
 
-/-- `longest?` returns `none` when applied to an empty list. -/
+The following theorems verify important properties of `longest?`.
+The requirements from the prompt are verified by `le_length_longest?_get_of_mem` and
+`longest?_left_leaning`.
+
+Some other useful properties are proved by the remaining lemmas.
+-/
+
 theorem longest?_nil : longest? [] = none := by
   grind [longest?]
 
