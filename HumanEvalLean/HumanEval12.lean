@@ -15,7 +15,7 @@ def List.argmax? [LE β] [DecidableLE β] (xs : List α) (f : α → β) : Optio
   else
     none
 
-def longest (xs : List String) : Option String :=
+def longest? (xs : List String) : Option String :=
   xs.argmax? String.length
 
 /-!
@@ -98,8 +98,10 @@ theorem List.argmax_mem [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs :
   | x :: xs =>
     fun_induction xs.foldl (init := x) (_root_.argmax f) <;> grind [argmax_eq_or]
 
-theorem List.apply_le_apply_argmax [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs : List α} {f : α → β} {h : xs ≠ []} {y : α} (hx : y ∈ xs) :
-    f y ≤ f (xs.argmax f h) := by
+@[grind =>]
+theorem List.le_apply_argmax_of_mem [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs : List α} {f : α → β} {y : α} (hx : y ∈ xs) :
+    f y ≤ f (xs.argmax f (List.ne_nil_of_mem hx)) := by
+  have h : xs ≠ [] := List.ne_nil_of_mem hx
   simp only [List.argmax]
   match xs with
   | x :: xs =>
@@ -115,30 +117,29 @@ theorem List.argmax_attainsMaximum [LE β] [DecidableLE β] [Std.IsLinearPreorde
 that attains the maximum appears at an index greater than or equal to the returned element's index.
 -/
 theorem List.argmax_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder β] (xs : List α) (f : α → β) (h : xs ≠ []) :
-    ∃ j : Nat, xs[j]? = some (xs.argmax f h) ∧
-      ∀ (i : Nat) (hi : i < xs.length), f (xs.argmax f h) ≤ f xs[i] → j ≤ i := by
+    ∃ j : Fin xs.length, xs[j] = xs.argmax f h ∧
+      ∀ i : Fin j, ¬ f (xs.argmax f h) ≤ f xs[i] := by
   simp only [List.argmax]
   match xs with
   | x :: xs =>
     simp only
     clear h
     fun_induction xs.foldl (init := x) (_root_.argmax f)
-    · exact ⟨0, by grind⟩
+    · exact ⟨⟨0, by grind⟩, by grind⟩
     · rename_i x y xs ih
       obtain ⟨j, ih⟩ := ih
-      by_cases hj : j = 0
-      · cases hj
-        by_cases hm : f y ≤ f x
-        · exact ⟨0, by grind⟩
-        · exact ⟨1, by grind⟩
-      · refine ⟨j + 1, ?_⟩
-        obtain ⟨j, rfl⟩ := Nat.exists_eq_succ_of_ne_zero hj
+      by_cases hj : j.val = 0
+      · by_cases hm : f y ≤ f x
+        · exact ⟨⟨0, by grind⟩, by grind⟩
+        · exact ⟨⟨1, by grind⟩, by grind⟩
+      · refine ⟨⟨j + 1, by grind⟩, ?_⟩
+        obtain ⟨j, _⟩ := Nat.exists_eq_succ_of_ne_zero hj
         apply And.intro
         · grind
-        · intro i hi hle
-          have : i ≥ 2 := by have := ih.2 0; grind
-          obtain ⟨i, rfl⟩ := Nat.exists_eq_add_of_le this
-          have := ih.2 (i + 1)
+        · intro i hi
+          have : i.val ≥ 2 := by have := ih.2 ⟨0, by grind⟩; grind
+          obtain ⟨i, _⟩ := Nat.exists_eq_add_of_le this
+          have := ih.2 ⟨i + 1, by grind⟩
           grind
 
 @[grind =]
@@ -154,23 +155,29 @@ theorem List.argmax?_nil [LE β] [DecidableLE β] {f : α → β} :
     ([] : List α).argmax? f = none := by
   simp [argmax?]
 
-/-- `List.argmax?` returns `some` when applied to a non-empty list. -/
-@[grind =]
-theorem List.isSome_argmax? [LE β] [DecidableLE β] {f : α → β} {xs : List α} (hxs : xs ≠ []) :
-    (xs.argmax? f).isSome := by
-  grind [argmax?]
-
 @[grind =]
 theorem List.argmax?_cons [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {x : α} {xs : List α} :
     (x :: xs).argmax? f = (xs.argmax? f).elim x (_root_.argmax f x) := by
   grind [argmax?, argmax_cons]
 
+@[grind =>]
+theorem List.isSome_argmax?_of_mem [LE β] [DecidableLE β] {f : α → β} {xs : List α} {x : α} (h : x ∈ xs) :
+    (xs.argmax? f).isSome := by
+  grind [argmax?]
+
+theorem List.le_apply_argmax?_get_of_mem [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {f : α → β} {xs : List α} {x : α} (h : x ∈ xs) :
+    f x ≤ f ((xs.argmax? f).get (isSome_argmax?_of_mem h)) := by
+  grind [argmax?]
+
+-- The suggested patterns all involve `IsLinearPreorder`, which is a problem.
+grind_pattern List.le_apply_argmax?_get_of_mem => x ∈ xs, (xs.argmax? f).get _
+
 /--
 When `List.argmax? xs f` returns `some x`, the element `x` is the first that attains the maximum.
 -/
-theorem List.argmax?_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder β] (xs : List α) (f : α → β) (x : α)
+theorem List.argmax?_left_leaning [LE β] [DecidableLE β] [Std.IsLinearPreorder β] {xs : List α} {f : α → β} {x : α}
     (hx : xs.argmax? f = some x) :
-    ∃ j : Nat, xs[j]? = some x ∧ ∀ (i : Nat) (hi : i < xs.length), f x ≤ f xs[i] → j ≤ i := by
+    ∃ j : Fin xs.length, xs[j] = x ∧ ∀ i : Fin j, ¬ f x ≤ f xs[i] := by
   simp only [argmax?] at hx
   split at hx
   · simp only [Option.some.injEq] at hx
@@ -189,29 +196,34 @@ theorem List.attainsMaximum_argmax? [LE β] [DecidableLE β] {xs : List α} {f :
     AttainsMaximumAt xs f x := by
   sorry
 
-/-- `longest` returns `none` when applied to an empty list. -/
-theorem longest_nil : longest [] = none := by
-  grind [longest]
+/-- `longest?` returns `none` when applied to an empty list. -/
+theorem longest?_nil : longest? [] = none := by
+  grind [longest?]
 
-theorem longest_append {xs ys : List String} :
-    longest (xs ++ ys) = (longest xs).merge (_root_.argmax String.length) (longest ys) := by
-  grind [longest]
+theorem longest?_singleton : longest? [x] = some x := by
+  grind [longest?]
+
+theorem longest?_append {xs ys : List String} :
+    longest? (xs ++ ys) = (longest? xs).merge (_root_.argmax String.length) (longest? ys) := by
+  grind [longest?]
+
+theorem isSome_longest?_of_mem {xs : List String} {x : String} (h : x ∈ xs) :
+    (longest? xs).isSome := by
+  grind [longest?]
+
+theorem le_length_longest?_get_of_mem {xs : List String} {x : String} (h : x ∈ xs) :
+    x.length ≤ ((longest? xs).get (isSome_longest?_of_mem h)).length := by
+  grind [longest?]
 
 /--
-`longest` returns a string with maximum length when applied to a non-empty list.
--/
-theorem longest_hasMaxLength (xs : List String) (h : xs ≠ []) :
-    ∃ s, longest xs = some s ∧ HasMaxLength s xs := by
-  sorry
-
-/--
-`longest` returns the first string with maximum length: any other string with maximum length
+`longest?` returns the first string with maximum length: any other string with maximum length
 appears at an index greater than the returned string's index.
 -/
-theorem longest_left_leaning {xs : List String} {x : String} (h : longest xs = some x) :
+theorem longest?_left_leaning {xs : List String} {x : String} (h : longest? xs = some x) :
     ∃ j : Fin xs.length, xs[j] = x ∧ ∀ i : Fin j, xs[i].length < x.length := by
-  sorry
-
+  rw [longest?] at h
+  have := List.argmax?_left_leaning h
+  grind
 
 /-!
 ## Prompt
