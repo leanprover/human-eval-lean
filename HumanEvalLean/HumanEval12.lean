@@ -108,14 +108,43 @@ theorem List.le_apply_argmax_of_mem [LE β] [DecidableLE β] [IsLinearPreorder �
   | x :: xs =>
     fun_induction xs.foldl (init := x) (_root_.argmax f) generalizing y <;> grind
 
+@[grind =]
+theorem List.argmax_append [LE β] [DecidableLE β] [IsLinearPreorder β] {xs ys : List α}
+    {f : α → β} (hxs : xs ≠ []) (hys : ys ≠ []) :
+    (xs ++ ys).argmax f (by simp [hxs]) = _root_.argmax f (xs.argmax f hxs) (ys.argmax f hys) := by
+  match xs, ys with
+  | x :: xs, y :: ys => simp [argmax, foldl_assoc]
+
 /--
-`List.argmax xs f h` returns the first element that attains the maximum any other element
-that attains the maximum appears at an index greater than or equal to the returned element's index.
+`List.argmax xs f h` comes before any other element in `xs` where `f` attains its maximum.
 -/
 theorem List.argmax_left_leaning
     [LE β] [DecidableLE β] [IsLinearPreorder β] (xs : List α) (f : α → β) (h : xs ≠ []) :
     ∃ j : Fin xs.length, xs[j] = xs.argmax f h ∧
       ∀ i : Fin j, ¬ f (xs.argmax f h) ≤ f xs[i] := by
+  -- open scoped Classical in
+  -- let j := xs.findIdx (· == xs.argmax f h)
+  -- have hj : xs[j]'(by grind) == xs.argmax f h := by grind
+  -- refine ⟨⟨j, by grind⟩, by grind, ?_⟩
+  -- intro i
+  -- let lhs := xs.take j
+  -- let rhs := xs.drop j
+  -- have h₁ : xs = lhs ++ rhs := by simp [lhs, rhs]
+  -- let ml := lhs.argmax? f
+  -- let mr := rhs.argmax? f
+  -- by_cases lhs = []; grind
+  -- by_cases rhs = []; grind
+  -- have h₂ := argmax_append (xs := lhs) (ys := rhs) (f := f) ‹_› ‹_›
+  -- simp only [h₁, h₂, Fin.getElem_fin] at hj ⊢
+  -- rw [getElem_append_left (by grind)]
+  -- rw [getElem_append_right (by grind)] at hj
+  -- simp only [show j - lhs.length = 0 by grind] at hj
+  -- have : rhs.argmax f (by grind) = rhs[0]'(by grind) := by grind
+  -- have : lhs.argmax f (by grind) = lhs[0]'(by grind) := by
+
+  -- have : ¬ f (rhs.argmax f (by grind)) ≤ f (lhs.argmax f (by grind)) := by
+  --   intro h
+  --   rw [_root_.argmax_eq_left ‹_›] at h₂
   simp only [List.argmax]
   match xs with
   | x :: xs =>
@@ -138,13 +167,6 @@ theorem List.argmax_left_leaning
           obtain ⟨i, _⟩ := Nat.exists_eq_add_of_le this
           have := ih.2 ⟨i + 1, by grind⟩
           grind
-
-@[grind =]
-theorem List.argmax_append [LE β] [DecidableLE β] [IsLinearPreorder β] {xs ys : List α}
-    {f : α → β} (hxs : xs ≠ []) (hys : ys ≠ []) :
-    (xs ++ ys).argmax f (by simp [hxs]) = _root_.argmax f (xs.argmax f hxs) (ys.argmax f hys) := by
-  match xs, ys with
-  | x :: xs, y :: ys => simp [argmax, foldl_assoc]
 
 /-- `List.argmax?` returns `none` when applied to an empty list. -/
 @[grind =]
