@@ -83,30 +83,11 @@ public theorem isExchangePossible_eq_yes_or_no {xs ys : Array Int} :
     isExchangePossible xs ys = "YES" ∨ isExchangePossible xs ys = "NO" := by
   grind [isExchangePossible]
 
-@[grind =]
-public theorem List.countP_add_countP_not {xs : List Int} P :
-    xs.countP P + xs.countP (! P ·) = xs.length := by
-  induction xs <;> grind
-
-@[grind =]
-public theorem Vector.countP_add_countP_not {xs : Vector Int m} {P} :
-    xs.countP P + xs.countP (! P ·) = m := by
-  simp only [← Vector.countP_toList]
-  grind
-
 public theorem VectorPair.countP_le_countP_iff_size_le_countP {p : VectorPair m n} :
     p.1.countP (· % 2 == 1) ≤ p.2.countP (· % 2 == 0) ↔
       m ≤ p.concat.countP (· %  2 == 0) := by
-  conv => rhs; lhs; rw [← Vector.countP_add_countP_not (xs := p.1) (P := (· % 2 == 1))]
-  have : ∀ x : Int, (x % 2 == 0) = (! x % 2 == 1) := by grind
-  simp only [this, VectorPair.concat, Vector.countP_append]
-  grind
-
-@[grind .]
-public theorem Vector.Perm.countP_eq {xs ys : Vector α n} {P}
-    (h : Vector.Perm xs ys) : xs.countP P = ys.countP P := by
-  simp only [Vector.countP, ← Array.countP_toList, Vector.toList_toArray]
-  grind [List.Perm.countP_eq, Array.Perm.toList, Vector.Perm.toArray]
+  simp only [Vector.size_eq_countP_add_countP (xs := p.1) (p := (· % 2 == 0))]
+  grind [VectorPair.concat]
 
 public theorem VectorPair.countP_le_countP_iff_exists {p : VectorPair m n} :
     p.1.countP (· % 2 == 1) ≤ p.2.countP (· % 2 == 0) ↔
@@ -142,7 +123,9 @@ public theorem VectorPair.countP_le_countP_iff_exists {p : VectorPair m n} :
       · simp only [Vector.all_eq_true, beq_iff_eq] at hes
         rw [Vector.forall_mem_iff_forall_getElem]
         grind
-    grind
+    -- Alternatively to the following, we could add `Vector.Perm.countP_eq` and use
+    -- `grind [Vector.Perm.countP_eq]`.
+    grind [List.Perm.countP_eq, Vector.Perm.toList, =_ Vector.countP_toList]
 
 public theorem isExchangePossible_correct {xs ys : Array Int} :
     isExchangePossible xs ys = "YES" ↔
@@ -151,9 +134,8 @@ public theorem isExchangePossible_correct {xs ys : Array Int} :
   generalize h : VectorPair.mk xs.toVector ys.toVector = p
   simp only [show xs = p.1.toArray by grind, show ys = p.2.toArray by grind]
   -- prove the actual statement
-  simp only [isExchangePossible, ← Std.Iter.length_toList_eq_count, Std.Iter.toList_filter,
-    Array.toList_iter, ← List.countP_eq_length_filter]
-  grind [VectorPair.countP_le_countP_iff_exists, List.countP_eq_length_filter]
+  simp [isExchangePossible, ← Std.Iter.length_toList_eq_count,
+    ← List.countP_eq_length_filter, VectorPair.countP_le_countP_iff_exists]
 
 /-!
 ## Prompt

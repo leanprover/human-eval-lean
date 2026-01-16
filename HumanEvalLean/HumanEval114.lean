@@ -6,14 +6,6 @@ set_option mvcgen.warning false
 ## Implementation
 -/
 
-@[grind]
-def Array.minD [Min α] (xs : Array α) (fallback : α) : α :=
-  xs.toList.min?.getD fallback
-
-@[grind]
-def List.minD [Min α] (xs : List α) (fallback : α) : α :=
-  xs.min?.getD fallback
-
 def minSubarraySum (xs : Array Int) : Int := Id.run do
   let mut minSum := 0
   let mut s := 0
@@ -23,7 +15,7 @@ def minSubarraySum (xs : Array Int) : Int := Id.run do
   if minSum < 0 then
       return minSum
   else
-      return xs.minD 0
+      return xs.toList.min?.getD 0
 
 /-!
 ## Tests
@@ -55,16 +47,6 @@ example : minSubarraySum #[] = 0 := by decide
 
 attribute [grind =] List.toList_mkSlice_rco List.toList_mkSlice_rci List.le_min_iff
 attribute [grind →] List.mem_of_mem_take List.mem_of_mem_drop
-
-@[simp, grind =]
-theorem Array.minD_empty [Min α] {fallback : α} :
-    (#[] : Array α).minD fallback = fallback := by
-  simp [Array.minD]
-
-@[simp, grind =]
-theorem List.minD_nil [Min α] {fallback : α} :
-    ([] : List α).minD fallback = fallback := by
-  simp [List.minD]
 
 @[simp, grind =]
 theorem List.sum_append_int {l₁ l₂ : List Int} : (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
@@ -205,23 +187,16 @@ theorem List.length_mul_le_sum {xs : List Int} {m : Int} (h : ∀ x, x ∈ xs �
     simp only [mem_cons, forall_eq_or_imp, length_cons] at *
     grind
 
-theorem this_should_not_be_so_hard (a : Int) (b : Nat) (h : 0 ≤ a) (h' : 0 < b) :
-    a ≤ b * a := by
-  match b with
-  | 0 => grind
-  | b + 1 =>
-    induction b <;> grind
-
 @[grind →, grind <=]
 theorem isMinSubarraySum_of_nonneg {xs : List Int} {minSum : Int}
     (h : IsMinSubarraySum₀ xs minSum)  (hs : minSum ≥ 0) :
-    IsMinSubarraySum xs (xs.minD 0) := by
+    IsMinSubarraySum xs (xs.min?.getD 0) := by
   rw [IsMinSubarraySum]
   split
   · simp [*]
   · have : minSum = 0 := by grind
     have := this
-    rw [List.minD, List.min?_eq_some_min (by grind), Option.getD_some]
+    rw [List.min?_eq_some_min (by grind), Option.getD_some]
     have hmin : xs.min (by grind) = xs.min (by grind) := rfl
     rw [List.min_eq_iff, List.mem_iff_getElem] at hmin
     have : 0 ≤ xs.min (by grind) := by
@@ -238,8 +213,8 @@ theorem isMinSubarraySum_of_nonneg {xs : List Int} {minSum : Int}
       have := List.length_mul_le_sum this
       simp only [List.toList_mkSlice_rco, *]
       refine Int.le_trans ?_ this
-      simp only [List.length_drop, List.length_take]
-      apply this_should_not_be_so_hard <;> grind
+      rw (occs := [1]) [show ∀ h, xs.min h = 1 * xs.min h by grind]
+      apply Int.mul_le_mul <;> grind
 
 /-!
 ### Final theorems

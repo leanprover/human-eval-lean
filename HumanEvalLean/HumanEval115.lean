@@ -58,23 +58,10 @@ theorem Nat.div_add_div_le_add_div (a b c : Nat) : a / c + b / c ≤ (a + b) / c
     · apply Nat.mod_le
   · grind
 
-theorem Nat.le_add_sub_one_div (a b : Nat) (hb : b > 0) :
-    a ≤ (a + b - 1) / b * b := by
-  have := Nat.div_add_mod' a b |>.symm
-  rw [this, Nat.add_sub_assoc hb, Nat.add_assoc]
-  refine Nat.le_trans (m := a / b * b / b * b + (a % b + (b - 1)) / b * b) ?_ ?_
-  · rw [Nat.mul_div_cancel _ hb, Nat.add_le_add_iff_left]
-    by_cases h : a % b = 0
-    · grind
-    · have : b ≤ a % b + (b - 1) := by grind
-      have : b ≤ (a % b + (b - 1)) / b * b := by
-        apply Nat.le_mul_of_pos_left
-        exact Nat.div_pos this hb
-      have : a % b < b := by exact Nat.mod_lt a hb
-      grind
-  · rw [← Nat.add_mul]
-    apply Nat.mul_le_mul_right
-    apply Nat.div_add_div_le_add_div
+theorem Nat.le_mul_iff_le_left (hc : 0 < z) :
+    x ≤ y * z ↔ (x + z - 1) / z ≤ y := by
+  rw [Nat.div_le_iff_le_mul hc]
+  omega
 
 @[simp, grind =]
 theorem Vector.sum_toList {xs : Vector Nat α} :
@@ -93,16 +80,14 @@ theorem Vector.toList_zip {as : Vector α n} {bs : Vector β n} :
   rcases bs with ⟨bs, h⟩
   simp
 
-theorem List.exists_mem_and {P : α → Prop} {l : List α} :
-    (∃ a, a ∈ l ∧ P a) ↔ (∃ (n : Nat), ∃ h, P (l[n]'h)) := by
-  refine ⟨fun ⟨a, h, h'⟩ => ?_, fun ⟨n, h, h'⟩ => ⟨l[n], by simp, h'⟩⟩
-  obtain ⟨i, h'', rfl⟩ := List.getElem_of_mem h
-  exact ⟨_, _, h'⟩
+theorem List.exists_mem_iff_exists_getElem (P : α → Prop) (l : List α) :
+    (∃ x ∈ l, P x) ↔ ∃ (i : Nat), ∃ hi, P (l[i]'hi) := by
+  grind [mem_iff_getElem]
 
 theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
     ∀ (i : Nat) (hi : i < l.length), l[i] = 0 := by
   rw [← Decidable.not_iff_not]
-  simp [← Nat.pos_iff_ne_zero, Nat.sum_pos_iff_exists_pos, List.exists_mem_and]
+  simp [← Nat.pos_iff_ne_zero, Nat.sum_pos_iff_exists_pos, List.exists_mem_iff_exists_getElem]
 
 theorem Vector.sum_eq_zero {xs : Vector Nat n} : xs.sum = 0 ↔ ∀ (i : Nat) (hi : i < n), xs[i] = 0 := by
   rw [← Vector.sum_toList, List.sum_eq_zero]
@@ -350,8 +335,8 @@ theorem isEmpty_apply_optimalAbstractActions {well : AbstractWell} {c : Nat} (hc
     ((optimalAbstractActions well c).foldr (init := well) AbstractWellAction.apply).IsEmpty := by
   rw [AbstractWellAction.apply_list]
   simp [AbstractWell.IsEmpty, optimalAbstractActions, Nat.sub_eq_zero_iff_le]
-  apply Nat.le_add_sub_one_div
-  exact hc
+  rw [Nat.le_mul_iff_le_left hc]
+  apply Nat.le_refl
 
 theorem minimalAbstractWellActions {well : AbstractWell} {c : Nat} (hc : 0 < c) :
     MinimalAbstractWellActions well c ((well.totalWater + c - 1) / c) := by
