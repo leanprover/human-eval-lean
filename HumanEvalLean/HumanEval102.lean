@@ -28,7 +28,7 @@ macro "chooseNum_trivial" : tactic => `(tactic|(
   omega
 ))
 
-namespace Std.Range
+namespace Std.Legacy.Range
 
 -- A specification for `m` being the even maximum of range `r`.
 structure EvenMax (r : Range) (m : Nat) : Prop where
@@ -63,7 +63,7 @@ theorem not_iff_chooseNum : ¬(∃ m, [lo:hi + 1].EvenMax m) ↔ (chooseNum lo h
     · exact h ⟨hi, {}⟩
     · exact h ⟨hi, {}⟩
 
-end Std.Range.EvenMax
+end Std.Legacy.Range.EvenMax
 
 /-!
 ## Prompt

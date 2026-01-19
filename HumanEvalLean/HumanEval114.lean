@@ -145,6 +145,10 @@ theorem isMinSubarraySum₀_append_singleton_eq {xs : List Int} {x minSum minSuf
       · have := h₁.2 i j (by grind) (by grind)
         grind [List.take_append_of_le_length]
 
+-- using this lemma would lead to complicated `take` expressions that are harder to solve for
+-- `grind`
+attribute [- grind] List.toList_mkSlice_rci_eq_toList_mkSlice_rco
+
 @[grind =>]
 theorem isMinSuffixSum₀_append_singleton_eq {xs : List Int} {x minSuff : Int}
     (h : IsMinSuffixSum₀ xs minSuff) :
