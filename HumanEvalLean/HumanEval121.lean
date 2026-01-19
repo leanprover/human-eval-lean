@@ -1,12 +1,47 @@
 -- This can't be a module right now because `Rxi.Iterator.Monadic.Step` is not exposed
 import Std
 
-open Std Std.PRange
+open Std Std.PRange Std.Do
 
 def solution (xs : List Int) : Int :=
   ((0 : Nat)...*).iter.zip xs.iter
-    |>.filter (fun (i, _) => i % 2 = 0)
+    |>.filter (fun (i, x) => i % 2 = 0 ∧ x % 2 = 1)
     |>.fold (init := 0) (fun sum (_, x) => sum + x)
+
+def solution' (xs : List Int) : Int := Id.run do
+  let mut even := true
+  let mut sum := 0
+  for x in xs do
+    if even ∧ x % 2 = 1 then
+      sum := sum + x
+    even := ! even
+  return sum
+
+def solution'' (xs : List Int) : Int :=
+  go xs 0
+where go (xs : List Int) (acc : Int) :=
+  match xs with
+  | [] => acc
+  | [x] => if x % 2 = 1 then acc + x else acc
+  | x :: _ :: ys =>
+    if x % 2 = 1 then go ys (acc + x) else go ys acc
+
+theorem List.sum_append_int {l₁ l₂ : List Int} : (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
+  sorry
+
+theorem solution'_spec {xs : List Int} :
+    solution' xs = (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
+  generalize h : solution' xs = r
+  apply Id.of_wp_run_eq h
+  mvcgen
+  · exact ⇓⟨cur, even, sum⟩ => ⌜even = (cur.prefix.length % 2 = 0) ∧ sum = (cur.prefix.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum⌝
+  · mleave
+    simp [List.sum_append_int]
+    grind
+  · simp [List.sum_append_int]
+    grind
+  · grind
+  · grind
 
 attribute [grind =] Iter.toList_take_zero Nat.succ?_eq
 
@@ -70,46 +105,40 @@ theorem Nat.toList_take_iter_rci {m n : Nat} :
     (((m : Nat)...*).iter.take n).toList = ((m : Nat)...(m + n : Nat)).toList := by
   induction n generalizing m <;> grind [Nat.toList_rco_eq_cons, Nat.toList_take_add_one_iter_rci]
 
-@[grind =]
-theorem List.map_swap_zip {xs : List α} {ys : List β} :
-    (ys.zip xs).map Prod.swap = xs.zip ys := by
-  induction xs generalizing ys
-  · grind [zip_nil_right, zip_nil_left]
-  · cases ys
-    · grind [zip_nil_left, zip_nil_right]
-    · grind [zip_cons_cons, Prod.swap_prod_mk]
+theorem bla {xs : List α} {f : α → Int} : xs.foldl (init := 0) (· + f ·) = (xs.map f).sum := by
+  sorry
+
+attribute [grind =] List.zip_nil_right List.toList_iter Iter.toList_filter List.sum_append_int
+  List.zip_cons_cons
+
+theorem solution_nil :
+    solution [] = 0 := by
+  -- fails:
+  -- grind [solution, =_ Iter.foldl_toList, ! . Iter.toList_zip_of_finite_right]
+
+  -- succeeds:
+  -- grind =>
+  --   instantiate only [solution]
+  --   finish [=_ Iter.foldl_toList, ! . Iter.toList_zip_of_finite_right]
+
+  simp [solution, ← Iter.foldl_toList, Iter.toList_zip_of_finite_right]
+
+theorem solution_append_singleton {xs : List Int} {x : Int} :
+    solution (xs ++ [x]) =
+      if xs.length % 2 = 0 ∧ x % 2 = 1 then solution xs + x else solution xs := by
+  simp only [solution, Bool.decide_and, ← Iter.foldl_toList,
+    Iter.toList_filter, Iter.toList_zip_of_finite_right, List.toList_iter, List.length_append,
+    List.length_cons, List.length_nil, Nat.zero_add, Nat.toList_take_iter_rci]
+  rw [Nat.toList_rco_succ_right_eq_append (by simp), List.zip_append (by simp)]
+  grind
 
 theorem solution_spec {xs : List Int} :
-    solution xs = (xs.mapIdx (fun i x => if i % 2 = 0 then x else 0)).sum :=
-  match xs with
-  | [] => by
-    simp [solution, ← Iter.foldl_toList]
-    rw [Iter.toList_zip_of_finite_right]
-    grind [List.toList_iter, List.length_nil, List.zip_nil_right]
-  | [x] => by
-    simp [solution, ← Iter.foldl_toList]
-    rw [Iter.toList_zip_of_finite_right]
-    simp [Nat.toList_take_iter_rci]
-  | x :: y :: xs => by
-    have := solution_spec (xs := xs)
-    simp [solution, ← Iter.foldl_toList] at this ⊢
-    rw [Iter.toList_zip_of_finite_right]
-    simp [Nat.toList_take_iter_rci, Nat.toList_rco_eq_cons]
-    -- ugh, foldr would have been nicer
-
-
-theorem solution_spec {xs : List Int} :
-    solution xs = (xs.mapIdx (fun i x => if i % 2 = 0 then x else 0)).sum := by
-  simp [solution, ← Iter.foldl_toList]
-  rw [Iter.toList_zip_of_finite_right]
-  simp [Nat.toList_take_iter_rci]
-  rw [List.mapIdx_eq_zipIdx_map, List.zipIdx_eq_zip_range', List.range'_eq_toList_rco]
-  simp
-  rw [← List.map_swap_zip]
-  induction xs
-  · simp
-  · simp [Nat.toList_rco_eq_cons]
-
+    solution xs = (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
+  rw [← List.reverse_reverse (as := xs)]
+  induction xs.reverse
+  · simp [solution_nil]
+  · simp only [List.reverse_cons]
+    grind [solution_append_singleton]
 
 /-!
 ## Prompt
