@@ -163,6 +163,11 @@ theorem isMinSubarraySum₀_append_singleton_eq {xs : List Int} {x minSum minSuf
       · have := h₁.2 i j (by grind) (by grind)
         grind [List.take_append_of_le_length]
 
+attribute [- grind] Subarray.sliceToArray_eq_toArray Subarray.forIn_eq_forIn_toList
+  Array.array_toSubarray Array.start_toSubarray Array.stop_toSubarray
+  ListSlice.toArray_toList ListSlice.toList_toArray
+  List.toList_mkSlice_rci_eq_toList_mkSlice_rco
+
 @[grind =>]
 theorem isMinSuffixSum₀_append_singleton_eq {xs : List Int} {x minSuff : Int}
     (h : IsMinSuffixSum₀ xs minSuff) :
@@ -177,6 +182,8 @@ theorem isMinSuffixSum₀_append_singleton_eq {xs : List Int} {x minSuff : Int}
       by_cases hieq : i = (xs ++ [x]).length
       · grind
       · simp only [IsMinSuffixSum₀] at h
+        rw [show Std.Slice.toList (Std.Rci.Sliceable.mkSlice (xs ++ [x]) i...*) = Std.Slice.toList (Std.Rco.Sliceable.mkSlice (xs ++ [x]) i...((xs ++ [x]).length)) by sorry]
+        --simp only [List.toList_mkSlice_rci_eq_toList_mkSlice_rco]
         grind [List.drop_append_of_le_length]
   · rw [show min 0 (minSuff + x) = minSuff + x by grind]
     apply And.intro
