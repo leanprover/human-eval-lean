@@ -3,19 +3,11 @@ import Std
 
 open Std Std.PRange Std.Do
 
-def solution (xs : List Int) : Int :=
-  ((0 : Nat)...*).iter.zip xs.iter
-    |>.filter (fun (i, x) => i % 2 = 0 ∧ x % 2 = 1)
-    |>.fold (init := 0) (fun sum (_, x) => sum + x)
+set_option mvcgen.warning false
 
-def solution' (xs : List Int) : Int := Id.run do
-  let mut even := true
-  let mut sum := 0
-  for x in xs do
-    if even ∧ x % 2 = 1 then
-      sum := sum + x
-    even := ! even
-  return sum
+/-!
+## Implementation 1
+-/
 
 def solution'' (xs : List Int) : Int :=
   go xs 0
@@ -26,8 +18,61 @@ where go (xs : List Int) (acc : Int) :=
   | x :: _ :: ys =>
     if x % 2 = 1 then go ys (acc + x) else go ys acc
 
+/-!
+## Tests 1
+-/
+
+example : solution'' [5, 8, 7, 1] = 12 := by decide
+example : solution'' [3, 3, 3, 3, 3] = 9 := by decide
+example : solution'' [30, 13, 24, 321] = 0 := by decide
+example : solution'' [5, 9] = 5 := by decide
+example : solution'' [2, 4, 8] = 0 := by decide
+example : solution'' [30, 13, 23, 32] = 23 := by decide
+example : solution'' [3, 13, 2, 9] = 3 := by decide
+
+/-!
+## Verification 1
+-/
+
+theorem solution''_aux {xs : List Int} {acc : Int} :
+    solution''.go xs acc = acc + (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
+  fun_induction solution''.go xs acc <;> grind
+
+theorem solution''_spec {xs : List Int} :
+    solution'' xs = (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
+  simp [solution'', solution''_aux]
+
+/-!
+## Implementation 2
+-/
+
+def solution' (xs : List Int) : Int := Id.run do
+  let mut even := true
+  let mut sum := 0
+  for x in xs do
+    if even ∧ x % 2 = 1 then
+      sum := sum + x
+    even := ! even
+  return sum
+
+/-!
+## Tests 2
+-/
+
+example : solution' [5, 8, 7, 1] = 12 := by decide
+example : solution' [3, 3, 3, 3, 3] = 9 := by decide
+example : solution' [30, 13, 24, 321] = 0 := by decide
+example : solution' [5, 9] = 5 := by decide
+example : solution' [2, 4, 8] = 0 := by decide
+example : solution' [30, 13, 23, 32] = 23 := by decide
+example : solution' [3, 13, 2, 9] = 3 := by decide
+
+/-!
+## Verification 2
+-/
+
 theorem List.sum_append_int {l₁ l₂ : List Int} : (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
-  sorry
+  induction l₁ generalizing l₂ <;> simp_all [Int.add_assoc]
 
 theorem solution'_spec {xs : List Int} :
     solution' xs = (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
@@ -42,6 +87,31 @@ theorem solution'_spec {xs : List Int} :
     grind
   · grind
   · grind
+
+/-!
+## Implementation 3
+-/
+
+def solution (xs : List Int) : Int :=
+  ((0 : Nat)...*).iter.zip xs.iter
+    |>.filter (fun (i, x) => i % 2 = 0 ∧ x % 2 = 1)
+    |>.fold (init := 0) (fun sum (_, x) => sum + x)
+
+/-!
+## Tests 3
+-/
+
+example : solution [5, 8, 7, 1] = 12 := by native_decide
+example : solution [3, 3, 3, 3, 3] = 9 := by native_decide
+example : solution [30, 13, 24, 321] = 0 := by native_decide
+example : solution [5, 9] = 5 := by native_decide
+example : solution [2, 4, 8] = 0 := by native_decide
+example : solution [30, 13, 23, 32] = 23 := by native_decide
+example : solution [3, 13, 2, 9] = 3 := by native_decide
+
+/-!
+## Verification 3
+-/
 
 attribute [grind =] Iter.toList_take_zero Nat.succ?_eq
 
@@ -104,9 +174,6 @@ theorem Nat.toList_rco_self {m : Nat} :
 theorem Nat.toList_take_iter_rci {m n : Nat} :
     (((m : Nat)...*).iter.take n).toList = ((m : Nat)...(m + n : Nat)).toList := by
   induction n generalizing m <;> grind [Nat.toList_rco_eq_cons, Nat.toList_take_add_one_iter_rci]
-
-theorem bla {xs : List α} {f : α → Int} : xs.foldl (init := 0) (· + f ·) = (xs.map f).sum := by
-  sorry
 
 attribute [grind =] List.zip_nil_right List.toList_iter Iter.toList_filter List.sum_append_int
   List.zip_cons_cons
