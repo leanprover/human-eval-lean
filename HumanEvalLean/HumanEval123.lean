@@ -2,8 +2,23 @@ import Std
 
 open Std
 
+/-!
+## Potentially missing API
+
+This section provides declarations that might be added to the standard library.
+Feel free to skip to the next section called `Preliminaries`.
+-/
+
 theorem Acc.invTransGen {x y : α} (h₁ : Acc r x) (h₂ : Relation.TransGen r y x) : Acc r y := by
   simpa [acc_transGen_iff] using h₁.transGen.inv h₂
+
+theorem Std.compare_ne_eq [Ord α] [LawfulEqOrd α] {x y : α} :
+    compare x y ≠ .eq ↔ x ≠ y := by
+  simp
+
+instance : LawfulOrderOrd Nat where
+  isLE_compare := by grind [Nat.isLE_compare]
+  isGE_compare := by grind [Nat.isGE_compare]
 
 section Extrinsic
 open Relation
@@ -136,39 +151,64 @@ public def WellFounded.partialExtrinsicFix₂_eq [∀ a b, Nonempty (C₂ a b)]
 end Extrinsic
 
 /-!
-## Implementation 1: no termination proof required
+## Preliminaries
+
+We start by defining what it means to make a step in the Collatz sequence.
 -/
 
+/--
+Only valid if called for `n > 1`
+-/
 def collatzStep (n : Nat) : Nat :=
     if n % 2 = 0 then n / 2 else n * 3 + 1
 
+/--
+`CollatzRel a b` signifies that `b` is a valid successor of `a` in a Collatz sequence.
+Here, we assume the sequence stops at `1`, so `1` has no successor.
+-/
 def CollatzRel : Nat → Nat → Prop := fun m n =>
-    n > 1 ∧ collatzStep n = m
+    1 < n ∧ collatzStep n = m
 
 theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
     CollatzRel (collatzStep n) n := by
   grind [CollatzRel]
 
+/-!
+## Implementation 1: no termination proof required
+
+Until the Collatz conjecture is solved, it is not clear that the function we are going to write
+will terminate on all inputs. There are two ways to address this problem.
+
+1. Write a function that is not guaranteed to terminate. It can be verified on inputs for which
+   the Collatz sequence reaches `1` after finitely many steps.
+2. Write a function that requires proof that the Collatz sequence reaches `1` from the given input.
+
+The following solution follows approach 1. After that, we show another solution following
+approach 2.
+-/
+
 def oddCollatz₁ (n : Nat) : List Nat :=
-  (collectOddCollatz ⟨n, Or.inl rfl⟩ ∅).toList
+  (collectOddCollatz n ∅).toList
 where
   -- This function is recursive and, depending on the Collatz conjecture, it may or may not terminate.
-  -- By relying on the fixpoint combinator `extrinsicFix₂` instead of using the `partial` modifier,
+  -- By relying on the fixpoint combinator `partialExtrinsicFix₂` instead of using the `partial` modifier,
   -- we will be able to verify the function whenever the Collatz sequence terminates after
   -- finitely many steps. A termination proof is not required for *calling* this function,
   -- only for verifying it.
-  collectOddCollatz : (n : { m // m = n ∨ Relation.TransGen CollatzRel m n }) → (acc : TreeSet Nat compare) → TreeSet Nat compare :=
-    WellFounded.extrinsicFix₂ (CollatzRel ·.1 ·.1) fun n acc recur =>
-      if h : n.val > 1 then
-        recur ⟨collatzStep n.val, by apply Or.inr; cases n.property; rename_i h'; rw [h']; apply Relation.TransGen.single; grind [collatzRel_collatzStep]; refine Relation.TransGen.trans ?_ ‹_›; apply Relation.TransGen.single; grind [collatzRel_collatzStep]⟩
-          (if n.val % 2 = 0 then acc else acc.insert n) (by grind [CollatzRel])
-      else if n.val = 1 then
+  collectOddCollatz : (n : Nat) → (acc : TreeSet Nat compare) → TreeSet Nat compare :=
+    -- `partialExtrinsicFix₂` is a fixpoint combinator that produces a function that may or may
+    -- not terminate. It can be verified on inputs on which the fixpoint is well-founded.
+    -- If we had used the `partial` modifier instead, no verification would be possible at all.
+    WellFounded.partialExtrinsicFix₂ (CollatzRel ·.1 ·.1) fun n acc recur =>
+      if h : n > 1 then
+        recur (collatzStep n) (if n % 2 = 0 then acc else acc.insert n) (by grind [CollatzRel])
+      else if n = 1 then
         acc.insert 1
       else
         acc
 
 /-!
-## Tests 1
+## Tests for `oddCollatz₁`
 -/
 
 example : oddCollatz₁ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
@@ -216,7 +256,7 @@ example : (extractProof (tryDecideTermination 14 50 Iff.rfl)).isSome := by decid
 macro "try_decide" : tactic => `(tactic| exact ((extractProof (tryDecideTermination _ 100 Iff.rfl)).get (by decide)).down)
 
 /-!
-## Implementation
+## Implementation that is guaranteed to terminate
 -/
 
 instance : WellFoundedRelation { m : Nat // Acc CollatzRel m } := Acc.wfRel
@@ -239,7 +279,7 @@ where
     grind [CollatzRel]
 
 /-!
-## Tests
+## Tests for `oddCollatz₂`
 
 Observe that while `oddCollatz₂` is guaranteed to terminate, we do not need to manually supply
 the termination proofs. These proofs are derived automatically using the `try_decide` tactic.
@@ -251,19 +291,7 @@ example : oddCollatz₂ 12 = [1, 3, 5] := by native_decide
 example : oddCollatz₂ 1 = [1] := by native_decide
 
 /-!
-## Missing API
--/
-
-theorem Std.compare_ne_eq [Ord α] [LawfulEqOrd α] {x y : α} :
-    compare x y ≠ .eq ↔ x ≠ y := by
-  simp
-
-instance : LawfulOrderOrd Nat where
-  isLE_compare := by grind [Nat.isLE_compare]
-  isGE_compare := by grind [Nat.isGE_compare]
-
-/-!
-## Verification
+## Verification of `oddCollatz₂`
 -/
 
 theorem oddCollatz₂_pairwise_distinct {n : Nat} {h : Acc CollatzRel n} :
@@ -353,26 +381,22 @@ theorem mem_oddCollatz₂_iff {m n : Nat} {h : Acc CollatzRel n} :
     mem_self_oddCollatz₂, mem_oddCollatz₂_of_transGen]
 
 /-!
-## Verification 1
+## Verification of `oddCollatz₁`
 -/
 
-theorem collectOddCollatz_eq_collectOddCollatz {n : Nat} {m hm'} (hn : Acc CollatzRel n) :
-    oddCollatz₁.collectOddCollatz n ⟨m, hm'⟩ acc = oddCollatz₂.collectOddCollatz ⟨m, sorry⟩ acc := by
+theorem collectOddCollatz_eq_collectOddCollatz {m} (hm : Acc CollatzRel m) :
+    oddCollatz₁.collectOddCollatz m acc = oddCollatz₂.collectOddCollatz ⟨m, hm⟩ acc := by
   rw [oddCollatz₁.collectOddCollatz]
-  have : WellFounded fun (x1 x2 : (_ : { m : Nat // m = n ∨ Relation.TransGen CollatzRel m n }) ×' TreeSet Nat) => CollatzRel x1.fst.val x2.fst.val := by
-    have := InvImage.wf (α := (_ : { m : Nat // m = n ∨ Relation.TransGen CollatzRel m n }) ×' TreeSet Nat) (β := { m : Nat // m = n ∨ Relation.TransGen CollatzRel m n }) (r := (CollatzRel ·.val ·.val)) (·.fst)
-    apply this
-    constructor
-    intro s
-    have hs : Acc CollatzRel s.val := sorry
-    apply InvImage.accessible _ hs
-  have hm : Acc CollatzRel m := sorry
-  generalize h' : (⟨m, hm⟩ : Subtype _) = s
-  have hs : s.val = n ∨ Relation.TransGen CollatzRel s.val n := by grind
-  simp only [show Subtype.mk m hm' = Subtype.mk (p := fun x => x = n ∨ Relation.TransGen CollatzRel x n) s.val hs by grind]
-  clear h'
-  rw [oddCollatz₁.collectOddCollatz, WellFounded.extrinsicFix₂_eq_fix (wf := this)]
-  fun_induction oddCollatz₂.collectOddCollatz s acc <;> grind [WellFounded.fix_eq]
+  induction hm generalizing acc
+  rename_i h ih
+  rw [WellFounded.partialExtrinsicFix₂_eq, oddCollatz₂.collectOddCollatz]
+  · congr; ext h
+    simp
+    rw [ih]
+    exact collatzRel_collatzStep h
+  · change Acc (InvImage CollatzRel PSigma.fst) _
+    refine InvImage.accessible _ ?_
+    exact ⟨_, h⟩
 
 theorem oddCollatz₁_eq_oddCollatz₂ {n : Nat} (hn : Acc CollatzRel n) :
     oddCollatz₁ n = oddCollatz₂ n hn := by
