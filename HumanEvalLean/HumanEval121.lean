@@ -130,19 +130,20 @@ public theorem Rxi.Iterator.toList_take_eq_match
     cases it.step using PlausibleIterStep.casesOn <;> rename_i heq
     · rename_i it' _
       rcases it with ⟨⟨next⟩⟩ | _
-      · simp [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep] at heq
-        simp [Rxi.Iterator.Monadic.step, Iter.toIterM] at heq -- ugly
-      · simp [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep] at heq
-        simp [Rxi.Iterator.Monadic.step, Iter.toIterM] at heq -- ugly
+      · simp [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep,
+          Rxi.Iterator.Monadic.step, Iter.toIterM] at heq
+      · simp only [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep,
+        IterStep.mapIterator_yield, Iter.toIterM, Rxi.Iterator.Monadic.step, IterStep.yield.injEq,
+        IterM.mk'.injEq] at heq
         cases heq.2
         cases it'
         simp at heq
         simp [heq]
-    · simp [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep] at heq
-      simp [Rxi.Iterator.Monadic.step, Iter.toIterM] at heq -- ugly
+    · simp only [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep,
+        IterStep.mapIterator_skip, Iter.toIterM, Rxi.Iterator.Monadic.step] at heq
       split at heq <;> contradiction
-    · simp [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep] at heq
-      simp [Rxi.Iterator.Monadic.step, Iter.toIterM] at heq -- ugly
+    · simp only [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep,
+      IterStep.mapIterator_done, Rxi.Iterator.Monadic.step, Iter.toIterM] at heq
       split at heq
       · simp [*]
       · contradiction
