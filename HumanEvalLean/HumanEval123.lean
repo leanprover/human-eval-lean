@@ -2,15 +2,53 @@ import Std
 
 open Std
 
+/-!
+## Preliminaries regarding termination
+-/
+
 def collatzStep (n : Nat) : Nat :=
     if n % 2 = 0 then n / 2 else n * 3 + 1
 
 def CollatzRel : Nat → Nat → Prop := fun m n =>
     n > 1 ∧ collatzStep n = m
 
+theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
+    CollatzRel (collatzStep n) n := by
+  grind [CollatzRel]
+
+theorem acc_collatzRel_collatzStep_iff {n : Nat} (h : n > 1) :
+    Acc CollatzRel (collatzStep n) ↔ Acc CollatzRel n := by
+  apply Iff.intro
+  · exact fun h => ⟨_, fun m hm => by grind [CollatzRel]⟩
+  · exact fun h => by grind [Acc.inv, collatzRel_collatzStep]
+
+def tryDecideTermination (n : Nat) (fuel : Nat) (h : Acc CollatzRel n ↔ P) :
+    Option (Decidable P) := do
+  match fuel with
+  | 0 => none
+  | fuel + 1 => do
+    if hn : n > 1 then
+      have := acc_collatzRel_collatzStep_iff hn
+      tryDecideTermination (collatzStep n) fuel (this.trans h)
+    else
+      return .isTrue (h.mp ⟨_, fun m hm => by grind [CollatzRel]⟩)
+
+def extractProof (d : Option (Decidable P)) : Option (PLift P) := do
+  match ← d with
+  | .isTrue h => return .up h
+  | .isFalse _ => none
+
+example : (extractProof (tryDecideTermination 14 50 Iff.rfl)).isSome := by decide
+
+macro "try_decide" : tactic => `(tactic| exact ((extractProof (tryDecideTermination _ 100 Iff.rfl)).get (by decide)).down)
+
 instance : WellFoundedRelation { m : Nat // Acc CollatzRel m } := Acc.wfRel
 
-def oddCollatz (n : Nat) (h : Acc CollatzRel n) : List Nat :=
+/-!
+## Implementation
+-/
+
+def oddCollatz (n : Nat) (h : Acc CollatzRel n := by try_decide) : List Nat :=
   (collectOddCollatz ⟨n, h⟩ ∅).toList
 where
   -- We attach a proof that `1` is reachable from `n` in finitely many steps to ensure termination.
@@ -27,6 +65,19 @@ where
   decreasing_by
     grind [CollatzRel]
 
+/-!
+## Tests
+-/
+
+example : oddCollatz 14 = [1, 5, 7, 11, 13, 17] := by native_decide
+example : oddCollatz 5 = [1, 5] := by native_decide
+example : oddCollatz 12 = [1, 3, 5] := by native_decide
+example : oddCollatz 1 = [1] := by native_decide
+
+/-!
+## Missing API
+-/
+
 theorem Std.compare_ne_eq [Ord α] [LawfulEqOrd α] {x y : α} :
     compare x y ≠ .eq ↔ x ≠ y := by
   simp
@@ -34,6 +85,13 @@ theorem Std.compare_ne_eq [Ord α] [LawfulEqOrd α] {x y : α} :
 instance : LawfulOrderOrd Nat where
   isLE_compare := by grind [Nat.isLE_compare]
   isGE_compare := by grind [Nat.isGE_compare]
+
+theorem Acc.invTransGen {x y : α} (h₁ : Acc r x) (h₂ : Relation.TransGen r y x) : Acc r y := by
+  simpa [acc_transGen_iff] using h₁.transGen.inv h₂
+
+/-!
+## Verification
+-/
 
 theorem oddCollatz_pairwise_distinct {n : Nat} {h : Acc CollatzRel n} :
     (oddCollatz n h).Pairwise (· ≠ ·) := by
@@ -51,10 +109,6 @@ theorem mod_two_eq_one_of_mem_oddCollatz {m n : Nat} {h : Acc CollatzRel n} (hm 
   have hm' (k : Nat) : k ∈ acc → k % 2 = 1 := by simp [← hg]
   clear hg
   fun_induction oddCollatz.collectOddCollatz n acc <;> grind
-
-theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
-    CollatzRel (collatzStep n) n := by
-  grind [CollatzRel]
 
 theorem transGen_collatzRel_of_mem_oddCollatz {m n : Nat} {h : Acc CollatzRel n} (hm : m ∈ oddCollatz n h)
     (hne : m ≠ n) :
@@ -107,9 +161,6 @@ theorem mem_oddCollatz_of_mem_oddCollatz_of_collatzRel {k m n : Nat} {hm hn}
     (hmem : k ∈ oddCollatz m hm) (hrel : CollatzRel m n) :
     k ∈ oddCollatz n hn := by
   grind [oddCollatz, CollatzRel, oddCollatz.collectOddCollatz, collectOddCollatz_mono]
-
-theorem Acc.invTransGen {x y : α} (h₁ : Acc r x) (h₂ : Relation.TransGen r y x) : Acc r y := by
-  simpa [acc_transGen_iff] using h₁.transGen.inv h₂
 
 theorem mem_oddCollatz_of_mem_oddCollatz_of_transGen {k m n : Nat} {hn}
     (hrel : Relation.TransGen CollatzRel m n) (hmem : k ∈ oddCollatz m (hn.invTransGen hrel)) :
