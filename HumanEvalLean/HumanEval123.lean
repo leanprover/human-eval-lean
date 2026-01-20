@@ -251,9 +251,9 @@ def extractProof (d : Option (Decidable P)) : Option (PLift P) := do
   | .isTrue h => return .up h
   | .isFalse _ => none
 
-example : (extractProof (tryDecideTermination 14 50 Iff.rfl)).isSome := by decide
-
 macro "try_decide" : tactic => `(tactic| exact ((extractProof (tryDecideTermination _ 100 Iff.rfl)).get (by decide)).down)
+
+example : Acc CollatzRel 10 := by try_decide
 
 /-!
 ## Implementation that is guaranteed to terminate
