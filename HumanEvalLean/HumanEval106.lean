@@ -13,7 +13,7 @@ set_option mvcgen.warning false
 open Std.Do
 
 -- missing grind annotations
-attribute [grind =] Nat.length_toList_rco Std.PRange.Nat.succMany?_eq Nat.not_le
+attribute [grind =] Nat.length_toList_rco Nat.length_toList_rcc Std.PRange.Nat.succMany?_eq Nat.not_le
 
 section NaiveImpl
 
@@ -67,11 +67,11 @@ theorem length_f {n : Nat} :
   generalize hwp : f n = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  all_goals try infer_instance
-  case inv1 => exact ⇓⟨cur, xs⟩ => ⌜xs.length = cur.prefix.length⌝
-  case inv2 => exact ⇓⟨cur, xs⟩ => ⌜True⌝ -- factorial loop
-  case inv3 => exact ⇓⟨cur, xs⟩ => ⌜True⌝ -- sum loop
-  all_goals simp_all -- relies on `Nat.length_toList_rcc`
+  invariants
+  | inv1 => ⇓⟨cur, xs⟩ => ⌜xs.length = cur.prefix.length⌝
+  | inv2 => ⇓⟨cur, xs⟩ => ⌜True⌝ -- factorial loop
+  | inv3 => ⇓⟨cur, xs⟩ => ⌜True⌝ -- sum loop
+  with grind
 
 theorem getElem_f {n : Nat} {k : Nat} (hlt : k < n) :
     (f n)[k]'(by grind [length_f]) = if k % 2 = 0 then triangle (k + 1) else factorial (k + 1) := by
@@ -79,31 +79,30 @@ theorem getElem_f {n : Nat} {k : Nat} (hlt : k < n) :
   generalize hwp : f n = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  all_goals try infer_instance
-
-  -- OUTER LOOP
-  case inv1 =>
-    exact ⇓⟨cur, xs⟩ => ⌜xs.length = cur.prefix.length ∧
+  invariants
+  -- outer loop
+  | inv1 => ⇓⟨cur, xs⟩ => ⌜xs.length = cur.prefix.length ∧
         ((_ : k < xs.length) → xs[xs.length - 1 - k] =
           if k % 2 = 0 then triangle (k + 1) else factorial (k + 1))⌝
+  -- factorial loop
+  | inv2 => ⇓⟨cur, x⟩ => ⌜x = factorial cur.prefix.length⌝
+  -- sum loop
+  | inv3 => ⇓⟨cur, x⟩ => ⌜x = triangle cur.prefix.length⌝
+
+  -- OUTER LOOP
   case vc7 => simp -- base case
-  case vc8 => grind [Nat.length_toList_rcc] -- postcondition
+  case vc8 => grind -- postcondition
 
   -- FACTORIAL LOOP
-  case inv2 => exact ⇓⟨cur, x⟩ => ⌜x = factorial cur.prefix.length⌝
-  case vc2 => simp [factorial] -- base case
   case vc3 => -- step
-    simp_all only [Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›, Std.PRange.succMany?,
-      Nat.length_toList_rcc]
+    have := Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›
     grind
   case vc1 => -- postcondition
     simp_all [Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›, factorial, Nat.add_comm 1]
+
   -- SUM LOOP
-  case inv3 => exact ⇓⟨cur, x⟩ => ⌜x = triangle cur.prefix.length⌝
-  case vc5 => simp [triangle] -- base case
   case vc6 => -- step
-    simp_all only [Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›, Std.PRange.succMany?,
-      Nat.length_toList_rcc]
+    have := Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›
     grind
   case vc4 => -- postcondition
     simp_all [Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›, triangle, Nat.add_comm 1]
@@ -122,13 +121,13 @@ def f' (n : Nat) : Array Nat := Id.run do
   let mut ret : Array Nat := .emptyWithCapacity n
   ret := ret.push 1 -- 1st entry should be `triangle 1`
   ret := ret.push 2 -- 2nd entry should be `factorial 2`
-  for i in 2...<n do
-    if i % 2 = 1 then
+  for i in 3...=n do
+    if i % 2 = 0 then
       -- It would be nicer if we could use `ret[i - 2]`, but it is unclear how to use the
       -- invariants `ret.size ≥ 2` and `i = ret.size` intrinsically.
-      ret := ret.push (ret[i - 2]! * i * (i + 1))
+      ret := ret.push (ret[i - 3]! * (i - 1) * i)
     else
-      ret := ret.push (ret[i - 2]! + 2 * i + 1)
+      ret := ret.push (ret[i - 3]! + 2 * i - 1)
   return ret
 
 /-!
@@ -160,25 +159,18 @@ theorem getElem_f' {n : Nat} {k : Nat} (hlt : k < n) :
   generalize hwp : f' n = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  all_goals try infer_instance
-  case inv1 =>
-    exact ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ ∀ j : Nat, (_ : j < xs.size) →
+  invariants
+  | inv1 => ⇓⟨cur, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ ∀ j : Nat, (_ : j < xs.size) →
         (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
   case vc1 hn => -- verification of the early return
-    -- the return value is a prefix of `[1, 2]` and `k` is the index that needs to be verified
-    match k with
-    | 0 => grind
-    | 1 => grind
-    | n + 2 => grind
+    grind
   case vc4 => -- base case of the loop
     grind
   case vc2 hmod h => -- `then` branch
-    have := Std.Rco.eq_succMany?_of_toList_eq_append_cons ‹_›
-    simp only [Std.PRange.UpwardEnumerable.succMany?] at this
+    have := Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›
     grind
   case vc3 => -- `else` branch
-    have := Std.Rco.eq_succMany?_of_toList_eq_append_cons ‹_›
-    simp only [Std.PRange.UpwardEnumerable.succMany?] at this
+    have := Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›
     grind
   case vc5 => -- postcondition
     grind
@@ -197,15 +189,15 @@ def f'' (n : Nat) : Array Nat := Id.run do
   let mut ret : Array Nat := .emptyWithCapacity n
   ret := ret.push 1 -- 1st entry should be `triangle 1`
   ret := ret.push 2 -- 2nd entry should be `factorial 2`
-  let mut even := 1 -- `triangle 1 = 1`
-  let mut odd := 2 -- `factorial 2 = 2`
-  for i in 2...<n do
-    if i % 2 = 1 then
-      odd := odd * i * (i + 1) -- `factorial (i + 1) = factorial (i - 1) * i * i + 1`
-      ret := ret.push odd
-    else
-      even := even + 2 * i + 1 -- `triangle (i + 1) = triangle (i - 1) * i * i + 1`
+  let mut odd := 1 -- `triangle 1 = 1`
+  let mut even := 2 -- `factorial 2 = 2`
+  for i in 3...=n do
+    if i % 2 = 0 then
+      even := even * (i - 1) * i -- `factorial i = factorial (i - 2) * i * i + 1`
       ret := ret.push even
+    else
+      odd := odd + 2 * i - 1 -- `triangle i = triangle (i - 2) + 2 * i - 1`
+      ret := ret.push odd
   return ret
 
 /-!
@@ -226,9 +218,9 @@ theorem size_f'' {n : Nat} :
   generalize hwp : f'' n = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  all_goals try infer_instance
-  case inv1 => exact ⇓⟨cur, _, _, xs⟩ => ⌜xs.size = cur.prefix.length + 2⌝
-  all_goals grind
+  invariants
+  | inv1 => ⇓⟨cur, _, _, xs⟩ => ⌜xs.size = cur.prefix.length + 2⌝
+  with grind
 
 def lastFactorial (n : Nat) := factorial (n / 2 * 2)
 def lastTriangle (n : Nat) := triangle ((n - 1) / 2 * 2 + 1)
@@ -276,9 +268,9 @@ theorem getElem_f'' {n : Nat} {k : Nat} (hlt : k < n) :
   generalize hwp : f'' n = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  all_goals try infer_instance
-  case inv1 =>
-    exact ⇓⟨cur, even, odd, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ odd = lastFactorial xs.size ∧ even = lastTriangle xs.size ∧ ∀ j : Nat, (_ : j < xs.size) →
+  invariants
+  | inv1 =>
+    ⇓⟨cur, even, odd, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ even = lastFactorial xs.size ∧ odd = lastTriangle xs.size ∧ ∀ j : Nat, (_ : j < xs.size) →
         (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
   case vc1 hn => -- verification of the early return
     -- the return value is a prefix of `[1, 2]` and `k` is the index that needs to be verified
@@ -289,10 +281,10 @@ theorem getElem_f'' {n : Nat} {k : Nat} (hlt : k < n) :
   case vc4 => -- base case of the loop
     grind
   case vc2 hmod h => -- `then` branch
-    have := Std.Rco.eq_succMany?_of_toList_eq_append_cons ‹_›
+    have := Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›
     grind
   case vc3 => -- `else` branch
-    have := Std.Rco.eq_succMany?_of_toList_eq_append_cons ‹_›
+    have := Std.Rcc.eq_succMany?_of_toList_eq_append_cons ‹_›
     grind
   case vc5 => -- postcondition
     grind
