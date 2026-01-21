@@ -3,10 +3,21 @@ import Std
 open Std
 
 /-!
+# HumanEval 123: List the odd numbers in a Collatz sequence in ascending order
+
+This problem asks us to return the odd numbers in a Collatz sequence. Since the Collatz
+conjecture is unsolved, we cannot prove termination for all inputs. This file demonstrates
+two approaches to handling this:
+
+1. Require a termination proof as an argument, proving that the Collatz sequence for the given input
+   reaches `1` eventually (guaranteed termination).
+2. Don't require a termination proof for calling the function, only for verification.
+-/
+
+/-!
 ## Potentially missing API
 
 This section provides declarations that might be added to the standard library.
-Feel free to skip to the next section called `Preliminaries`.
 -/
 
 theorem Acc.invTransGen {x y : α} (h₁ : Acc r x) (h₂ : Relation.TransGen r y x) : Acc r y := by
@@ -19,6 +30,207 @@ theorem Std.compare_ne_eq [Ord α] [LawfulEqOrd α] {x y : α} :
 instance : LawfulOrderOrd Nat where
   isLE_compare := by grind [Nat.isLE_compare]
   isGE_compare := by grind [Nat.isGE_compare]
+
+attribute [grind =] TreeSet.mem_toList
+
+/-!
+## Preliminaries
+
+We start by defining what it means to make a step in the Collatz sequence.
+-/
+
+/--
+Only valid if called for `n > 1`.
+-/
+def collatzStep (n : Nat) : Nat :=
+    if n % 2 = 0 then n / 2 else n * 3 + 1
+
+/--
+`CollatzRel a b` signifies that `b` is a valid successor of `a` in a Collatz sequence.
+Here, we assume the sequence stops at `1`, so `1` has no successor.
+-/
+def CollatzRel : Nat → Nat → Prop := fun m n =>
+    1 < n ∧ collatzStep n = m
+
+theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
+    CollatzRel (collatzStep n) n := by
+  grind [CollatzRel]
+
+/-!
+## Implementation 1: guaranteed to terminate
+
+Next, we provide an implementation using well-founded recursion. `oddCollatz₁ n` is guaranteed to
+terminate, but calling it requires a proof that the Collatz sequence for `n` is finite.
+-/
+
+instance : WellFoundedRelation { m : Nat // Acc CollatzRel m } := Acc.wfRel
+
+/--
+As an optional improvement, we will implement a tactic below that automatically discharges the
+termination proof obligation, making is easier to call our solution. We declare the syntax first
+and provide the implementation later.
+-/
+syntax "try_decide" : tactic
+
+def oddCollatz₁ (n : Nat) (h : Acc CollatzRel n := by try_decide) : List Nat :=
+  (collectOddCollatz ⟨n, h⟩ ∅).toList
+where
+  -- We attach a proof that `1` is reachable from `n` in finitely many steps to ensure termination.
+  collectOddCollatz (n : { n : Nat // Acc CollatzRel n }) (acc : TreeSet Nat compare) :
+      TreeSet Nat compare :=
+    if h : n.val > 1 then
+      collectOddCollatz ⟨collatzStep n, n.property.inv (by grind [CollatzRel])⟩
+        (if n.val % 2 = 0 then acc else acc.insert n.val)
+    else if n.val = 1 then
+      acc.insert 1
+    else
+      acc
+  termination_by n
+  decreasing_by
+    grind [CollatzRel]
+
+/-!
+### Optional: Implementing the `try_decide` tactic
+
+In order to make `oddCollatz` easier to use, we provide a tactic that automatically
+proves termination for a given input. The tactic `try_decide` will do so as long as the
+Collatz sequence is short enough.
+-/
+
+theorem acc_collatzRel_collatzStep_iff {n : Nat} (h : n > 1) :
+    Acc CollatzRel (collatzStep n) ↔ Acc CollatzRel n := by
+  apply Iff.intro
+  · exact fun h => ⟨_, fun m hm => by grind [CollatzRel]⟩
+  · exact fun h => by grind [Acc.inv, collatzRel_collatzStep]
+
+def tryDecideTermination (n : Nat) (fuel : Nat) (h : Acc CollatzRel n ↔ P) :
+    Option (Decidable P) := do
+  match fuel with
+  | 0 => none
+  | fuel + 1 => do
+    if hn : n > 1 then
+      have := acc_collatzRel_collatzStep_iff hn
+      tryDecideTermination (collatzStep n) fuel (this.trans h)
+    else
+      return .isTrue (h.mp ⟨_, fun m hm => by grind [CollatzRel]⟩)
+
+def extractProof (d : Option (Decidable P)) : Option (PLift P) := do
+  match ← d with
+  | .isTrue h => return .up h
+  | .isFalse _ => none
+
+macro_rules
+  | `(tactic| try_decide)  =>
+    `(tactic| exact ((extractProof (tryDecideTermination _ 100 Iff.rfl)).get (by decide)).down)
+
+example : Acc CollatzRel 10 := by try_decide
+
+/-!
+## Tests for `oddCollatz₁`
+
+Observe that while `oddCollatz₁` is guaranteed to terminate, we do not need to manually supply
+the termination proofs because of the automatic use of our `try_decide` tactic.
+-/
+
+example : oddCollatz₁ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
+example : oddCollatz₁ 5 = [1, 5] := by native_decide
+example : oddCollatz₁ 12 = [1, 3, 5] := by native_decide
+example : oddCollatz₁ 1 = [1] := by native_decide
+
+/-!
+## Verification of `oddCollatz₁`
+-/
+
+theorem oddCollatz₁_pairwise_distinct {n : Nat} {h : Acc CollatzRel n} :
+    (oddCollatz₁ n h).Pairwise (· ≠ ·) := by
+  simpa [oddCollatz₁] using TreeSet.distinct_toList (α := Nat) (cmp := compare)
+
+theorem oddCollatz₁_pairwise_lt {n : Nat} {h : Acc CollatzRel n} :
+    (oddCollatz₁ n h).Pairwise (· < ·) := by
+  simpa [oddCollatz₁, compare_eq_lt] using TreeSet.ordered_toList (α := Nat) (cmp := compare)
+
+theorem mod_two_eq_one_of_mem_oddCollatz₁ {m n : Nat} {h : Acc CollatzRel n} (hm : m ∈ oddCollatz₁ n h) :
+    m % 2 = 1 := by
+  simp only [oddCollatz₁, TreeSet.mem_toList] at hm
+  generalize (⟨n, h⟩ : Subtype _) = n at hm
+  generalize hg : (∅ : TreeSet Nat) = acc at hm
+  have hm' (k : Nat) : k ∈ acc → k % 2 = 1 := by simp [← hg]
+  clear hg
+  fun_induction oddCollatz₁.collectOddCollatz n acc <;> grind
+
+theorem transGen_collatzRel_of_mem_oddCollatz₁ {m n : Nat} {h : Acc CollatzRel n} (hm : m ∈ oddCollatz₁ n h)
+    (hne : m ≠ n) :
+    Relation.TransGen CollatzRel m n := by
+  simp only [oddCollatz₁, TreeSet.mem_toList] at hm
+  generalize htmp : (⟨n, h⟩ : Subtype _) = s at hm
+  rw [show n = s.val by grind] at hne ⊢
+  clear htmp
+  generalize hg : (∅ : TreeSet Nat) = acc at hm
+  have hm' (k : Nat) : k ∈ acc → k ≠ s → Relation.TransGen CollatzRel k s := by simp [← hg]
+  clear hg
+  generalize htmp : s = n₀ at hm' hne ⊢
+  have hs : s = n₀ ∨ Relation.TransGen CollatzRel s n₀ := Or.inl htmp
+  clear htmp
+  fun_induction oddCollatz₁.collectOddCollatz s acc
+  · rename_i n' acc' h' ih
+    apply ih hm
+    · grind
+    · apply Or.inr
+      rcases hs with rfl | hs
+      · exact .single (collatzRel_collatzStep (by grind))
+      · refine .trans ?_ hs
+        exact .single (collatzRel_collatzStep (by grind))
+  · grind
+  · grind
+
+theorem mem_collectOddCollatz_of_mem {n : { n : Nat // Acc CollatzRel n }} {acc : TreeSet Nat}
+    {m : Nat} (h : m ∈ acc) :
+    m ∈ oddCollatz₁.collectOddCollatz n acc := by
+  fun_induction oddCollatz₁.collectOddCollatz n acc <;> grind
+
+theorem mem_self_collectOddCollatz {n : { n : Nat // Acc CollatzRel n }} {acc : TreeSet Nat}
+    (h : n.val % 2 = 1) :
+    n.val ∈ oddCollatz₁.collectOddCollatz n acc := by
+  fun_cases oddCollatz₁.collectOddCollatz n acc <;> grind [mem_collectOddCollatz_of_mem]
+
+theorem mem_self_oddCollatz₁ {n : Nat} {h : Acc CollatzRel n} (h' : n % 2 = 1) :
+    n ∈ oddCollatz₁ n h := by
+  grind [oddCollatz₁, mem_self_collectOddCollatz]
+
+theorem collectOddCollatz_mono {n : { n : Nat // Acc CollatzRel n }} {acc' acc : TreeSet Nat}
+    (h : ∀ x, x ∈ acc' → x ∈ acc) {x : Nat} (hx : x ∈ oddCollatz₁.collectOddCollatz n acc') :
+    x ∈ oddCollatz₁.collectOddCollatz n acc := by
+  fun_induction oddCollatz₁.collectOddCollatz n acc generalizing acc' <;>
+    grind [oddCollatz₁.collectOddCollatz]
+
+theorem mem_oddCollatz₁_of_mem_oddCollatz₁_of_collatzRel {k m n : Nat} {hm hn}
+    (hmem : k ∈ oddCollatz₁ m hm) (hrel : CollatzRel m n) :
+    k ∈ oddCollatz₁ n hn := by
+  grind [oddCollatz₁, CollatzRel, oddCollatz₁.collectOddCollatz, collectOddCollatz_mono]
+
+theorem mem_oddCollatz₁_of_mem_oddCollatz₁_of_transGen {k m n : Nat} {hn}
+    (hrel : Relation.TransGen CollatzRel m n) (hmem : k ∈ oddCollatz₁ m (hn.invTransGen hrel)) :
+    k ∈ oddCollatz₁ n hn := by
+  induction hrel
+  · grind [mem_oddCollatz₁_of_mem_oddCollatz₁_of_collatzRel]
+  · grind [Acc.inv, mem_oddCollatz₁_of_mem_oddCollatz₁_of_collatzRel]
+
+theorem mem_oddCollatz₁_of_transGen {m n : Nat} {hn : Acc CollatzRel n}
+    (h : Relation.TransGen CollatzRel m n) (h' : m % 2 = 1) :
+    m ∈ oddCollatz₁ n hn := by
+  grind [mem_oddCollatz₁_of_mem_oddCollatz₁_of_transGen, mem_self_oddCollatz₁]
+
+theorem mem_oddCollatz₁_iff {m n : Nat} {h : Acc CollatzRel n} :
+    m ∈ oddCollatz₁ n h ↔ m % 2 = 1 ∧ (m = n ∨ Relation.TransGen CollatzRel m n) := by
+  grind [mod_two_eq_one_of_mem_oddCollatz₁, transGen_collatzRel_of_mem_oddCollatz₁,
+    mem_self_oddCollatz₁, mem_oddCollatz₁_of_transGen]
+
+/-!
+## Preparations for the second approach: more potentially missing API
+
+We need an improved version of the `extrinsicFix₂` fixpoint combinator in order to demonstrate
+the second solution.
+-/
 
 section Extrinsic
 open Relation
@@ -62,7 +274,6 @@ public theorem WellFounded.partialExtrinsicFix_eq [∀ a, Nonempty (C a)] (R : �
   simp only [partialExtrinsicFix]
   rw [extrinsicFix_eq_apply]
   congr; ext a' hR
-  simp
   let f (x : { x : α // x = a' ∨ TransGen R x a' }) : { x : α // x = a ∨ TransGen R x a } :=
     ⟨x.val, by
       cases x.property
@@ -151,203 +362,14 @@ public def WellFounded.partialExtrinsicFix₂_eq [∀ a b, Nonempty (C₂ a b)]
 end Extrinsic
 
 /-!
-## Preliminaries
+## Implementation 2: no termination proof required
 
-We start by defining what it means to make a step in the Collatz sequence.
+We now show an alternative implementation that does not require passing a termination proof
+as an argument. This makes the function easier to call, but verification is only possible
+on inputs where the Collatz sequence actually terminates.
 -/
 
-/--
-Only valid if called for `n > 1`
--/
-def collatzStep (n : Nat) : Nat :=
-    if n % 2 = 0 then n / 2 else n * 3 + 1
-
-/--
-`CollatzRel a b` signifies that `b` is a valid successor of `a` in a Collatz sequence.
-Here, we assume the sequence stops at `1`, so `1` has no successor.
--/
-def CollatzRel : Nat → Nat → Prop := fun m n =>
-    1 < n ∧ collatzStep n = m
-
-theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
-    CollatzRel (collatzStep n) n := by
-  grind [CollatzRel]
-
-/-!
-## Preliminaries regarding termination
-
-Next, we provide an implementation using well-founded recursion. `oddCollatz₂ n` is guaranteed to
-terminate, but calling it requires a proof that the Collatz sequence for `n` is finite.
-In order to make this function easier to use, we start by providing a tactic that automatically
-proves the finiteness.
--/
-
-theorem acc_collatzRel_collatzStep_iff {n : Nat} (h : n > 1) :
-    Acc CollatzRel (collatzStep n) ↔ Acc CollatzRel n := by
-  apply Iff.intro
-  · exact fun h => ⟨_, fun m hm => by grind [CollatzRel]⟩
-  · exact fun h => by grind [Acc.inv, collatzRel_collatzStep]
-
-def tryDecideTermination (n : Nat) (fuel : Nat) (h : Acc CollatzRel n ↔ P) :
-    Option (Decidable P) := do
-  match fuel with
-  | 0 => none
-  | fuel + 1 => do
-    if hn : n > 1 then
-      have := acc_collatzRel_collatzStep_iff hn
-      tryDecideTermination (collatzStep n) fuel (this.trans h)
-    else
-      return .isTrue (h.mp ⟨_, fun m hm => by grind [CollatzRel]⟩)
-
-def extractProof (d : Option (Decidable P)) : Option (PLift P) := do
-  match ← d with
-  | .isTrue h => return .up h
-  | .isFalse _ => none
-
-macro "try_decide" : tactic => `(tactic| exact ((extractProof (tryDecideTermination _ 100 Iff.rfl)).get (by decide)).down)
-
-example : Acc CollatzRel 10 := by try_decide
-
-/-!
-## Implementation that is guaranteed to terminate
--/
-
-instance : WellFoundedRelation { m : Nat // Acc CollatzRel m } := Acc.wfRel
-
-def oddCollatz₂ (n : Nat) (h : Acc CollatzRel n := by try_decide) : List Nat :=
-  (collectOddCollatz ⟨n, h⟩ ∅).toList
-where
-  -- We attach a proof that `1` is reachable from `n` in finitely many steps to ensure termination.
-  collectOddCollatz (n : { n : Nat // Acc CollatzRel n }) (acc : TreeSet Nat compare) :
-      TreeSet Nat compare :=
-    if h : n.val > 1 then
-      collectOddCollatz ⟨collatzStep n, n.property.inv (by grind [CollatzRel])⟩
-        (if n.val % 2 = 0 then acc else acc.insert n.val)
-    else if n.val = 1 then
-      acc.insert 1
-    else
-      acc
-  termination_by n
-  decreasing_by
-    grind [CollatzRel]
-
-/-!
-## Tests for `oddCollatz₂`
-
-Observe that while `oddCollatz₂` is guaranteed to terminate, we do not need to manually supply
-the termination proofs. These proofs are derived automatically using the `try_decide` tactic.
--/
-
-example : oddCollatz₂ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
-example : oddCollatz₂ 5 = [1, 5] := by native_decide
-example : oddCollatz₂ 12 = [1, 3, 5] := by native_decide
-example : oddCollatz₂ 1 = [1] := by native_decide
-
-/-!
-## Verification of `oddCollatz₂`
--/
-
-theorem oddCollatz₂_pairwise_distinct {n : Nat} {h : Acc CollatzRel n} :
-    (oddCollatz₂ n h).Pairwise (· ≠ ·) := by
-  simpa [oddCollatz₂] using TreeSet.distinct_toList (α := Nat) (cmp := compare)
-
-theorem oddCollatz₂_pairwise_lt {n : Nat} {h : Acc CollatzRel n} :
-    (oddCollatz₂ n h).Pairwise (· < ·) := by
-  simpa [oddCollatz₂, compare_eq_lt] using TreeSet.ordered_toList (α := Nat) (cmp := compare)
-
-theorem mod_two_eq_one_of_mem_oddCollatz₂ {m n : Nat} {h : Acc CollatzRel n} (hm : m ∈ oddCollatz₂ n h) :
-    m % 2 = 1 := by
-  simp only [oddCollatz₂, TreeSet.mem_toList] at hm
-  generalize (⟨n, h⟩ : Subtype _) = n at hm
-  generalize hg : (∅ : TreeSet Nat) = acc at hm
-  have hm' (k : Nat) : k ∈ acc → k % 2 = 1 := by simp [← hg]
-  clear hg
-  fun_induction oddCollatz₂.collectOddCollatz n acc <;> grind
-
-theorem transGen_collatzRel_of_mem_oddCollatz₂ {m n : Nat} {h : Acc CollatzRel n} (hm : m ∈ oddCollatz₂ n h)
-    (hne : m ≠ n) :
-    Relation.TransGen CollatzRel m n := by
-  simp only [oddCollatz₂, TreeSet.mem_toList] at hm
-  generalize htmp : (⟨n, h⟩ : Subtype _) = s at hm
-  rw [show n = s.val by grind] at hne ⊢
-  clear htmp
-  generalize hg : (∅ : TreeSet Nat) = acc at hm
-  have hm' (k : Nat) : k ∈ acc → k ≠ s → Relation.TransGen CollatzRel k s := by simp [← hg]
-  clear hg
-  generalize htmp : s = n₀ at hm' hne ⊢
-  have hs : s = n₀ ∨ Relation.TransGen CollatzRel s n₀ := Or.inl htmp
-  clear htmp
-  fun_induction oddCollatz₂.collectOddCollatz s acc
-  · rename_i n' acc' h' ih
-    apply ih hm
-    · grind
-    · apply Or.inr
-      rcases hs with rfl | hs
-      · exact .single (collatzRel_collatzStep (by grind))
-      · refine .trans ?_ hs
-        exact .single (collatzRel_collatzStep (by grind))
-  · grind
-  · grind
-
-theorem mem_collectOddCollatz_of_mem {n : { n : Nat // Acc CollatzRel n }} {acc : TreeSet Nat}
-    {m : Nat} (h : m ∈ acc) :
-    m ∈ oddCollatz₂.collectOddCollatz n acc := by
-  fun_induction oddCollatz₂.collectOddCollatz n acc <;> grind
-
-theorem mem_self_collectOddCollatz {n : { n : Nat // Acc CollatzRel n }} {acc : TreeSet Nat}
-    (h : n.val % 2 = 1) :
-    n.val ∈ oddCollatz₂.collectOddCollatz n acc := by
-  fun_cases oddCollatz₂.collectOddCollatz n acc <;> grind [mem_collectOddCollatz_of_mem]
-
-attribute [grind =] TreeSet.mem_toList
-
-theorem mem_self_oddCollatz₂ {n : Nat} {h : Acc CollatzRel n} (h' : n % 2 = 1) :
-    n ∈ oddCollatz₂ n h := by
-  grind [oddCollatz₂, mem_self_collectOddCollatz]
-
-theorem collectOddCollatz_mono {n : { n : Nat // Acc CollatzRel n }} {acc' acc : TreeSet Nat}
-    (h : ∀ x, x ∈ acc' → x ∈ acc) {x : Nat} (hx : x ∈ oddCollatz₂.collectOddCollatz n acc') :
-    x ∈ oddCollatz₂.collectOddCollatz n acc := by
-  fun_induction oddCollatz₂.collectOddCollatz n acc generalizing acc' <;>
-    grind [oddCollatz₂.collectOddCollatz]
-
-theorem mem_oddCollatz₂_of_mem_oddCollatz₂_of_collatzRel {k m n : Nat} {hm hn}
-    (hmem : k ∈ oddCollatz₂ m hm) (hrel : CollatzRel m n) :
-    k ∈ oddCollatz₂ n hn := by
-  grind [oddCollatz₂, CollatzRel, oddCollatz₂.collectOddCollatz, collectOddCollatz_mono]
-
-theorem mem_oddCollatz₂_of_mem_oddCollatz₂_of_transGen {k m n : Nat} {hn}
-    (hrel : Relation.TransGen CollatzRel m n) (hmem : k ∈ oddCollatz₂ m (hn.invTransGen hrel)) :
-    k ∈ oddCollatz₂ n hn := by
-  induction hrel
-  · grind [mem_oddCollatz₂_of_mem_oddCollatz₂_of_collatzRel]
-  · grind [Acc.inv, mem_oddCollatz₂_of_mem_oddCollatz₂_of_collatzRel]
-
-theorem mem_oddCollatz₂_of_transGen {m n : Nat} {hn : Acc CollatzRel n}
-    (h : Relation.TransGen CollatzRel m n) (h' : m % 2 = 1) :
-    m ∈ oddCollatz₂ n hn := by
-  grind [mem_oddCollatz₂_of_mem_oddCollatz₂_of_transGen, mem_self_oddCollatz₂]
-
-theorem mem_oddCollatz₂_iff {m n : Nat} {h : Acc CollatzRel n} :
-    m ∈ oddCollatz₂ n h ↔ m % 2 = 1 ∧ (m = n ∨ Relation.TransGen CollatzRel m n) := by
-  grind [mod_two_eq_one_of_mem_oddCollatz₂, transGen_collatzRel_of_mem_oddCollatz₂,
-    mem_self_oddCollatz₂, mem_oddCollatz₂_of_transGen]
-
-/-!
-## Implementation 1: no termination proof required
-
-Until the Collatz conjecture is solved, it is not clear that the function we are going to write
-will terminate on all inputs. There are two ways to address this problem.
-
-1. Write a function that is not guaranteed to terminate. It can be verified on inputs for which
-   the Collatz sequence reaches `1` after finitely many steps.
-2. Write a function that requires proof that the Collatz sequence reaches `1` from the given input.
-
-The following solution follows approach 1. After that, we show another solution following
-approach 2.
--/
-
-def oddCollatz₁ (n : Nat) : List Nat :=
+def oddCollatz₂ (n : Nat) : List Nat :=
   (collectOddCollatz n ∅).toList
 where
   -- This function is recursive and, depending on the Collatz conjecture, it may or may not terminate.
@@ -368,44 +390,41 @@ where
         acc
 
 /-!
-## Tests for `oddCollatz₁`
+## Tests for `oddCollatz₂`
 -/
 
-example : oddCollatz₁ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
-example : oddCollatz₁ 5 = [1, 5] := by native_decide
-example : oddCollatz₁ 12 = [1, 3, 5] := by native_decide
-example : oddCollatz₁ 1 = [1] := by native_decide
+example : oddCollatz₂ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
+example : oddCollatz₂ 5 = [1, 5] := by native_decide
+example : oddCollatz₂ 12 = [1, 3, 5] := by native_decide
+example : oddCollatz₂ 1 = [1] := by native_decide
 
 /-!
-We'll verify `oddCollatz₁` after having verified `oddCollatz₂`.
--/
+## Verification of `oddCollatz₂`
 
-/-!
-## Verification of `oddCollatz₁`
+We'll verify `oddCollatz₂` by proving it equivalent to `oddCollatz₁`.
 -/
 
 theorem collectOddCollatz_eq_collectOddCollatz {m} (hm : Acc CollatzRel m) :
-    oddCollatz₁.collectOddCollatz m acc = oddCollatz₂.collectOddCollatz ⟨m, hm⟩ acc := by
-  rw [oddCollatz₁.collectOddCollatz]
+    oddCollatz₂.collectOddCollatz m acc = oddCollatz₁.collectOddCollatz ⟨m, hm⟩ acc := by
+  rw [oddCollatz₂.collectOddCollatz]
   induction hm generalizing acc
   rename_i h ih
-  rw [WellFounded.partialExtrinsicFix₂_eq, oddCollatz₂.collectOddCollatz]
+  rw [WellFounded.partialExtrinsicFix₂_eq, oddCollatz₁.collectOddCollatz]
   · congr; ext h
-    simp
-    rw [ih]
+    apply ih
     exact collatzRel_collatzStep h
   · change Acc (InvImage CollatzRel PSigma.fst) _
     refine InvImage.accessible _ ?_
     exact ⟨_, h⟩
 
-theorem oddCollatz₁_eq_oddCollatz₂ {n : Nat} (hn : Acc CollatzRel n) :
-    oddCollatz₁ n = oddCollatz₂ n hn := by
-  rw [oddCollatz₁, oddCollatz₂]
+theorem oddCollatz₂_eq_oddCollatz₁ {n : Nat} (hn : Acc CollatzRel n) :
+    oddCollatz₂ n = oddCollatz₁ n hn := by
+  rw [oddCollatz₂, oddCollatz₁]
   grind [collectOddCollatz_eq_collectOddCollatz]
 
-theorem mem_oddCollatz₁_iff {m n : Nat} (h : Acc CollatzRel n) :
-    m ∈ oddCollatz₁ n ↔ m % 2 = 1 ∧ (m = n ∨ Relation.TransGen CollatzRel m n) := by
-  grind [mem_oddCollatz₂_iff, oddCollatz₁_eq_oddCollatz₂]
+theorem mem_oddCollatz₂_iff {m n : Nat} (h : Acc CollatzRel n) :
+    m ∈ oddCollatz₂ n ↔ m % 2 = 1 ∧ (m = n ∨ Relation.TransGen CollatzRel m n) := by
+  grind [mem_oddCollatz₁_iff, oddCollatz₂_eq_oddCollatz₁]
 
 /-!
 ## Prompt
