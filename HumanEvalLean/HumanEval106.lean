@@ -1,5 +1,7 @@
 module
 
+import Lean.LibrarySuggestions.Default
+
 import Std.Tactic.Do
 -- Sadly, it's apparently currently impossible to easily prove the size of a
 -- `Nat` range without unfolding internal stuff. This should be fixed in the standard library.
@@ -180,6 +182,114 @@ theorem f'_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
     grind [Nat.not_le, Nat.length_toList_rco]
 
 end EfficientImpl
+
+section MoreEfficientImpl
+
+/-!
+## An efficient implementation avoiding `[·]!`
+-/
+
+def f'' (n : Nat) : Array Nat := Id.run do
+  if n ≤ 2 then
+    return #[1, 2].take n
+  let mut ret : Array Nat := .emptyWithCapacity n
+  ret := ret.push 1 -- 1st entry should be `triangle 1`
+  ret := ret.push 2 -- 2nd entry should be `factorial 2`
+  let mut even := 1
+  let mut odd := 2
+  for i in 2...<n do
+    if i % 2 = 1 then
+      odd := odd * i * (i + 1)
+      ret := ret.push odd
+    else
+      even := even + 2 * i + 1
+      ret := ret.push (ret[i - 2]! + 2 * i + 1)
+  return ret
+
+/-!
+### Tests
+-/
+
+example : f'' 5 = #[1, 2, 6, 24, 15] := by native_decide
+example : f'' 7 = #[1, 2, 6, 24, 15, 720, 28] := by native_decide
+example : f'' 1 = #[1] := by native_decide
+example : f'' 3 = #[1, 2, 6] := by native_decide
+
+/-!
+### Verification
+-/
+
+theorem size_f'' {n : Nat} :
+    (f'' n).size = n := by
+  generalize hwp : f'' n = w
+  apply Std.Do.Id.of_wp_run_eq hwp
+  mvcgen
+  all_goals try infer_instance
+  case inv1 => exact ⇓⟨cur, _, _, xs⟩ => ⌜xs.size = cur.prefix.length + 2⌝
+  all_goals grind [Nat.length_toList_rco]
+
+def lastFactorial (n : Nat) := factorial (n / 2 * 2)
+def lastTriangle (n : Nat) := triangle ((n - 1) / 2 * 2 + 1)
+
+@[grind =] theorem lastTriangle_two : lastTriangle 2 = 1 := by decide
+@[grind =] theorem lastFactorial_two : lastFactorial 2 = 2 := by decide
+
+theorem lastTriangle_add_one (h : n % 2 = 1) :
+    lastTriangle (n + 1) = lastTriangle n := by
+  grind [lastTriangle]
+
+@[grind =]
+theorem lastFactorial_add_one_of_odd (h : n % 2 = 1) :
+    lastFactorial (n + 1) = lastFactorial n * n * (n + 1) := by
+  have : (n + 1) / 2 * 2 = n / 2 * 2 + 2 := by grind
+  grind [lastFactorial, factorial]
+
+@[grind =]
+theorem lastTriangle_add_one_of_odd (h : n % 2 = 1) :
+    lastTriangle (n + 1) = lastTriangle n := by
+  grind [lastTriangle]
+
+@[grind =]
+theorem lastTriangle_add_one_of_even (h : n % 2 = 0) (h' : 0 < n) :
+    lastTriangle (n + 1) = lastTriangle n + 2 * n + 1 := by
+  have : n / 2 * 2 = (n - 1) / 2 * 2 + 2 := by grind
+  grind [lastTriangle, triangle]
+
+@[grind =]
+theorem lastFactorial_add_one_of_even (h : n % 2 = 0) :
+    lastFactorial (n + 1) = lastFactorial n := by
+  grind [lastFactorial]
+
+attribute [grind =] Std.PRange.Nat.succMany?_eq
+
+theorem f''_eq_fac {n : Nat} {k : Nat} (hlt : k < n) :
+    (f'' n)[k]'(by grind [size_f'']) = if k % 2 = 0 then triangle (k + 1) else factorial (k + 1) := by
+  rw [Array.getElem_eq_iff]
+  generalize hwp : f'' n = w
+  apply Std.Do.Id.of_wp_run_eq hwp
+  mvcgen
+  all_goals try infer_instance
+  case inv1 =>
+    exact ⇓⟨cur, even, odd, xs⟩ => ⌜xs.size = cur.prefix.length + 2 ∧ odd = lastFactorial xs.size ∧ even = lastTriangle xs.size ∧ ∀ j : Nat, (_ : j < xs.size) →
+        (j % 2 = 1 → xs[j] = factorial (j + 1)) ∧ (j % 2 = 0 → xs[j] = triangle (j + 1))⌝
+  case vc1 hn => -- verification of the early return
+    -- the return value is a prefix of `[1, 2]` and `k` is the index that needs to be verified
+    match k with
+    | 0 => grind [triangle]
+    | 1 => grind [factorial]
+    | n + 2 => grind
+  case vc4 => -- base case of the loop
+    grind [triangle, factorial]
+  case vc2 hmod h => -- `then` branch
+    have := Std.Rco.eq_succMany?_of_toList_eq_append_cons ‹_›
+    grind [lastFactorial, factorial]
+  case vc3 => -- `else` branch
+    have := Std.Rco.eq_succMany?_of_toList_eq_append_cons ‹_›
+    grind [triangle]
+  case vc5 => -- postcondition
+    grind [Nat.not_le, Nat.length_toList_rco]
+
+end MoreEfficientImpl
 
 /-!
 ## Prompt
