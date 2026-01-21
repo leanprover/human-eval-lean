@@ -39,7 +39,7 @@ public def WellFounded.partialExtrinsicFix [∀ a, Nonempty (C a)] (R : α → �
           apply TransGen.single
           assumption⟩ ‹_›) ⟨a, Or.inl rfl⟩
 
-public theorem WellFounded.bla {α' : Sort _} [∀ a, Nonempty (C a)] (R : α → α → Prop) (f : α' → α)
+public theorem WellFounded.extrinsicFix_invImage {α' : Sort _} [∀ a, Nonempty (C a)] (R : α → α → Prop) (f : α' → α)
     (F : ∀ a, (∀ a', R a' a → C a') → C a) (F' : ∀ a, (∀ a', R (f a') (f a) → C (f a')) → C (f a))
     (h : ∀ a r, F (f a) r = F' a fun a' hR => r (f a') hR) (a : α') (h : WellFounded R) :
     extrinsicFix (C := (C <| f ·)) (InvImage R f) F' a = extrinsicFix (C := C) R F (f a) := by
@@ -73,7 +73,7 @@ public theorem WellFounded.partialExtrinsicFix_eq [∀ a, Nonempty (C a)] (R : �
         apply Or.inr
         refine TransGen.trans h ?_
         exact .single hR⟩
-  have := bla (C := (C ·.val)) (R := (R ·.1 ·.1)) (f := f) (F := fun a r => F a.1 fun a' hR => r ⟨a', Or.inr (by cases a.2; grind [TransGen.single]; exact .trans (.single hR) ‹_›)⟩ hR)
+  have := extrinsicFix_invImage (C := (C ·.val)) (R := (R ·.1 ·.1)) (f := f) (F := fun a r => F a.1 fun a' hR => r ⟨a', Or.inr (by cases a.2; grind [TransGen.single]; exact .trans (.single hR) ‹_›)⟩ hR)
     (F' := fun a r => F a.1 fun a' hR => r ⟨a', by cases a.2; grind [TransGen.single]; exact Or.inr (.trans (.single hR) ‹_›)⟩ hR)
   unfold InvImage at this
   rw [this]
@@ -115,7 +115,7 @@ public theorem WellFounded.partialExtrinsicFix₂_eq_partialExtrinsicFix [∀ a 
   simp only [partialExtrinsicFix, partialExtrinsicFix₂, extrinsicFix₂]
   let f (x : ((a' : α) ×' { b' // PSigma.mk a' b' = ⟨a, b⟩ ∨ TransGen R ⟨a', b'⟩ ⟨a, b⟩ })) : { a' // a' = ⟨a, b⟩ ∨ TransGen R a' ⟨a, b⟩ } :=
     ⟨⟨x.1, x.2.1⟩, x.2.2⟩
-  have := bla (C := fun a => C₂ a.1.1 a.1.2) (f := f) (R := (R ·.1 ·.1))
+  have := extrinsicFix_invImage (C := fun a => C₂ a.1.1 a.1.2) (f := f) (R := (R ·.1 ·.1))
     (F := fun a r => F a.1.1 a.1.2 fun a' b' hR => r ⟨⟨a', b'⟩, ?refine_a⟩ hR)
     (F' := fun a r => F a.1 a.2.1 fun a' b' hR => r ⟨a', b', ?refine_b⟩ hR)
     (a := ⟨a, b, ?refine_c⟩); rotate_left
@@ -172,53 +172,6 @@ def CollatzRel : Nat → Nat → Prop := fun m n =>
 theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
     CollatzRel (collatzStep n) n := by
   grind [CollatzRel]
-
-/-!
-## Implementation 1: no termination proof required
-
-Until the Collatz conjecture is solved, it is not clear that the function we are going to write
-will terminate on all inputs. There are two ways to address this problem.
-
-1. Write a function that is not guaranteed to terminate. It can be verified on inputs for which
-   the Collatz sequence reaches `1` after finitely many steps.
-2. Write a function that requires proof that the Collatz sequence reaches `1` from the given input.
-
-The following solution follows approach 1. After that, we show another solution following
-approach 2.
--/
-
-def oddCollatz₁ (n : Nat) : List Nat :=
-  (collectOddCollatz n ∅).toList
-where
-  -- This function is recursive and, depending on the Collatz conjecture, it may or may not terminate.
-  -- By relying on the fixpoint combinator `partialExtrinsicFix₂` instead of using the `partial` modifier,
-  -- we will be able to verify the function whenever the Collatz sequence terminates after
-  -- finitely many steps. A termination proof is not required for *calling* this function,
-  -- only for verifying it.
-  collectOddCollatz : (n : Nat) → (acc : TreeSet Nat compare) → TreeSet Nat compare :=
-    -- `partialExtrinsicFix₂` is a fixpoint combinator that produces a function that may or may
-    -- not terminate. It can be verified on inputs on which the fixpoint is well-founded.
-    -- If we had used the `partial` modifier instead, no verification would be possible at all.
-    WellFounded.partialExtrinsicFix₂ (CollatzRel ·.1 ·.1) fun n acc recur =>
-      if h : n > 1 then
-        recur (collatzStep n) (if n % 2 = 0 then acc else acc.insert n) (by grind [CollatzRel])
-      else if n = 1 then
-        acc.insert 1
-      else
-        acc
-
-/-!
-## Tests for `oddCollatz₁`
--/
-
-example : oddCollatz₁ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
-example : oddCollatz₁ 5 = [1, 5] := by native_decide
-example : oddCollatz₁ 12 = [1, 3, 5] := by native_decide
-example : oddCollatz₁ 1 = [1] := by native_decide
-
-/-!
-We'll verify `oddCollatz₁` after having verified `oddCollatz₂`.
--/
 
 /-!
 ## Preliminaries regarding termination
@@ -379,6 +332,53 @@ theorem mem_oddCollatz₂_iff {m n : Nat} {h : Acc CollatzRel n} :
     m ∈ oddCollatz₂ n h ↔ m % 2 = 1 ∧ (m = n ∨ Relation.TransGen CollatzRel m n) := by
   grind [mod_two_eq_one_of_mem_oddCollatz₂, transGen_collatzRel_of_mem_oddCollatz₂,
     mem_self_oddCollatz₂, mem_oddCollatz₂_of_transGen]
+
+/-!
+## Implementation 1: no termination proof required
+
+Until the Collatz conjecture is solved, it is not clear that the function we are going to write
+will terminate on all inputs. There are two ways to address this problem.
+
+1. Write a function that is not guaranteed to terminate. It can be verified on inputs for which
+   the Collatz sequence reaches `1` after finitely many steps.
+2. Write a function that requires proof that the Collatz sequence reaches `1` from the given input.
+
+The following solution follows approach 1. After that, we show another solution following
+approach 2.
+-/
+
+def oddCollatz₁ (n : Nat) : List Nat :=
+  (collectOddCollatz n ∅).toList
+where
+  -- This function is recursive and, depending on the Collatz conjecture, it may or may not terminate.
+  -- By relying on the fixpoint combinator `partialExtrinsicFix₂` instead of using the `partial` modifier,
+  -- we will be able to verify the function whenever the Collatz sequence terminates after
+  -- finitely many steps. A termination proof is not required for *calling* this function,
+  -- only for verifying it.
+  collectOddCollatz : (n : Nat) → (acc : TreeSet Nat compare) → TreeSet Nat compare :=
+    -- `partialExtrinsicFix₂` is a fixpoint combinator that produces a function that may or may
+    -- not terminate. It can be verified on inputs on which the fixpoint is well-founded.
+    -- If we had used the `partial` modifier instead, no verification would be possible at all.
+    WellFounded.partialExtrinsicFix₂ (CollatzRel ·.1 ·.1) fun n acc recur =>
+      if h : n > 1 then
+        recur (collatzStep n) (if n % 2 = 0 then acc else acc.insert n) (by grind [CollatzRel])
+      else if n = 1 then
+        acc.insert 1
+      else
+        acc
+
+/-!
+## Tests for `oddCollatz₁`
+-/
+
+example : oddCollatz₁ 14 = [1, 5, 7, 11, 13, 17] := by native_decide
+example : oddCollatz₁ 5 = [1, 5] := by native_decide
+example : oddCollatz₁ 12 = [1, 3, 5] := by native_decide
+example : oddCollatz₁ 1 = [1] := by native_decide
+
+/-!
+We'll verify `oddCollatz₁` after having verified `oddCollatz₂`.
+-/
 
 /-!
 ## Verification of `oddCollatz₁`
