@@ -52,10 +52,6 @@ Here, we assume the sequence stops at `1`, so `1` has no successor.
 def CollatzRel : Nat → Nat → Prop := fun m n =>
     1 < n ∧ collatzStep n = m
 
-theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
-    CollatzRel (collatzStep n) n := by
-  grind [CollatzRel]
-
 /-!
 ## Implementation 1: guaranteed to terminate
 
@@ -96,6 +92,10 @@ In order to make `oddCollatz` easier to use, we provide a tactic that automatica
 proves termination for a given input. The tactic `try_decide` will do so as long as the
 Collatz sequence is short enough.
 -/
+
+theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
+    CollatzRel (collatzStep n) n := by
+  grind [CollatzRel]
 
 theorem acc_collatzRel_collatzStep_iff {n : Nat} (h : n > 1) :
     Acc CollatzRel (collatzStep n) ↔ Acc CollatzRel n := by
