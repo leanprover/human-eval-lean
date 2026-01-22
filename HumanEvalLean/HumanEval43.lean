@@ -14,16 +14,16 @@ theorem List.any₂_iff_not_pairwise {P : α → α → Prop} {l : List α} :
     l.Any₂ P ↔ ¬l.Pairwise (fun x y => ¬P x y) := by
   grind [List.Any₂]
 
-@[simp, grind]
+@[simp, grind .]
 theorem not_any₂_nil {P : α → α → Prop} : ¬List.Any₂ P [] := by
   simp [List.any₂_iff_not_pairwise]
 
-@[simp, grind]
+@[simp, grind =]
 theorem List.any₂_cons {P : α → α → Prop} {x : α} {xs : List α} :
     List.Any₂ P (x::xs) ↔ (∃ y ∈ xs, P x y) ∨ List.Any₂ P xs := by
   grind [List.any₂_iff_not_pairwise, pairwise_cons]
 
-@[simp, grind]
+@[simp, grind =]
 theorem List.any₂_append {P : α → α → Prop} {xs ys : List α} :
     List.Any₂ P (xs ++ ys) ↔ List.Any₂ P xs ∨ List.Any₂ P ys ∨ (∃ x ∈ xs, ∃ y ∈ ys, P x y) := by
   grind [List.any₂_iff_not_pairwise]
@@ -173,11 +173,11 @@ theorem List.any₂_iff_exists_getElem (P : α → α → Prop) (l : List α) :
     exact ⟨l.take i, l[i], l.drop (i + 1), by simp,
       (List.exists_mem_iff_exists_getElem _ _).2 ⟨j - i - 1, by grind, by grind⟩⟩
 
-@[simp, grind]
+@[simp, grind =]
 theorem List.any₂_append_singleton {P : α → α → Prop} {xs : List α} {x : α} :
     List.Any₂ P (xs ++ [x]) ↔ List.Any₂ P xs ∨ ∃ y ∈ xs, P y x := by
   grind [List.any₂_iff_not_pairwise]
 
-@[simp, grind]
+@[simp, grind .]
 theorem not_any₂_singleton {P : α → α → Prop} {x : α} : ¬List.Any₂ P [x] := by
   simp [List.any₂_iff_not_pairwise]
