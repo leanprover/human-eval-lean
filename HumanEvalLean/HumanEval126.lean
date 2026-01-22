@@ -87,6 +87,9 @@ grind_pattern compare_eq_lt => compare a b, Ordering.lt where
 grind_pattern compare_eq_eq => compare a b, Ordering.eq where
   guard compare a b = .eq
 
+grind_pattern compare_eq_gt => compare a b, Ordering.gt where
+  guard compare a b = .gt
+
 theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwise (· ≤ ·) := by
   revert h -- Without reverting, we will not be able to use that the return value is `true` to show
            --that early returns cannot happen.
@@ -181,7 +184,7 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
     simp only [List.pairwise_iff_getElem, reduceCtorEq, false_and, Option.some.injEq, Bool.false_eq,
       Classical.not_forall, Nat.not_le, true_and, exists_eq_left, false_or]
     refine .inl ⟨pref.length, pref.length + 1, by grind, by grind, by grind, ?_⟩
-    grind [compare_eq_gt, =_ List.getLast_eq_getLastD]
+    grind [=_ List.getLast_eq_getLastD]
   case vc7 =>
     -- Because the `xs.toArray.count` call is under an `∃` binder in the goal, `grind`'s
     -- congruence closure will not apply `List.count_toArray`.
