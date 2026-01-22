@@ -46,12 +46,29 @@ example : isSorted #[1, 2, 2, 3, 3, 4] = true := by native_decide
 example : isSorted #[1, 2, 3, 4] = true := by native_decide
 
 /-!
-## Verification
+## Missing API
 -/
 
 instance : LawfulOrderOrd Nat where
   isLE_compare := by grind [Nat.isLE_compare]
   isGE_compare := by grind [Nat.isGE_compare]
+
+attribute [- grind] Array.mkSlice_rci_eq_mkSlice_rco
+attribute [grind =] Array.toList_mkSlice_rci
+attribute [grind .] List.Pairwise.nil
+
+grind_pattern compare_eq_lt => compare a b, Ordering.lt where
+  guard compare a b = .lt
+
+grind_pattern compare_eq_eq => compare a b, Ordering.eq where
+  guard compare a b = .eq
+
+grind_pattern compare_eq_gt => compare a b, Ordering.gt where
+  guard compare a b = .gt
+
+/-!
+## Verification
+-/
 
 theorem pairwise_append_of_trans {xs ys : List α} {R : α → α → Prop} [Trans R R R] :
     (xs ++ ys).Pairwise R ↔ xs.Pairwise R ∧ ys.Pairwise R ∧ (∀ (hxs : xs ≠ []) (hys : ys ≠ []), R (xs.getLast hxs) (ys.head hys)) := by
@@ -79,19 +96,6 @@ theorem pairwise_cons_of_trans {x : α} {xs : List α} {R : α → α → Prop} 
   have := pairwise_append_of_trans (R := R) (xs := [x]) (ys := xs)
   grind
 
-attribute [- grind] Array.mkSlice_rci_eq_mkSlice_rco
-attribute [grind =] Array.toList_mkSlice_rci
-attribute [grind .] List.Pairwise.nil
-
-grind_pattern compare_eq_lt => compare a b, Ordering.lt where
-  guard compare a b = .lt
-
-grind_pattern compare_eq_eq => compare a b, Ordering.eq where
-  guard compare a b = .eq
-
-grind_pattern compare_eq_gt => compare a b, Ordering.gt where
-  guard compare a b = .gt
-
 theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwise (· ≤ ·) := by
   revert h -- Without reverting, we will not be able to use that the return value is `true` to show
            --that early returns cannot happen.
@@ -103,7 +107,7 @@ theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwi
   invariants
   | inv1 => .withEarlyReturn
       (fun cur ⟨last, _⟩ =>
-        ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).Pairwise (· ≤ ·)⌝)
+        ⌜(xs[0] :: cur.prefix).getLast? = some last ∧ (xs[0] :: cur.prefix).Pairwise (· ≤ ·)⌝)
       (fun ret _ => ⌜ret = false⌝)
   case vc1 =>
     simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
@@ -113,7 +117,7 @@ theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwi
     grind
   all_goals grind [List.getElem_zero, List.drop_one]
 
-theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : xs.count x ≤ 2 := by
+theorem count_le_two_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : xs.count x ≤ 2 := by
   have hp : xs.toList.Pairwise (· ≤ ·) := sorted_of_isSorted h
   rw [List.pairwise_iff_getElem] at hp
   revert h
@@ -168,7 +172,7 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
 
 theorem isSorted_iff {xs : Array Nat} :
     isSorted xs ↔ xs.toList.Pairwise (· ≤ ·) ∧ ∀ x, xs.count x ≤ 2 := by
-  grind [sorted_of_isSorted, count_le_one_of_isSorted,
+  grind [sorted_of_isSorted, count_le_two_of_isSorted,
     not_pairwise_or_exists_count_of_isSorted_eq_false]
 
 /-!
