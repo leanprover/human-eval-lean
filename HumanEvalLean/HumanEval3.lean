@@ -28,19 +28,19 @@ theorem hasPrefix_iff {P : List α → Prop} {l : List α} :
     l.HasPrefix P ↔ ∃ n, P (l.take n) := by
   grind [HasPrefix]
 
-@[simp, grind]
+@[simp, grind =]
 theorem hasPrefix_nil {P : List α → Prop} : [].HasPrefix P ↔ P [] := by
   simp [hasPrefix_iff]
 
-@[simp, grind]
+@[simp, grind .]
 theorem hasPrefix_of_nil {P : List α → Prop} {l : List α} (h : P []) : l.HasPrefix P :=
   ⟨⟨0, by simpa⟩⟩
 
-@[simp, grind]
+@[simp, grind .]
 theorem hasPrefix_of_all {P : List α → Prop} {l : List α} (h : P l) : l.HasPrefix P :=
   ⟨⟨l.length, by simpa⟩⟩
 
-@[grind]
+@[grind =]
 theorem hasPrefix_cons {P : List α → Prop} {a : α} {l : List α} :
     (a :: l).HasPrefix P ↔ P [] ∨ l.HasPrefix (fun l' => P (a :: l')) := by
   refine ⟨?_, ?_⟩
@@ -51,12 +51,12 @@ theorem hasPrefix_cons {P : List α → Prop} {a : α} {l : List α} :
     · exact hasPrefix_of_nil h
     · exact ⟨n + 1, by simpa⟩
 
-@[grind]
+@[grind =]
 theorem hasPrefix_append {P : List α → Prop} {l l' : List α} :
     (l ++ l').HasPrefix P ↔ l.HasPrefix P ∨ l'.HasPrefix (fun l'' => P (l ++ l'')) := by
   induction l generalizing P with grind
 
-@[grind]
+@[grind =]
 theorem sum_append_singleton_int {l₁ : List Int} {x : Int} : (l₁ ++ [x]).sum = l₁.sum + x := by
   simp [List.sum, ← List.foldr_assoc]
 

@@ -5,7 +5,7 @@ def stringXor (a b : List Bool) : List Bool :=
     |>.map (fun p => Bool.xor p.1 p.2)
     |>.toList
 
-@[simp, grind]
+@[simp, grind =]
 theorem length_stringXor {a b : List Bool} : (stringXor a b).length = min a.length b.length := by
   simp [stringXor]
 
