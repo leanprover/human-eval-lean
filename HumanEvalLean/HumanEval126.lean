@@ -122,30 +122,16 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
   mvcgen
   invariants
   | inv1 => .withEarlyReturn
-    (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).count x ≤ (if (last = x ∧ repeated) ∨ x < last then 2 else 1)⌝)
+    (fun cur ⟨last, repeated⟩ => ⌜(xs[0] :: cur.prefix).getLast? = some last ∧ (xs[0] :: cur.prefix).count x ≤ (if (last = x ∧ repeated) ∨ x < last then 2 else 1)⌝)
     (fun ret _ => ⌜ret = false⌝)
   case vc1 pref cur suff _ _ _ _ _ _ _ =>
-    rw [← List.cons_append]
+    simp only [← List.cons_append]
+    generalize hpref' : xs[0] :: pref = pref' at *
+    have : xs = pref' ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
+    clear hpref'
     simp only [List.count_append, List.count_singleton]
-    have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
-    have : xs.length = pref.length + suff.length + 2 := by grind
-    split <;> rename_i heq
-    · cases beq_iff_eq.mp heq
-      have (i) (hi : i ≤ pref.length) : xs[i] < x := by
-        apply Nat.lt_of_le_of_lt (m := xs[pref.length]) <;> grind
-      have h₁ : ¬ x ∈ pref := by grind [List.mem_iff_getElem]
-      have h₂ : ¬ x = xs[0] := by grind
-      grind [List.count_eq_zero]
-    · split
-      · grind
-      · have : ¬ x ∈ xs[0] :: pref := by
-          simp only [List.mem_iff_getElem, not_exists]
-          intro i hi hix
-          have h₁ : x = xs[i]'(by grind) := by grind
-          have h₂ : cur = xs[pref.length + 1] := by grind
-          have : x ≤ cur := by grind only [List.length_cons]
-          grind
-        grind
+    have : ¬ cur ∈ pref' := by grind [List.mem_iff_getElem]
+    split <;> grind [List.count_eq_zero]
   case vc6 a b c d e f =>
     grind [List.getElem_zero, List.drop_one]
   all_goals (clear hp; grind)
