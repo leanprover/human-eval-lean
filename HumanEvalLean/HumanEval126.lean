@@ -1,5 +1,189 @@
-def is_sorted : Unit :=
-  ()
+module
+
+import Std
+open Std Std.Do
+
+/-!
+## Implementation
+-/
+
+def isSorted (xs : Array Nat) : Bool := Id.run do
+  if h : xs.size > 0 then
+    let mut last := xs[0]
+    let mut repeated := false
+    for x in xs[1...*] do
+      match compare last x with
+      | .lt =>
+        last := x
+        repeated := false
+      | .eq =>
+        if repeated then
+          return false
+        else
+          repeated := true
+      | .gt =>
+        return false
+  return true
+
+/-!
+## Tests
+-/
+
+example : isSorted #[5] = true := by native_decide
+example : isSorted #[1, 2, 3, 4, 5] = true := by native_decide
+example : isSorted #[1, 3, 2, 4, 5] = false := by native_decide
+example : isSorted #[1, 2, 3, 4, 5, 6] = true := by native_decide
+example : isSorted #[1, 2, 3, 4, 5, 6, 7] = true := by native_decide
+example : isSorted #[1, 3, 2, 4, 5, 6, 7] = false := by native_decide
+example : isSorted #[] = true := by native_decide
+example : isSorted #[1] = true := by native_decide
+example : isSorted #[3, 2, 1] = false := by native_decide
+example : isSorted #[1, 2, 2, 2, 3, 4] = false := by native_decide
+example : isSorted #[1, 2, 3, 3, 3, 4] = false := by native_decide
+example : isSorted #[1, 2, 2, 3, 3, 4] = true := by native_decide
+example : isSorted #[1, 2, 3, 4] = true := by native_decide
+
+/-!
+## Verification
+-/
+
+instance : LawfulOrderOrd Nat where
+  isLE_compare := by grind [Nat.isLE_compare]
+  isGE_compare := by grind [Nat.isGE_compare]
+
+theorem pairwise_append_of_trans {xs ys : List α} {R : α → α → Prop} [Trans R R R] :
+    (xs ++ ys).Pairwise R ↔ xs.Pairwise R ∧ ys.Pairwise R ∧ (∀ (hxs : xs ≠ []) (hys : ys ≠ []), R (xs.getLast hxs) (ys.head hys)) := by
+  rw [List.pairwise_append]
+  apply Iff.intro
+  · grind
+  · rintro ⟨hpxs, hpys, h⟩
+    refine ⟨hpxs, hpys, fun x hx y hy => ?_⟩
+    rw [List.pairwise_iff_getElem] at hpxs hpys
+    specialize h (by grind) (by grind)
+    simp only [List.getLast_eq_getElem, List.head_eq_getElem] at h
+    rw [List.mem_iff_getElem] at hx hy
+    obtain ⟨i, hi, rfl⟩ := hx
+    obtain ⟨j, hj, rfl⟩ := hy
+    have h₁ : i < xs.length - 1 → R xs[i] xs[xs.length - 1] := by grind
+    have h₂ : 0 < j → R ys[0] ys[j] := by grind
+    by_cases hi' : i = xs.length - 1 <;> by_cases hj' : j = 0
+    · grind
+    · exact Trans.trans (r := R) (by grind) (h₂ (by grind))
+    · exact Trans.trans (s := R) (h₁ (by grind)) (by grind)
+    · exact Trans.trans (h₁ (by grind)) (Trans.trans h (h₂ (by grind)))
+
+theorem pairwise_cons_of_trans {x : α} {xs : List α} {R : α → α → Prop} [Trans R R R] :
+    (x :: xs).Pairwise R ↔ (∀ (hxs : xs ≠ []), R x (xs.head hxs)) ∧ xs.Pairwise R := by
+  have := pairwise_append_of_trans (R := R) (xs := [x]) (ys := xs)
+  grind
+
+theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwise (· ≤ ·) := by
+  revert h -- Without reverting, we will not be able to use that the return value is `true` to show
+           --that early returns cannot happen.
+  generalize hwp : isSorted xs = wp
+  apply Id.of_wp_run_eq hwp
+  mvcgen
+  invariants
+  | inv1 => .withEarlyReturn
+      (fun cur ⟨last, _⟩ =>
+        ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).Pairwise (· ≤ ·)⌝)
+      (fun ret _ => ⌜ret = false⌝)
+  all_goals try grind
+  case vc1 =>
+    simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
+    grind [compare_eq_lt, List.Pairwise.nil]
+  case vc3 =>
+    simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
+    grind [compare_eq_eq, List.Pairwise.nil]
+  case vc6 =>
+    rename_i hnone h'
+    simp [hnone, ← Array.length_toList, - List.pairwise_cons] at h'
+    simp [Array.length_toList, - List.pairwise_cons] at h'
+    rw [← Array.getElem_toList (xs := xs) (i := 0) (by grind), ← List.head_eq_getElem (by grind)] at h'
+    grind
+  case vc8 =>
+    grind [List.Pairwise.nil]
+
+theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : xs.count x ≤ 2 := by
+  have hp : xs.toList.Pairwise (· ≤ ·) := sorted_of_isSorted h
+  rw [List.pairwise_iff_getElem] at hp
+  revert h
+  generalize hwp : isSorted xs = wp
+  apply Id.of_wp_run_eq hwp
+  mvcgen
+  invariants
+  | inv1 => .withEarlyReturn
+    (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).count x ≤ (if (last = x ∧ repeated) ∨ (x < last) then 2 else 1)⌝)
+    (fun ret _ => ⌜ret = false⌝)
+  case vc1 pref cur suff _ _ _ _ _ _ _ =>
+    rename_i h
+    rw [← List.cons_append]
+    simp [- List.cons_append, - List.cons_append_fun] at *
+    simp only [List.count_singleton]
+    simp +zetaDelta only at *
+    have : xs.toList = xs[0] :: pref ++ cur :: suff := by
+      simp only [← Array.getElem_toList, List.getElem_zero]
+      grind
+    split <;> rename_i heq
+    · simp at heq
+      cases heq
+      simp [List.count_eq_zero]
+      simp [← Array.length_toList] at *
+      have : xs.toList.length = pref.length + suff.length + 2 := by grind
+      have (i) (hi : i ≤ pref.length) : xs.toList[i] < x := by
+        apply Nat.lt_of_le_of_lt (m := xs.toList[pref.length])
+        · grind
+        · grind [compare_eq_lt]
+      grind [List.mem_iff_getElem]
+    · split
+      · grind
+      · simp
+        rw [List.count_eq_zero_of_not_mem]
+        · exact Nat.zero_le 1
+        have : xs.toList.length = pref.length + suff.length + 2 := by grind
+        simp only [List.mem_iff_getElem, not_exists]
+        intro i hi hix
+        have : x = xs.toList[i]'(by grind) := by grind
+        have : cur = xs.toList[pref.length + 1] := by grind
+        have : x ≤ cur := by grind
+        grind
+  case vc6 =>
+    rename_i h
+    simp [← Array.length_toList] at *
+    simp [Array.length_toList] at *
+    rw [← Array.getElem_toList (xs := xs) (i := 0) (by grind), List.getElem_zero] at h
+    grind
+  all_goals (clear hp; grind)
+
+theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : isSorted xs = false) :
+    ¬ xs.toList.Pairwise (· ≤ ·) ∨ (∃ x, xs.count x ≥ 3) := by
+  revert h
+  generalize hwf : isSorted xs = wf
+  apply Id.of_wp_run_eq hwf
+  mvcgen
+  invariants
+  | inv1 => .withEarlyReturn
+      (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLastD xs[0] ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
+      (fun ret ⟨last, repeated⟩ => ⌜¬ xs.toList.Pairwise (· ≤ ·) ∨ xs.count last ≥ 3⌝)
+  all_goals try grind
+  case vc2 pref cur suff _ _ _ _ _ _ _ _ =>
+    rw [← Array.count_toList]
+    have : xs.toList = xs[0] :: pref ++ cur :: suff := by sorry
+    grind
+  case vc4 pref cur suff _ _ _ last _ _ _ =>
+    simp [List.pairwise_iff_getElem]
+    apply Or.inl
+    have : xs.toList = xs[0] :: pref ++ cur :: suff := by sorry
+    have : xs.toList.length = pref.length + suff.length + 2 := by grind
+    refine ⟨pref.length, pref.length + 1, by grind, by grind, by grind, ?_⟩
+    have : xs.toList[pref.length + 1] = cur := by grind
+    have : xs.toList[pref.length] = (xs[0] :: pref)[pref.length] := by grind
+    have : (xs[0] :: pref)[pref.length] = pref.getLastD xs[0] := by grind [=_ List.getLast_eq_getLastD]
+    grind [compare_eq_gt]
+
+theorem isSorted_iff {xs : Array Nat} :
+    isSorted xs ↔ xs.toList.Pairwise (· ≤ ·) ∧ ∀ x, xs.count x ≤ 2 := by
+  grind [sorted_of_isSorted, count_le_one_of_isSorted, not_pairwise_or_exists_count_of_isSorted_eq_false]
 
 /-!
 ## Prompt
@@ -29,15 +213,15 @@ def is_sorted(lst):
 ```python3
     count_digit = dict([(i, 0) for i in lst])
     for i in lst:
-        count_digit[i]+=1 
+        count_digit[i]+=1
     if any(count_digit[i] > 2 for i in lst):
         return False
     if all(lst[i-1] <= lst[i] for i in range(1, len(lst))):
         return True
     else:
         return False
-    
-    
+
+
 ```
 
 ## Tests
@@ -55,7 +239,7 @@ def check(candidate):
     assert candidate([]) == True, "This prints if this assert fails 2 (good for debugging!)"
     assert candidate([1]) == True, "This prints if this assert fails 3 (good for debugging!)"
     assert candidate([3, 2, 1]) == False, "This prints if this assert fails 4 (good for debugging!)"
-    
+
     # Check some edge cases that are easy to work out by hand.
     assert candidate([1, 2, 2, 2, 3, 4]) == False, "This prints if this assert fails 5 (good for debugging!)"
     assert candidate([1, 2, 3, 3, 3, 4]) == False, "This prints if this assert fails 6 (good for debugging!)"
