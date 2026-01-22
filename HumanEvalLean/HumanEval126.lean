@@ -81,6 +81,8 @@ theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwi
   revert h -- Without reverting, we will not be able to use that the return value is `true` to show
            --that early returns cannot happen.
   generalize hwp : isSorted xs = wp
+  rw [← Array.toArray_toList (xs := xs)] at *
+  generalize xs.toList = xs at *
   apply Id.of_wp_run_eq hwp
   mvcgen
   invariants
@@ -88,27 +90,21 @@ theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwi
       (fun cur ⟨last, _⟩ =>
         ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).Pairwise (· ≤ ·)⌝)
       (fun ret _ => ⌜ret = false⌝)
-  all_goals try grind
   case vc1 =>
     simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
     grind [compare_eq_lt, List.Pairwise.nil]
   case vc3 =>
     simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
     grind [compare_eq_eq, List.Pairwise.nil]
-  case vc6 =>
-    rename_i hnone h'
-    simp [hnone, ← Array.length_toList, - List.pairwise_cons] at h'
-    simp [Array.length_toList, - List.pairwise_cons] at h'
-    rw [← Array.getElem_toList (xs := xs) (i := 0) (by grind), ← List.head_eq_getElem (by grind)] at h'
-    grind
-  case vc8 =>
-    grind [List.Pairwise.nil]
+  all_goals grind [List.Pairwise.nil, List.getElem_zero, List.drop_one]
 
 theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : xs.count x ≤ 2 := by
   have hp : xs.toList.Pairwise (· ≤ ·) := sorted_of_isSorted h
   rw [List.pairwise_iff_getElem] at hp
   revert h
   generalize hwp : isSorted xs = wp
+  rw [← Array.toArray_toList (xs := xs)] at *
+  generalize xs.toList = xs at *
   apply Id.of_wp_run_eq hwp
   mvcgen
   invariants
@@ -121,17 +117,15 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
     simp [- List.cons_append, - List.cons_append_fun] at *
     simp only [List.count_singleton]
     simp +zetaDelta only at *
-    have : xs.toList = xs[0] :: pref ++ cur :: suff := by
-      simp only [← Array.getElem_toList, List.getElem_zero]
-      grind
+    have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero]
     split <;> rename_i heq
     · simp at heq
       cases heq
       simp [List.count_eq_zero]
-      simp [← Array.length_toList] at *
-      have : xs.toList.length = pref.length + suff.length + 2 := by grind
-      have (i) (hi : i ≤ pref.length) : xs.toList[i] < x := by
-        apply Nat.lt_of_le_of_lt (m := xs.toList[pref.length])
+      simp at *
+      have : xs.length = pref.length + suff.length + 2 := by grind
+      have (i) (hi : i ≤ pref.length) : xs[i] < x := by
+        apply Nat.lt_of_le_of_lt (m := xs[pref.length])
         · grind
         · grind [compare_eq_lt]
       grind [List.mem_iff_getElem]
@@ -140,46 +134,48 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
       · simp
         rw [List.count_eq_zero_of_not_mem]
         · exact Nat.zero_le 1
-        have : xs.toList.length = pref.length + suff.length + 2 := by grind
+        have : xs.length = pref.length + suff.length + 2 := by grind
         simp only [List.mem_iff_getElem, not_exists]
         intro i hi hix
-        have : x = xs.toList[i]'(by grind) := by grind
-        have : cur = xs.toList[pref.length + 1] := by grind
+        have : x = xs[i]'(by grind) := by grind
+        have : cur = xs[pref.length + 1] := by grind
         have : x ≤ cur := by grind
         grind
   case vc6 =>
-    rename_i h
-    simp [← Array.length_toList] at *
-    simp [Array.length_toList] at *
-    rw [← Array.getElem_toList (xs := xs) (i := 0) (by grind), List.getElem_zero] at h
-    grind
+    simp only [Array.toList_mkSlice_rci] at *
+    grind [List.getElem_zero, List.drop_one]
   all_goals (clear hp; grind)
 
 theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : isSorted xs = false) :
     ¬ xs.toList.Pairwise (· ≤ ·) ∨ (∃ x, xs.count x ≥ 3) := by
   revert h
   generalize hwf : isSorted xs = wf
+  rw [← Array.toArray_toList (xs := xs)] at *
+  generalize xs.toList = xs at *
   apply Id.of_wp_run_eq hwf
   mvcgen
   invariants
   | inv1 => .withEarlyReturn
       (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLastD xs[0] ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
-      (fun ret ⟨last, repeated⟩ => ⌜¬ xs.toList.Pairwise (· ≤ ·) ∨ xs.count last ≥ 3⌝)
-  all_goals try grind
+      (fun ret ⟨last, repeated⟩ => ⌜¬ xs.Pairwise (· ≤ ·) ∨ xs.count last ≥ 3⌝)
   case vc2 pref cur suff _ _ _ _ _ _ _ _ =>
-    rw [← Array.count_toList]
-    have : xs.toList = xs[0] :: pref ++ cur :: suff := by sorry
+    have : xs = xs[0] :: pref ++ cur :: suff := by sorry
     grind
   case vc4 pref cur suff _ _ _ last _ _ _ =>
     simp [List.pairwise_iff_getElem]
     apply Or.inl
-    have : xs.toList = xs[0] :: pref ++ cur :: suff := by sorry
-    have : xs.toList.length = pref.length + suff.length + 2 := by grind
+    have : xs = xs[0] :: pref ++ cur :: suff := by sorry
+    have : xs.length = pref.length + suff.length + 2 := by grind
     refine ⟨pref.length, pref.length + 1, by grind, by grind, by grind, ?_⟩
-    have : xs.toList[pref.length + 1] = cur := by grind
-    have : xs.toList[pref.length] = (xs[0] :: pref)[pref.length] := by grind
+    have : xs[pref.length + 1] = cur := by grind
+    have : xs[pref.length] = (xs[0] :: pref)[pref.length] := by grind
     have : (xs[0] :: pref)[pref.length] = pref.getLastD xs[0] := by grind [=_ List.getLast_eq_getLastD]
     grind [compare_eq_gt]
+  case vc7 =>
+    simp only [Array.toList_mkSlice_rci, List.count_toArray] at *
+    grind
+
+  all_goals grind
 
 theorem isSorted_iff {xs : Array Nat} :
     isSorted xs ↔ xs.toList.Pairwise (· ≤ ·) ∧ ∀ x, xs.count x ≤ 2 := by
