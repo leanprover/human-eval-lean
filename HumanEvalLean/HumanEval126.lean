@@ -3,6 +3,8 @@ module
 import Std
 open Std Std.Do
 
+set_option mvcgen.warning false
+
 /-!
 ## Implementation
 -/
@@ -126,6 +128,7 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
     (fun ret _ => ⌜ret = false⌝)
   case vc1 pref cur suff _ _ _ _ _ _ _ =>
     simp only [← List.cons_append]
+    -- We generalize to simplify the problem.
     generalize hpref' : xs[0] :: pref = pref' at *
     have : xs = pref' ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
     clear hpref'
@@ -146,7 +149,7 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
   mvcgen
   invariants
   | inv1 => .withEarlyReturn
-      (fun cur ⟨last, repeated⟩ => ⌜last = (xs[0] :: cur.prefix).getLast (by grind) ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
+      (fun cur ⟨last, repeated⟩ => ⌜(xs[0] :: cur.prefix).getLast? = some last ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
       (fun ret ⟨last, repeated⟩ => ⌜¬ xs.Pairwise (· ≤ ·) ∨ xs.count last ≥ 3⌝)
   case vc2 pref cur suff _ _ _ _ _ _ _ _ =>
     have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
@@ -157,7 +160,7 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
     simp [List.pairwise_iff_getElem, this]
   case vc7 =>
     -- Because the `xs.toArray.count` call is under an `∃` binder in the goal, `grind`'s
-    -- congruence closure will not apply `List.count_toArray`.
+    -- congruence closure is not able to use `List.count_toArray`.
     simp only [List.count_toArray] at *
     grind
 
@@ -165,7 +168,8 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
 
 theorem isSorted_iff {xs : Array Nat} :
     isSorted xs ↔ xs.toList.Pairwise (· ≤ ·) ∧ ∀ x, xs.count x ≤ 2 := by
-  grind [sorted_of_isSorted, count_le_one_of_isSorted, not_pairwise_or_exists_count_of_isSorted_eq_false]
+  grind [sorted_of_isSorted, count_le_one_of_isSorted,
+    not_pairwise_or_exists_count_of_isSorted_eq_false]
 
 /-!
 ## Prompt
