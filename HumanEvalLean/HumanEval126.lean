@@ -122,7 +122,7 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
   mvcgen
   invariants
   | inv1 => .withEarlyReturn
-    (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).count x ≤ (if (last = x ∧ repeated) ∨ (x < last) then 2 else 1)⌝)
+    (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).count x ≤ (if (last = x ∧ repeated) ∨ x < last then 2 else 1)⌝)
     (fun ret _ => ⌜ret = false⌝)
   case vc1 pref cur suff _ _ _ _ _ _ _ =>
     rw [← List.cons_append]
@@ -150,20 +150,6 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
     grind [List.getElem_zero, List.drop_one]
   all_goals (clear hp; grind)
 
-/-
-x : Nat
-xs : List Nat
-hp : ∀ (i j : Nat) (_hi : i < xs.length) (_hj : j < xs.length), i < j → xs[i] ≤ xs[j]
-c : xs.toArray.size > 0
-d : MProd (Option Bool) (MProd Nat Bool)
-e : d.fst = none
-f : (d.2.fst = (Slice.toList (Rci.Sliceable.mkSlice xs.toArray 1...*)).getLast?.getD xs[0] ∧
-    List.count x (xs[0] :: Slice.toList (Rci.Sliceable.mkSlice xs.toArray 1...*)) ≤
-      if d.2.fst = x ∧ d.2.snd = true ∨ x < d.2.fst then 2 else 1) ∨
-  ∃ a, none = some a ∧ a = false
-⊢ Array.count x xs.toArray ≤ 2
--/
-
 theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : isSorted xs = false) :
     ¬ xs.toList.Pairwise (· ≤ ·) ∨ (∃ x, xs.count x ≥ 3) := by
   revert h
@@ -174,17 +160,15 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
   mvcgen
   invariants
   | inv1 => .withEarlyReturn
-      (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLastD xs[0] ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
+      (fun cur ⟨last, repeated⟩ => ⌜last = (xs[0] :: cur.prefix).getLast (by grind) ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
       (fun ret ⟨last, repeated⟩ => ⌜¬ xs.Pairwise (· ≤ ·) ∨ xs.count last ≥ 3⌝)
   case vc2 pref cur suff _ _ _ _ _ _ _ _ =>
     have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
     grind
   case vc4 pref cur suff _ _ _ last _ _ _ =>
     have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
-    simp only [List.pairwise_iff_getElem, reduceCtorEq, false_and, Option.some.injEq, Bool.false_eq,
-      Classical.not_forall, Nat.not_le, true_and, exists_eq_left, false_or]
-    refine .inl ⟨pref.length, pref.length + 1, by grind, by grind, by grind, ?_⟩
-    grind [=_ List.getLast_eq_getLastD]
+    have : ∃ (i j : Nat), i < j ∧ ∃ hi, ∃ hj, (xs[j]'hj) < (xs[i]'hi) := ⟨pref.length, pref.length + 1, by grind⟩
+    simp [List.pairwise_iff_getElem, this]
   case vc7 =>
     -- Because the `xs.toArray.count` call is under an `∃` binder in the goal, `grind`'s
     -- congruence closure will not apply `List.count_toArray`.
