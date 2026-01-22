@@ -77,6 +77,16 @@ theorem pairwise_cons_of_trans {x : α} {xs : List α} {R : α → α → Prop} 
   have := pairwise_append_of_trans (R := R) (xs := [x]) (ys := xs)
   grind
 
+attribute [- grind] Array.mkSlice_rci_eq_mkSlice_rco
+attribute [grind =] Array.toList_mkSlice_rci
+attribute [grind .] List.Pairwise.nil
+
+grind_pattern compare_eq_lt => compare a b, Ordering.lt where
+  guard compare a b = .lt
+
+grind_pattern compare_eq_eq => compare a b, Ordering.eq where
+  guard compare a b = .eq
+
 theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwise (· ≤ ·) := by
   revert h -- Without reverting, we will not be able to use that the return value is `true` to show
            --that early returns cannot happen.
@@ -92,11 +102,11 @@ theorem sorted_of_isSorted {xs : Array Nat} (h : isSorted xs) : xs.toList.Pairwi
       (fun ret _ => ⌜ret = false⌝)
   case vc1 =>
     simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
-    grind [compare_eq_lt, List.Pairwise.nil]
+    grind
   case vc3 =>
     simp only [pairwise_cons_of_trans, pairwise_append_of_trans] at *
-    grind [compare_eq_eq, List.Pairwise.nil]
-  all_goals grind [List.Pairwise.nil, List.getElem_zero, List.drop_one]
+    grind
+  all_goals grind [List.getElem_zero, List.drop_one]
 
 theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : xs.count x ≤ 2 := by
   have hp : xs.toList.Pairwise (· ≤ ·) := sorted_of_isSorted h
@@ -112,39 +122,44 @@ theorem count_le_one_of_isSorted {xs : Array Nat} {x : Nat} (h : isSorted xs) : 
     (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLast?.getD xs[0] ∧ (xs[0] :: cur.prefix).count x ≤ (if (last = x ∧ repeated) ∨ (x < last) then 2 else 1)⌝)
     (fun ret _ => ⌜ret = false⌝)
   case vc1 pref cur suff _ _ _ _ _ _ _ =>
-    rename_i h
     rw [← List.cons_append]
-    simp [- List.cons_append, - List.cons_append_fun] at *
-    simp only [List.count_singleton]
-    simp +zetaDelta only at *
-    have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero]
+    simp only [List.count_append, List.count_singleton]
+    have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
+    have : xs.length = pref.length + suff.length + 2 := by grind
     split <;> rename_i heq
-    · simp at heq
-      cases heq
-      simp [List.count_eq_zero]
-      simp at *
-      have : xs.length = pref.length + suff.length + 2 := by grind
+    · cases beq_iff_eq.mp heq
       have (i) (hi : i ≤ pref.length) : xs[i] < x := by
-        apply Nat.lt_of_le_of_lt (m := xs[pref.length])
-        · grind
-        · grind [compare_eq_lt]
-      grind [List.mem_iff_getElem]
+        apply Nat.lt_of_le_of_lt (m := xs[pref.length]) <;> grind
+      have h₁ : ¬ x ∈ pref := by grind [List.mem_iff_getElem]
+      have h₂ : ¬ x = xs[0] := by grind
+      grind [List.count_eq_zero]
     · split
       · grind
-      · simp
-        rw [List.count_eq_zero_of_not_mem]
-        · exact Nat.zero_le 1
-        have : xs.length = pref.length + suff.length + 2 := by grind
-        simp only [List.mem_iff_getElem, not_exists]
-        intro i hi hix
-        have : x = xs[i]'(by grind) := by grind
-        have : cur = xs[pref.length + 1] := by grind
-        have : x ≤ cur := by grind
+      · have : ¬ x ∈ xs[0] :: pref := by
+          simp only [List.mem_iff_getElem, not_exists]
+          intro i hi hix
+          have h₁ : x = xs[i]'(by grind) := by grind
+          have h₂ : cur = xs[pref.length + 1] := by grind
+          have : x ≤ cur := by grind only [List.length_cons]
+          grind
         grind
-  case vc6 =>
-    simp only [Array.toList_mkSlice_rci] at *
+  case vc6 a b c d e f =>
     grind [List.getElem_zero, List.drop_one]
   all_goals (clear hp; grind)
+
+/-
+x : Nat
+xs : List Nat
+hp : ∀ (i j : Nat) (_hi : i < xs.length) (_hj : j < xs.length), i < j → xs[i] ≤ xs[j]
+c : xs.toArray.size > 0
+d : MProd (Option Bool) (MProd Nat Bool)
+e : d.fst = none
+f : (d.2.fst = (Slice.toList (Rci.Sliceable.mkSlice xs.toArray 1...*)).getLast?.getD xs[0] ∧
+    List.count x (xs[0] :: Slice.toList (Rci.Sliceable.mkSlice xs.toArray 1...*)) ≤
+      if d.2.fst = x ∧ d.2.snd = true ∨ x < d.2.fst then 2 else 1) ∨
+  ∃ a, none = some a ∧ a = false
+⊢ Array.count x xs.toArray ≤ 2
+-/
 
 theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : isSorted xs = false) :
     ¬ xs.toList.Pairwise (· ≤ ·) ∨ (∃ x, xs.count x ≥ 3) := by
@@ -159,20 +174,18 @@ theorem not_pairwise_or_exists_count_of_isSorted_eq_false {xs : Array Nat} (h : 
       (fun cur ⟨last, repeated⟩ => ⌜last = cur.prefix.getLastD xs[0] ∧ (repeated → (xs[0] :: cur.prefix).count last ≥ 2)⌝)
       (fun ret ⟨last, repeated⟩ => ⌜¬ xs.Pairwise (· ≤ ·) ∨ xs.count last ≥ 3⌝)
   case vc2 pref cur suff _ _ _ _ _ _ _ _ =>
-    have : xs = xs[0] :: pref ++ cur :: suff := by sorry
+    have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
     grind
   case vc4 pref cur suff _ _ _ last _ _ _ =>
-    simp [List.pairwise_iff_getElem]
-    apply Or.inl
-    have : xs = xs[0] :: pref ++ cur :: suff := by sorry
-    have : xs.length = pref.length + suff.length + 2 := by grind
-    refine ⟨pref.length, pref.length + 1, by grind, by grind, by grind, ?_⟩
-    have : xs[pref.length + 1] = cur := by grind
-    have : xs[pref.length] = (xs[0] :: pref)[pref.length] := by grind
-    have : (xs[0] :: pref)[pref.length] = pref.getLastD xs[0] := by grind [=_ List.getLast_eq_getLastD]
-    grind [compare_eq_gt]
+    have : xs = xs[0] :: pref ++ cur :: suff := by grind [List.getElem_zero, List.drop_one]
+    simp only [List.pairwise_iff_getElem, reduceCtorEq, false_and, Option.some.injEq, Bool.false_eq,
+      Classical.not_forall, Nat.not_le, true_and, exists_eq_left, false_or]
+    refine .inl ⟨pref.length, pref.length + 1, by grind, by grind, by grind, ?_⟩
+    grind [compare_eq_gt, =_ List.getLast_eq_getLastD]
   case vc7 =>
-    simp only [Array.toList_mkSlice_rci, List.count_toArray] at *
+    -- Because the `xs.toArray.count` call is under an `∃` binder in the goal, `grind`'s
+    -- congruence closure will not apply `List.count_toArray`.
+    simp only [List.count_toArray] at *
     grind
 
   all_goals grind
