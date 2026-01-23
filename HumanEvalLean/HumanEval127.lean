@@ -1,6 +1,7 @@
 module
 
 import HumanEvalLean.Common.IsPrime
+meta import HumanEvalLean.Common.IsPrime -- for `native_decide`
 
 /-!
 ## Implementation
@@ -26,20 +27,8 @@ example : intersection (1, 2) (1, 2) = "NO" := by native_decide
 example : intersection (-2, -2) (-3, -2) = "NO" := by native_decide
 
 /-!
-## Verification
+## Missing API
 -/
-
-theorem intersection_swap {p q} :
-    intersection p q = intersection q p := by
-  grind [intersection]
-
-theorem intersection_mem {p q} :
-    intersection p q ∈ ["YES", "NO"] := by
-  grind [intersection]
-
-theorem Int.mem_filter_mem_rco_toList_rco {l₁ r₁ l₂ r₂ : Int} {x : Int} :
-    x ∈ (l₁...r₁).toList.filter (· ∈ l₂...r₂) ↔ x ∈ ((max l₁ l₂)...(min r₁ r₂)) := by
-  grind [Std.Rco.mem_toList_iff_mem, Std.Rco.mem_iff]
 
 -- stolen from Init.Data.Range.Polymorphic.Lemmas, which is private
 private theorem eq_of_pairwise_lt_of_mem_iff_mem {lt : α → α → Prop} [asymm : Std.Asymm lt]
@@ -94,21 +83,64 @@ private theorem eq_of_pairwise_lt_of_mem_iff_mem {lt : α → α → Prop} [asym
           have hgt := hl.1 y ‹_›
           cases Std.Asymm.asymm _ _ hlt hgt
 
--- not @[grind =] because `(· ∈ l₂...r₂)` cannot part of the discrimination key
-theorem Int.filter_mem_rco_toList_rco {l₁ r₁ l₂ r₂ : Int} :
-    (l₁...r₁).toList.filter (· ∈ l₂...r₂) = ((max l₁ l₂)...(min r₁ r₂)).toList := by
+deriving instance DecidableEq for Std.Rcc
+
+/-!
+## Verification
+-/
+
+theorem intersection_swap {p q} :
+    intersection p q = intersection q p := by
+  grind [intersection]
+
+theorem intersection_mem {p q} :
+    intersection p q ∈ ["YES", "NO"] := by
+  grind [intersection]
+
+/--
+According to the problem description, the length of a range is the difference of its bounds.
+Caution: This is different from the size of the range, a.k.a. `r.size` and `r.toList.length`.
+-/
+def intervalLength (r : Std.Rcc Int) : Nat :=
+  (r.upper - r.lower).toNat
+
+example : intervalLength (2...=3) = 1 := by decide -- example from the problem description
+example : intervalLength (2...=2) = 0 := by decide
+example : intervalLength (5...=0) = 0 := by decide
+
+section IntervalIntersection
+
+def intervalIntersection (r s : Std.Rcc Int) : Std.Rcc Int :=
+  (max r.lower s.lower)...=(min r.upper s.upper)
+
+example : intervalIntersection (1...=3) (2...=4) = (2...=3) := by native_decide
+
+/-! The following three lemmas justify the name `intervalIntersection`. -/
+
+theorem mem_intervalIntersection_iff {l₁ r₁ l₂ r₂ x} :
+    x ∈ intervalIntersection (l₁...=r₁) (l₂...=r₂) ↔ x ∈ (l₁...=r₁) ∧ x ∈ (l₂...=r₂) := by
+  grind [intervalIntersection, Std.Rcc.mem_iff]
+
+theorem intervalIntersection_swap {r s} :
+    intervalIntersection r s = intervalIntersection s r := by
+  grind [intervalIntersection]
+
+theorem toList_intervalIntersection_eq_filter_mem_rcc_toList_rcc {l₁ r₁ l₂ r₂} :
+    (intervalIntersection (l₁...=r₁) (l₂...=r₂)).toList = (l₁...=r₁).toList.filter (· ∈ l₂...=r₂) := by
   apply eq_of_pairwise_lt_of_mem_iff_mem (lt := LT.lt)
+  · apply Std.Rcc.pairwise_toList_lt
   · apply List.Pairwise.filter
-    apply Std.Rco.pairwise_toList_lt
-  · apply Std.Rco.pairwise_toList_lt
-  · grind [mem_filter_mem_rco_toList_rco, Std.Rco.mem_toList_iff_mem]
+    apply Std.Rcc.pairwise_toList_lt
+  · grind [mem_intervalIntersection_iff, Std.Rcc.mem_toList_iff_mem]
+
+end IntervalIntersection
 
 theorem intersection_spec {p q} :
-    intersection p q = "YES" ↔ IsPrime ((p.1...p.2).toList.filter (· ∈ q.1...q.2)).length := by
+    intersection p q = "YES" ↔ IsPrime (intervalLength (intervalIntersection (p.1...=p.2) (q.1...=q.2))) := by
   simp only [intersection, isPrime_eq_true_iff_isPrime, ite_eq_left_iff]
-  suffices h : (min p.2 q.2 - max p.1 q.1).toNat = ((p.1...p.2).toList.filter (· ∈ q.1...q.2)).length by
+  suffices h : (min p.2 q.2 - max p.1 q.1).toNat = intervalLength (intervalIntersection (p.1...=p.2) (q.1...=q.2))  by
     grind [isPrime_iff]
-  simp [Int.filter_mem_rco_toList_rco]
+  grind [intervalLength, intervalIntersection]
 
 /-!
 ## Prompt

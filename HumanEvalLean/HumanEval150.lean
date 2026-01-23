@@ -5,6 +5,7 @@ import Init.Notation
 import Std.Tactic.Do
 
 import HumanEvalLean.Common.IsPrime
+meta import HumanEvalLean.Common.IsPrime -- for `native_decide`
 
 open Std
 
