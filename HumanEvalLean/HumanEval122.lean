@@ -17,7 +17,7 @@ def intToString (x : Int) : String :=
 
 def addElements (xs : Array Int) (k : Nat) : Int :=
   xs.iter.take k
-    |>.filter (fun x => (toString x).length ≤ 2)
+    |>.filter (fun x => (intToString x).length ≤ 2)
     |>.fold (init := 0) (· + ·)
 
 /-!
@@ -43,14 +43,6 @@ theorem intToString_of_neg {x : Int} (h : x < 0) :
   rw [intToString.eq_def]
   split <;> grind [intToString_of_nonneg]
 
-theorem toDigits_zero :
-    Nat.toDigits 10 0 = ['0'] := by
-  decide
-
-theorem toDigits_of_lt_ten {n : Nat} (h : n < 10) :
-    Nat.toDigits 10 n = [Nat.digitChar n] := by
-  revert n; decide
-
 theorem toDigitsCore_eq_append {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
     Nat.toDigitsCore 10 fuel n acc = Nat.toDigitsCore 10 fuel n [] ++ acc := by
   induction fuel generalizing n acc <;> grind [Nat.toDigitsCore]
@@ -74,25 +66,11 @@ theorem toDigits_of_ten_le {n : Nat} (h : 10 ≤ n) :
     Nat.toDigits 10 n = (Nat.toDigits 10 (n / 10)) ++ [Nat.digitChar (n % 10)] := by
   grind [toDigits_eq_if]
 
-theorem intToString_zero :
-    intToString 0 = "0" := by
-  decide
-
 theorem length_toDigits_le_iff {n k : Nat} (h : 0 < k) :
     (Nat.toDigits 10 n).length ≤ k ↔ n < 10 ^ k := by
   match k with
   | 0 => contradiction
   | k + 1 => induction k generalizing n <;> grind [toDigits_eq_if]
-
-/-- arithmetic characterization of an integer's length as a string -/
-theorem length_toString_le_two_iff {x : Int} :
-    (intToString x).length ≤ 2 ↔ x ∈ (-9)...=99 := by
-  simp [intToString, Std.Rcc.mem_iff]
-  split
-  · grind [length_toDigits_le_iff, String.length_ofList]
-  · have : "-".length = 1 := by decide
-    simp only [String.length_append, this, Nat.reduceLeDiff, ← Nat.le_sub_iff_add_le']
-    grind [length_toDigits_le_iff, String.length_ofList]
 
 theorem List.sum_append_int {xs ys : List Int} :
     (xs ++ ys).sum = xs.sum + ys.sum := by
@@ -121,9 +99,19 @@ attribute [simp] Iter.toArray_filter
 ## Verification
 -/
 
+/-- arithmetic characterization of an integer's length as a string -/
+theorem length_toString_le_two_iff {x : Int} :
+    (intToString x).length ≤ 2 ↔ x ∈ (-9)...=99 := by
+  simp [intToString, Std.Rcc.mem_iff]
+  split
+  · grind [length_toDigits_le_iff, String.length_ofList]
+  · have : "-".length = 1 := by decide
+    simp only [String.length_append, this, Nat.reduceLeDiff, ← Nat.le_sub_iff_add_le']
+    grind [length_toDigits_le_iff, String.length_ofList]
+
 /-- characterization of `addElements` in terms of `Array` operations -/
 theorem addElements_spec {xs : Array Int} {k : Nat} :
-    addElements xs k = ((xs.extract 0 k).filter (fun x => (toString x).length ≤ 2)).sum := by
+    addElements xs k = ((xs.extract 0 k).filter (fun x => (intToString x).length ≤ 2)).sum := by
   simp [addElements, ← Iter.foldl_toArray, Array.sum_eq_foldl_int]
 
 -- next, we state and verify the behavior from different angles
