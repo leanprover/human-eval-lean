@@ -17,6 +17,7 @@ def intToString (x : Int) : String :=
 
 def addElements (xs : Array Int) (k : Nat) : Int :=
   xs.iter.take k
+    -- It seems that the problem statement includes '-' when counting digits.
     |>.filter (fun x => (intToString x).length ≤ 2)
     |>.fold (init := 0) (· + ·)
 
@@ -43,34 +44,34 @@ theorem intToString_of_neg {x : Int} (h : x < 0) :
   rw [intToString.eq_def]
   split <;> grind [intToString_of_nonneg]
 
-theorem toDigitsCore_eq_append {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
+theorem Nat.toDigitsCore_eq_append {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
     Nat.toDigitsCore 10 fuel n acc = Nat.toDigitsCore 10 fuel n [] ++ acc := by
   induction fuel generalizing n acc <;> grind [Nat.toDigitsCore]
 
-theorem toDigitsCore_eq_toDigitsCore {fuel fuel' : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) (hf' : n < fuel') :
+theorem Nat.toDigitsCore_eq_toDigitsCore {fuel fuel' : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) (hf' : n < fuel') :
     Nat.toDigitsCore 10 fuel n acc = Nat.toDigitsCore 10 fuel' n [] ++ acc := by
   induction fuel generalizing n acc fuel'
   · grind [Nat.toDigitsCore]
   · obtain ⟨fuel', rfl⟩ := Nat.exists_eq_succ_of_ne_zero (n := fuel') (by grind)
-    grind [Nat.toDigitsCore, toDigitsCore_eq_append]
+    grind [Nat.toDigitsCore, Nat.toDigitsCore_eq_append]
 
-theorem toDigitsCore_eq_toDigits {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
+theorem Nat.toDigitsCore_eq_toDigits {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
     Nat.toDigitsCore 10 fuel n acc = Nat.toDigits 10 n ++ acc := by
-  grind [Nat.toDigits, toDigitsCore_eq_toDigitsCore]
+  grind [Nat.toDigits, Nat.toDigitsCore_eq_toDigitsCore]
 
-theorem toDigits_eq_if {n : Nat} :
+theorem Nat.toDigits_eq_if {n : Nat} :
     Nat.toDigits 10 n = if n < 10 then [Nat.digitChar n] else Nat.toDigits 10 (n / 10) ++ [Nat.digitChar (n % 10)] := by
-  grind [Nat.toDigits, Nat.toDigitsCore, toDigitsCore_eq_toDigits]
+  grind [Nat.toDigits, Nat.toDigitsCore, Nat.toDigitsCore_eq_toDigits]
 
-theorem toDigits_of_ten_le {n : Nat} (h : 10 ≤ n) :
+theorem Nat.toDigits_of_ten_le {n : Nat} (h : 10 ≤ n) :
     Nat.toDigits 10 n = (Nat.toDigits 10 (n / 10)) ++ [Nat.digitChar (n % 10)] := by
-  grind [toDigits_eq_if]
+  grind [Nat.toDigits_eq_if]
 
-theorem length_toDigits_le_iff {n k : Nat} (h : 0 < k) :
+theorem Nat.length_toDigits_le_iff {n k : Nat} (h : 0 < k) :
     (Nat.toDigits 10 n).length ≤ k ↔ n < 10 ^ k := by
   match k with
   | 0 => contradiction
-  | k + 1 => induction k generalizing n <;> grind [toDigits_eq_if]
+  | k + 1 => induction k generalizing n <;> grind [Nat.toDigits_eq_if]
 
 theorem List.sum_append_int {xs ys : List Int} :
     (xs ++ ys).sum = xs.sum + ys.sum := by
@@ -104,10 +105,10 @@ theorem length_toString_le_two_iff {x : Int} :
     (intToString x).length ≤ 2 ↔ x ∈ (-9)...=99 := by
   simp [intToString, Std.Rcc.mem_iff]
   split
-  · grind [length_toDigits_le_iff, String.length_ofList]
+  · grind [Nat.length_toDigits_le_iff, String.length_ofList]
   · have : "-".length = 1 := by decide
     simp only [String.length_append, this, Nat.reduceLeDiff, ← Nat.le_sub_iff_add_le']
-    grind [length_toDigits_le_iff, String.length_ofList]
+    grind [Nat.length_toDigits_le_iff, String.length_ofList]
 
 /-- characterization of `addElements` in terms of `Array` operations -/
 theorem addElements_spec {xs : Array Int} {k : Nat} :
