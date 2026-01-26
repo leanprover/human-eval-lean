@@ -18,8 +18,8 @@ def sumProductDo (xs : List Int) : Int × Int := Id.run do
 
   return (sum, product)
 
-theorem List.sum_append (xs : List Int) (ys : List Int)
-  : sum (xs ++ ys) = sum xs + sum ys := by
+theorem List.sum_append (xs : List Int) (ys : List Int) :
+    sum (xs ++ ys) = sum xs + sum ys := by
   induction xs with
   | nil =>
     change sum ys = 0 + sum ys
@@ -29,8 +29,8 @@ theorem List.sum_append (xs : List Int) (ys : List Int)
     rw [hi]
     omega
 
-theorem List.product_append (xs : List Int) (ys : List Int)
-  : product (xs ++ ys) = product xs * product ys := by
+theorem List.product_append (xs : List Int) (ys : List Int) :
+    product (xs ++ ys) = product xs * product ys := by
   induction xs with
   | nil =>
     change product ys = 1 * product ys
