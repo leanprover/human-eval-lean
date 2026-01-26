@@ -8,6 +8,7 @@ def List.product (xs : List Int) : Int :=
   | [] => 1
   | x :: xs' => x * (product xs')
 
+@[grind]
 def sumProduct (xs : List Int) : Int × Int := (List.sum xs, List.product xs)
 
 def sumProductDo (xs : List Int) : Int × Int := Id.run do
@@ -19,6 +20,7 @@ def sumProductDo (xs : List Int) : Int × Int := Id.run do
 
   return (sum, product)
 
+@[grind =]
 theorem List.sum_append (xs : List Int) (ys : List Int) :
     sum (xs ++ ys) = sum xs + sum ys := by
   induction xs with
@@ -30,6 +32,7 @@ theorem List.sum_append (xs : List Int) (ys : List Int) :
     rw [hi]
     omega
 
+@[grind =]
 theorem List.product_append (xs : List Int) (ys : List Int) :
     product (xs ++ ys) = product xs * product ys := by
   induction xs with
@@ -48,11 +51,7 @@ theorem sumProductDo_correct (xs : List Int) : sumProductDo xs = sumProduct xs :
   invariants
   · ⇓ ⟨ cur, result ⟩ =>
     ⌜ result.snd = List.sum cur.prefix ∧ result.fst = List.product cur.prefix ⌝
-  case vc1.step pref x suff h' result hi =>
-    rw [List.sum_append, List.product_append]
-    grind
-  case vc3.a.post.success result h' =>
-    grind [sumProduct]
+  with grind
 
 example : sumProductDo [] = (0, 1) := by rfl
 example : sumProductDo [1, 1, 1] = (3, 1) := by rfl
