@@ -2,6 +2,7 @@ import Std.Tactic.Do
 open Std.Do
 set_option mvcgen.warning false
 
+@[grind]
 def List.product (xs : List Int) : Int :=
   match xs with
   | [] => 1
@@ -48,18 +49,10 @@ theorem sumProductDo_correct (xs : List Int) : sumProductDo xs = sumProduct xs :
   · ⇓ ⟨ cur, result ⟩ =>
     ⌜ result.snd = List.sum cur.prefix ∧ result.fst = List.product cur.prefix ⌝
   case vc1.step pref x suff h' result hi =>
-    obtain ⟨ hi₀, hi₁⟩ := hi
-    constructor
-    rw [hi₀, List.sum_append]
-    change List.sum pref + x = List.sum pref + (x + 0)
-    omega
-    rw [hi₁, List.product_append]
-    change List.product pref * x = List.product pref * (x * 1)
-    rw [Int.mul_one]
+    rw [List.sum_append, List.product_append]
+    grind
   case vc3.a.post.success result h' =>
-    obtain ⟨ left, right ⟩ := h'
-    rw [left, right]
-    rfl
+    grind [sumProduct]
 
 example : sumProductDo [] = (0, 1) := by rfl
 example : sumProductDo [1, 1, 1] = (3, 1) := by rfl
