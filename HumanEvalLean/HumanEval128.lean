@@ -5,13 +5,13 @@ open Std Std.Do
 set_option mvcgen.warning false
 
 /-!
-# HumanEval 128: Product of signs times sum of magnitudes
+# HumanEval 128: Sum of magnitudes times product of signs
 
-This problem asks us to compute the sum of absolute values of an array, multiplied by the
-product of the signs of all elements. We demonstrate two approaches:
+This problem description asks us to compute the sum of absolute values of an array, multiplied by
+the product of the signs of all elements. We demonstrate two approaches:
 
-1. A declarative implementation using `List.sum` and `List.product` operations
-2. An efficient imperative implementation using do-notation with early exit when encountering zero
+1. a declarative implementation using `List.sum` and `List.product` operations
+2. an efficient imperative implementation using do-notation with early exit when encountering zero
 -/
 
 /-!
@@ -53,7 +53,7 @@ theorem Option.of_wp_eq {α : Type} {x : Option α} {prog : Option α} (h : prog
   apply Option.of_wp
 
 /-!
-## Implementation 1: Using List.sum and List.product
+## Implementation 1: Using `List.sum` and `List.product`
 -/
 
 def prodSigns₁ (arr : List Int) : Option Int :=
@@ -93,12 +93,12 @@ theorem prodSigns₁_of_ne_nil {arr : List Int} (h : arr ≠ []) :
   simp [this]
 
 /-!
-## Implementation 2: Efficient do-notation with early exit
+## Implementation 2: Efficient `do`-based implementation with early exit
 
-This implementation is more efficient as it:
-- Exits early when encountering a zero (since the product will be zero)
-- Uses a single pass through the array
-- Avoids creating intermediate lists
+This implementation is more efficient as it
+- exits early when encountering a zero (since the product will be zero)
+- uses a single pass through the array
+- avoids creating intermediate lists
 -/
 
 def prodSigns₂ (arr : List Int) : Option Int := do
