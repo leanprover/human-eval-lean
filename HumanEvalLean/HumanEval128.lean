@@ -8,10 +8,8 @@ set_option mvcgen.warning false
 # HumanEval 128: Sum of magnitudes times product of signs
 
 This problem description asks us to compute the sum of absolute values of an array, multiplied by
-the product of the signs of all elements. We demonstrate two approaches:
-
-1. a declarative implementation using `List.sum` and `List.product` operations
-2. an efficient imperative implementation using do-notation with early exit when encountering zero
+the product of the signs of all elements. We demonstrate how to implement and verify an
+efficient implementation using `do` notation and `mvcgen`.
 -/
 
 /-!
@@ -53,55 +51,10 @@ theorem Option.of_wp_eq {α : Type} {x : Option α} {prog : Option α} (h : prog
   apply Option.of_wp
 
 /-!
-## Implementation 1: Using `List.sum` and `List.product`
+## Implementation
 -/
 
-def prodSigns₁ (arr : List Int) : Option Int :=
-  if arr.isEmpty then
-    none
-  else
-    some ((arr.map Int.natAbs).sum * (arr.map Int.sign).product)
-
-/-!
-## Tests 1
--/
-
-example : prodSigns₁ [1, 2, 2, -4] = some (-9) := by native_decide
-example : prodSigns₁ [0, 1] = some 0 := by native_decide
-example : prodSigns₁ [] = none := by native_decide
-example : prodSigns₁ [1, 1, 1, 2, 3, -1, 1] = some (-10) := by native_decide
-example : prodSigns₁ [2, 4, 1, 2, -1, -1, 9] = some 20 := by native_decide
-example : prodSigns₁ [-1, 1, -1, 1] = some 4 := by native_decide
-example : prodSigns₁ [-1, 1, 1, 1] = some (-4) := by native_decide
-example : prodSigns₁ [-1, 1, 1, 0] = some 0 := by native_decide
-
-/-!
-## Verification 1
--/
-
-theorem prodSigns₁_nil :
-    prodSigns₁ [] = none := by
-  grind [prodSigns₁]
-
-theorem prodSigns₁_of_ne_nil {arr : List Int} (h : arr ≠ []) :
-    prodSigns₁ arr = some ((arr.map Int.natAbs).sum * (arr.map Int.sign).product) := by
-  simp only [prodSigns₁]
-  have : ¬arr.isEmpty := by
-    cases arr
-    · contradiction
-    · simp [List.isEmpty]
-  simp [this]
-
-/-!
-## Implementation 2: Efficient `do`-based implementation with early exit
-
-This implementation is more efficient as it
-- exits early when encountering a zero (since the product will be zero)
-- uses a single pass through the array
-- avoids creating intermediate lists
--/
-
-def prodSigns₂ (arr : List Int) : Option Int := do
+def prodSigns (arr : List Int) : Option Int := do
   if arr.isEmpty then
     none
   let mut sum := 0
@@ -114,31 +67,31 @@ def prodSigns₂ (arr : List Int) : Option Int := do
   return sum * sign
 
 /-!
-## Tests 2
+## Tests
 -/
 
-example : prodSigns₂ [1, 2, 2, -4] = some (-9) := by native_decide
-example : prodSigns₂ [0, 1] = some 0 := by native_decide
-example : prodSigns₂ [] = none := by native_decide
-example : prodSigns₂ [1, 1, 1, 2, 3, -1, 1] = some (-10) := by native_decide
-example : prodSigns₂ [2, 4, 1, 2, -1, -1, 9] = some 20 := by native_decide
-example : prodSigns₂ [-1, 1, -1, 1] = some 4 := by native_decide
-example : prodSigns₂ [-1, 1, 1, 1] = some (-4) := by native_decide
-example : prodSigns₂ [-1, 1, 1, 0] = some 0 := by native_decide
+example : prodSigns [1, 2, 2, -4] = some (-9) := by native_decide
+example : prodSigns [0, 1] = some 0 := by native_decide
+example : prodSigns [] = none := by native_decide
+example : prodSigns [1, 1, 1, 2, 3, -1, 1] = some (-10) := by native_decide
+example : prodSigns [2, 4, 1, 2, -1, -1, 9] = some 20 := by native_decide
+example : prodSigns [-1, 1, -1, 1] = some 4 := by native_decide
+example : prodSigns [-1, 1, 1, 1] = some (-4) := by native_decide
+example : prodSigns [-1, 1, 1, 0] = some 0 := by native_decide
 
 /-!
-## Verification 2
+## Verification
 -/
 
-theorem prodSigns₂_nil :
-    prodSigns₂ [] = none := by
-  grind [prodSigns₂]
+theorem prodSigns_nil :
+    prodSigns [] = none := by
+  grind [prodSigns]
 
-theorem prodSigns₂_of_ne_nil {xs : List Int} (h : xs ≠ []) :
-    prodSigns₂ xs = some ((xs.map Int.natAbs).sum * (xs.map Int.sign).product) := by
-  generalize hwp : prodSigns₂ xs = wp
+theorem prodSigns_of_ne_nil {xs : List Int} (h : xs ≠ []) :
+    prodSigns xs = some ((xs.map Int.natAbs).sum * (xs.map Int.sign).product) := by
+  generalize hwp : prodSigns xs = wp
   apply Option.of_wp_eq hwp
-  mvcgen [prodSigns₂]
+  mvcgen [prodSigns]
   invariants
   · .withEarlyReturn
       (fun cur ⟨sign, sum⟩ => ⌜sum = (cur.prefix.map Int.natAbs).sum ∧ sign = (cur.prefix.map Int.sign).product⌝)
