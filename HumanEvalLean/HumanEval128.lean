@@ -1,6 +1,8 @@
 import Std
 
-open Std
+open Std Std.Do
+
+set_option mvcgen.warning false
 
 /-!
 # HumanEval 128: Product of signs times sum of magnitudes
@@ -16,53 +18,42 @@ product of the signs of all elements. We demonstrate two approaches:
 ## Missing API
 -/
 
-/-- Product of a list of integers. -/
 def List.product (xs : List Int) : Int :=
-  xs.foldl (· * ·) 1
+  xs.foldr (· * ·) 1
 
+@[grind =]
 theorem List.product_nil : ([] : List Int).product = 1 := by
   rfl
 
-theorem List.foldl_mul_one (xs : List Int) (a : Int) :
-    xs.foldl (· * ·) a = a * xs.foldl (· * ·) 1 := by
-  induction xs generalizing a with
-  | nil => simp
-  | cons x xs ih =>
-    simp only [List.foldl]
-    rw [ih (a * x), ih (1 * x), ih 1, Int.mul_assoc, Int.mul_assoc, Int.one_mul, Int.one_mul]
-
+@[grind =]
 theorem List.product_cons {x : Int} {xs : List Int} :
     (x :: xs).product = x * xs.product := by
-  simp only [List.product, List.foldl]
-  rw [foldl_mul_one, Int.one_mul]
+  grind [List.product]
 
+@[grind =]
 theorem List.product_append {xs ys : List Int} :
     (xs ++ ys).product = xs.product * ys.product := by
-  induction xs with
-  | nil => simp [List.product_nil]
-  | cons x xs ih => simp [List.product_cons, ih, Int.mul_assoc]
+  induction xs <;> grind [List.product_cons, Int.mul_assoc]
 
 theorem List.product_eq_zero_iff {xs : List Int} :
     xs.product = 0 ↔ 0 ∈ xs := by
-  induction xs with
-  | nil => simp [List.product_nil]
-  | cons x xs ih =>
-    simp only [List.product_cons, Int.mul_eq_zero, ih, List.mem_cons]
-    constructor
-    · intro h
-      cases h <;> simp_all
-    · intro h
-      cases h <;> simp_all
+  induction xs <;> grind [List.product_cons, Int.mul_eq_zero]
 
-theorem List.sum_append_int {xs ys : List Int} :
-    (xs ++ ys).sum = xs.sum + ys.sum := by
-  induction xs generalizing ys <;> simp_all [Int.add_assoc]
+theorem Option.of_wp {α} {prog : Option α} (P : Option α → Prop) :
+    (⊢ₛ wp⟦prog⟧ post⟨fun a => ⌜P (some a)⌝, fun _ => ⌜P none⌝⟩) → P prog := by
+  intro hspec
+  simp only [wp, PredTrans.pushOption_apply, PredTrans.pure_apply] at hspec
+  split at hspec
+  case h_1 a s' heq => rw [← heq] at hspec; exact hspec True.intro
+  case h_2 s' heq => rw [← heq] at hspec; exact hspec True.intro
+
+theorem Option.of_wp_eq {α : Type} {x : Option α} {prog : Option α} (h : prog = x) (P : Option α → Prop) :
+    (⊢ₛ wp⟦prog⟧ post⟨fun a => ⌜P (some a)⌝, fun _ => ⌜P none⌝⟩) → P x := by
+  rw [← h]
+  apply Option.of_wp
 
 /-!
 ## Implementation 1: Using List.sum and List.product
-
-This implementation directly translates the mathematical formula:
-result = (sum of |x|) * (product of sign(x))
 -/
 
 def prodSigns₁ (arr : List Int) : Option Int :=
@@ -88,19 +79,11 @@ example : prodSigns₁ [-1, 1, 1, 0] = some 0 := by native_decide
 ## Verification 1
 -/
 
-theorem Int.sign_eq_zero_iff {x : Int} : x.sign = 0 ↔ x = 0 := by
-  cases x with
-  | ofNat n =>
-    cases n with
-    | zero => simp [Int.sign]
-    | succ n =>
-      simp [Int.sign]
-      omega
-  | negSucc n =>
-    simp [Int.sign]
+theorem prodSigns₁_nil :
+    prodSigns₁ [] = none := by
+  grind [prodSigns₁]
 
-/-- Specification: `prodSigns₁` computes the sum of magnitudes times the product of signs. -/
-theorem prodSigns₁_spec {arr : List Int} (h : arr ≠ []) :
+theorem prodSigns₁_of_ne_nil {arr : List Int} (h : arr ≠ []) :
     prodSigns₁ arr = some ((arr.map Int.natAbs).sum * (arr.map Int.sign).product) := by
   simp only [prodSigns₁]
   have : ¬arr.isEmpty := by
@@ -118,19 +101,17 @@ This implementation is more efficient as it:
 - Avoids creating intermediate lists
 -/
 
-def prodSigns₂ (arr : List Int) : Option Int := Id.run do
+def prodSigns₂ (arr : List Int) : Option Int := do
   if arr.isEmpty then
-    return none
+    none
   let mut sum := 0
-  let mut negCount := 0
+  let mut sign := 1
   for x in arr do
     if x = 0 then
-      return some 0
+      return 0
     sum := sum + x.natAbs
-    if x < 0 then
-      negCount := negCount + 1
-  let sign := if negCount % 2 = 0 then 1 else -1
-  return some (sum * sign)
+    sign := sign * x.sign
+  return sum * sign
 
 /-!
 ## Tests 2
@@ -149,27 +130,20 @@ example : prodSigns₂ [-1, 1, 1, 0] = some 0 := by native_decide
 ## Verification 2
 -/
 
-theorem List.product_replicate_neg_one (n : Nat) :
-    (List.replicate n (-1 : Int)).product = if n % 2 = 0 then 1 else -1 := by
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    simp only [List.replicate, List.product_cons, ih]
-    split <;> split <;> simp_all <;> omega
+theorem prodSigns₂_of_nil :
+    prodSigns₂ [] = none := by
+  grind [prodSigns₂]
 
-theorem List.product_map_sign_eq (xs : List Int) :
-    (xs.map Int.sign).product = if 0 ∈ xs then 0
-      else if (xs.filter (· < 0)).length % 2 = 0 then 1 else -1 := by
-  sorry
-
-/--
-Specification: `prodSigns₂` computes the same result as `prodSigns₁`.
-
-Note: We prove equivalence to the declarative specification rather than duplicating the proof.
--/
-theorem prodSigns₂_eq_prodSigns₁ {arr : List Int} :
-    prodSigns₂ arr = prodSigns₁ arr := by
-  sorry -- This would require mvcgen for full verification
+theorem prodSigns₂_of_ne_nil {xs : List Int} (h : xs ≠ []) :
+    prodSigns₂ xs = some ((xs.map Int.natAbs).sum * (xs.map Int.sign).product) := by
+  generalize hwp : prodSigns₂ xs = wp
+  apply Option.of_wp_eq hwp
+  mvcgen [prodSigns₂]
+  invariants
+  · .withEarlyReturn
+      (fun cur ⟨sign, sum⟩ => ⌜sum = (cur.prefix.map Int.natAbs).sum ∧ sign = (cur.prefix.map Int.sign).product⌝)
+      (fun ret ⟨sign, sum⟩ => ⌜ret = 0 ∧ 0 ∈ xs⌝)
+  with grind [List.product_eq_zero_iff]
 
 /-!
 ## Prompt
