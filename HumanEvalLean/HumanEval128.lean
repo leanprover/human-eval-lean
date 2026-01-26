@@ -130,7 +130,7 @@ example : prodSigns₂ [-1, 1, 1, 0] = some 0 := by native_decide
 ## Verification 2
 -/
 
-theorem prodSigns₂_of_nil :
+theorem prodSigns₂_nil :
     prodSigns₂ [] = none := by
   grind [prodSigns₂]
 
