@@ -240,6 +240,9 @@ inductive AreNeighbors : (p q : Nat × Nat) → Prop
   | up : AreNeighbors (x, y) (x, y + 1)
   | down : AreNeighbors (x, y + 1) (x, y)
 
+theorem AreNeighbors.symm {p q} (h : AreNeighbors p q) : AreNeighbors q p := by
+  grind [AreNeighbors]
+
 @[grind .]
 theorem AreNeighbors.left_of_pos {x y : Nat} (h : 0 < x) :
     AreNeighbors (x, y) (x - 1, y) := by
@@ -288,21 +291,28 @@ theorem le_leastNeighborValue_iff {grid : Vector (Vector Nat n) n} {x y : Nat}
     have : k ≤ val₃ := by split at h₃ <;> (simp only [h₃, le_min_iff]; grind)
     split at h₄ <;> (simp only [h₄, le_min_iff]; grind)
 
+theorem areNeighbors_coordsOf?_leastNeighborValue {grid : Vector (Vector Nat n) n} {p : Nat × Nat}
+    (hn : 1 < n) (hg : WFGrid grid) (hx : p.1 < n) (hy : p.2 < n) :
+    AreNeighbors p (coordsOf? grid (leastNeighborValue grid p.1 p.2)).get! := by
+  sorry
+
 theorem areNeighbors_minPath {grid : Vector (Vector Nat n) n} {k i : Nat}
     (hn : 1 < n) (hg : WFGrid grid) (hi : i + 1 < k) :
-    ∃ (p q : Nat × Nat) (_ : p.1 < n) (_ : p.2 < n) (_ : q.1 < n) (_ : q.2 < n),
-      AreNeighbors p q ∧
-      grid[p.1][p.2] = (minPath grid k)[i]! ∧
-      grid[q.1][q.2] = (minPath grid k)[i + 1]! := by
+    let coords₁ := (coordsOf? grid ((minPath grid k)[i]'(by grind [length_minPath]))).get!
+    let coords₂ := (coordsOf? grid ((minPath grid k)[i + 1]'(by grind [length_minPath]))).get!
+    AreNeighbors coords₁ coords₂ := by
+  intro coords₁ coords₂
   by_cases h : i % 2 = 0
-  · let coordsOfFst := (coordsOf? grid 1).get!
-    refine ⟨coordsOfFst, ?_⟩
-    let coordsOfSnd :=
-    conv =>
-      congr; ext p; congr; ext q; congr; ext; congr; ext; congr; ext; congr; ext
-      rw [getElem_minPath_eq_one h, getElem_minPath_of_odd (by grind) hg (by grind)]
-    sorry
-
+  · simp only [coords₁, coords₂]
+    rw [getElem_minPath_eq_one (by grind), getElem_minPath_of_odd hn hg (by grind)]
+    simp only [Option.get_eq_get!]
+    have := coordsOf?_spec (grid := grid) (l := 1) (x := (coordsOf? grid 1).get!.fst) (y := (coordsOf? grid 1).get!.snd) (Option.some_get! _ (isSome_coordsOf?_one (by grind) hg)).symm
+    grind [areNeighbors_coordsOf?_leastNeighborValue]
+  · simp only [coords₁, coords₂]
+    rw [getElem_minPath_of_odd hn hg (by grind), getElem_minPath_eq_one (by grind)]
+    simp only [Option.get_eq_get!]
+    have := coordsOf?_spec (grid := grid) (l := 1) (x := (coordsOf? grid 1).get!.fst) (y := (coordsOf? grid 1).get!.snd) (Option.some_get! _ (isSome_coordsOf?_one (by grind) hg)).symm
+    grind [areNeighbors_coordsOf?_leastNeighborValue, AreNeighbors.symm]
 
 /-!
 ## Prompt
