@@ -3,8 +3,8 @@ module
 public import Std
 
 public def isExchangePossible (xs ys : Array Int) : String :=
-  let need := xs.iter.filter (· % 2 == 1) |>.count
-  let available := ys.iter.filter (· % 2 == 0) |>.count
+  let need := xs.iter.filter (· % 2 == 1) |>.length
+  let available := ys.iter.filter (· % 2 == 0) |>.length
   if need ≤ available then "YES" else "NO"
 
 /-!
@@ -134,7 +134,7 @@ public theorem isExchangePossible_correct {xs ys : Array Int} :
   generalize h : VectorPair.mk xs.toVector ys.toVector = p
   simp only [show xs = p.1.toArray by grind, show ys = p.2.toArray by grind]
   -- prove the actual statement
-  simp [isExchangePossible, ← Std.Iter.length_toList_eq_count,
+  simp [isExchangePossible, ← Std.Iter.length_toList_eq_length,
     ← List.countP_eq_length_filter, VectorPair.countP_le_countP_iff_exists]
 
 /-!

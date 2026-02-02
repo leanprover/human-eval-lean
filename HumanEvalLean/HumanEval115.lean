@@ -44,25 +44,6 @@ actions needed.
 
 attribute [grind =] Vector.sum_mk List.zip_cons_cons List.zip_nil_right List.zip_nil_left
 
--- this is in Mathlib
-theorem Nat.div_add_div_le_add_div (a b c : Nat) : a / c + b / c ≤ (a + b) / c := by
-  by_cases h : 0 < c
-  · rw [← (Nat.mul_le_mul_right_iff (show 0 < c by grind)), Nat.add_mul]
-    simp only [Nat.div_mul_self_eq_mod_sub_self]
-    have (a b c d : Nat) (h : b ≤ a) (h' : d ≤ c) : (a - b) + (c - d) = (a + c) - (b + d) := by grind
-    rw [this, Nat.sub_le_sub_iff_left]
-    · rw [Nat.add_mod]
-      apply Nat.mod_le
-    · apply Nat.mod_le
-    · apply Nat.mod_le
-    · apply Nat.mod_le
-  · grind
-
-theorem Nat.le_mul_iff_le_left (hc : 0 < z) :
-    x ≤ y * z ↔ (x + z - 1) / z ≤ y := by
-  rw [Nat.div_le_iff_le_mul hc]
-  omega
-
 @[simp, grind =]
 theorem Vector.sum_toList {xs : Vector Nat α} :
     xs.toList.sum = xs.sum := by
