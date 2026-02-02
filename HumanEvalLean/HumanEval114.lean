@@ -141,7 +141,7 @@ theorem isMinSubarraySum₀_append_singleton_eq {xs : List Int} {x minSum minSuf
         · grind
         · simp only [heq, List.toList_mkSlice_rco, List.take_length]
           have := h₂.2 i (by grind)
-          grind [List.drop_append_of_le_length]
+          grind
       · have := h₁.2 i j (by grind) (by grind)
         grind [List.take_append_of_le_length]
 
@@ -163,16 +163,16 @@ theorem isMinSuffixSum₀_append_singleton_eq {xs : List Int} {x minSuff : Int}
       by_cases hieq : i = (xs ++ [x]).length
       · grind
       · simp only [IsMinSuffixSum₀] at h
-        grind [List.drop_append_of_le_length]
+        grind
   · rw [show min 0 (minSuff + x) = minSuff + x by grind]
     apply And.intro
     · simp only [IsMinSuffixSum₀] at h
-      grind [List.drop_append_of_le_length]
+      grind
     · intro i hi
       by_cases hieq : i = (xs ++ [x]).length
       · grind
       · simp only [IsMinSuffixSum₀] at h
-        grind [List.drop_append_of_le_length]
+        grind
 
 theorem List.zero_le_min_of_zero_le_sum {xs : List Int} (hne : xs ≠ []) (h : xs.sum ≤ 0) :
     xs.min hne ≤ 0 := by

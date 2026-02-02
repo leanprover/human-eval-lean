@@ -460,11 +460,11 @@ example : oddCollatz₂ 1 = [1] := by native_decide
 We'll verify `oddCollatz₂` by proving it equivalent to `oddCollatz₁`.
 -/
 
-theorem oddCollatz₂_pairwise_distinct {n : Nat} (h : Acc CollatzRel n) :
+theorem oddCollatz₂_pairwise_distinct {n : Nat} :
     (oddCollatz₂ n).Pairwise (· ≠ ·) := by
   simpa [oddCollatz₂] using TreeSet.distinct_toList (α := Nat) (cmp := compare)
 
-theorem oddCollatz₂_pairwise_lt {n : Nat} (h : Acc CollatzRel n) :
+theorem oddCollatz₂_pairwise_lt {n : Nat} :
     (oddCollatz₂ n).Pairwise (· < ·) := by
   simpa [oddCollatz₁, compare_eq_lt] using TreeSet.ordered_toList (α := Nat) (cmp := compare)
 
