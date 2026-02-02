@@ -153,6 +153,73 @@ theorem List.isSome_findSome?_eq {xs : List α} {f : α → Option β} :
   simp only [← Option.isSome_iff_ne_none]
   grind
 
+theorem Std.Rxc.Iterator.nodup_toList [LE α] [DecidableLE α]
+    [PRange.UpwardEnumerable α] [Rxc.IsAlwaysFinite α] [PRange.LawfulUpwardEnumerable α]
+    [PRange.LawfulUpwardEnumerableLE α]
+    {it : Iter (α := Rxc.Iterator α) α} :
+    it.toList.Nodup := by
+  apply (Rxc.Iterator.pairwise_toList_upwardEnumerableLt it).imp
+  grind [PRange.UpwardEnumerable.ne_of_lt]
+
+theorem Std.Rcc.nodup_toList [LE α] [DecidableLE α]
+    [PRange.UpwardEnumerable α] [Rxc.IsAlwaysFinite α] [PRange.LawfulUpwardEnumerable α]
+    [PRange.LawfulUpwardEnumerableLE α]
+    {a b : α} :
+    (a...=b).toList.Nodup := by
+  grind [=_ Std.Rcc.toList_iter, Std.Rxc.Iterator.nodup_toList]
+
+theorem Vector.getElem_eq_getElem_toList {xs : Vector α n} {i : Nat} {hi : i < n} :
+    xs[i] = xs.toList[i]'(by grind) := by
+  simp
+
+section Mathlib
+set_option warn.sorry false
+
+theorem List.Nodup.getElem_inj_iff {l : List α} (h : List.Nodup l)
+    {i : Nat} {hi : i < l.length} {j : Nat} {hj : j < l.length} :
+    l[i] = l[j] ↔ i = j := by
+  sorry
+
+protected def Nat.findX {p : Nat → Prop}  (h : ∃ n, p n) : { n // p n ∧ ∀ m < n, ¬p m } := sorry
+protected def Nat.find {p : Nat → Prop} (h : ∃ n, p n) : Nat := (Nat.findX h).1
+protected theorem Nat.find_spec {p : Nat → Prop} (h : ∃ n, p n) : p (Nat.find h) :=
+  (Nat.findX h).2.left
+
+-- slightly deviates from mathlib's formulation
+protected theorem Nat.le_find_iff {p : Nat → Prop} (h : ∃ n, p n) {n : Nat} : n ≤ Nat.find h ↔ ∀ m, p m → n ≤ m := by
+  sorry
+
+protected theorem Nat.find_le {p : Nat → Prop} {h : ∃ n, p n} (hn : p n) : Nat.find h ≤ n :=
+  sorry
+
+end Mathlib
+
+section Batteries
+set_option warn.sorry false
+
+/-- `IsChain R l` means that `R` holds between adjacent elements of `l`.
+```
+IsChain R [a, b, c, d] ↔ R a b ∧ R b c ∧ R c d
+``` -/
+inductive List.IsChain (R : α → α → Prop) : List α → Prop where
+  /-- A list of length 0 is a chain. -/
+  | nil : IsChain R []
+  /-- A list of length 1 is a chain. -/
+  | singleton (a : α) : IsChain R [a]
+  /-- If `a` relates to `b` and `b::l` is a chain, then `a :: b :: l` is also a chain. -/
+  | cons_cons (hr : R a b) (h : IsChain R (b :: l)) : IsChain R (a :: b :: l)
+
+
+theorem List.isChain_iff_getElem {l : List α} :
+    IsChain R l ↔ ∀ (i : Nat) (_hi : i + 1 < l.length), R l[i] l[i + 1] := by
+  sorry
+
+theorem List.isChain_of_isChain_cons (p : List.IsChain R (b :: l)) :
+    List.IsChain R l := by
+  sorry
+
+end Batteries
+
 /-!
 ## Implementation
 -/
@@ -166,22 +233,27 @@ def coordsOf? (grid : Vector (Vector Nat n) m) (l : Nat) : Option (Nat × Nat) :
             if cell = l then some (x, y) else none))
 
 @[grind →]
-theorem coordsOf?_spec {grid : Vector (Vector Nat n) m} {l : Nat} {x y : Nat}
-    (h : coordsOf? grid l = some (x, y)) :
-    ∃ (_ : x < m) (_ : y < n), grid[x][y] = l := by
+theorem coordsOf?_spec {grid : Vector (Vector Nat n) m} {l : Nat} {p : Nat × Nat}
+    (h : coordsOf? grid l = some p) :
+    ∃ (_ : p.1 < m) (_ : p.2 < n), grid[p.1][p.2] = l := by
   simp only [coordsOf?, ← Iter.findSome?_toList] at h
   obtain ⟨⟨row, x'⟩, h₁, h⟩ := List.exists_of_findSome?_eq_some h
   obtain ⟨y', h₂, h⟩ := List.exists_of_findSome?_eq_some h
   grind [Iter.mem_toList_iff, Vector.mem_zipIdx_iter_iff]
 
-def leastNeighborValue (grid : Vector (Vector Nat n) m) (x y : Nat)
-    (hxy : x < m ∧ y < n := by grind) : Nat := Id.run do
+def leastNeighborValue (grid : Vector (Vector Nat n) n) (coords : Nat × Nat)
+    (hxy : coords.1 < n ∧ coords.2 < n := by grind) : Nat := Id.run do
+  match coords with
+  | (x, y) =>
+    -- One of the following `if` statements will overwrite this default value because
+    -- the cell at position `p` has at least one neighboring cell, and the value of all cells
+    -- is at most `n * n`.
     let mut val := n * n + 1
     if 0 < x then
       val := min val grid[x - 1][y]
     if 0 < y then
       val := min val grid[x][y - 1]
-    if hx : x + 1 < m then
+    if hx : x + 1 < n then
       val := min val grid[x + 1][y]
     if hy : y + 1 < n then
       val := min val grid[x][y + 1]
@@ -189,15 +261,159 @@ def leastNeighborValue (grid : Vector (Vector Nat n) m) (x y : Nat)
 
 def minPath (grid : Vector (Vector Nat n) n) (k : Nat) : List Nat := Id.run do
   match h : coordsOf? grid 1 with
-  | some (x, y) =>
-    let val := leastNeighborValue grid x y
+  | some coords =>
+    let val := leastNeighborValue grid coords
     let mut result := if k % 2 = 1 then [1] else []
     for _ in *...(k / 2) do
       result := 1 :: val :: result
     return result
   | none => return []
 
-/-! ## Verification -/
+/-!
+## Verification
+
+We model the grid as `grid : Vector (Vector Nat n) n` such that `grid.flatten` is a permutation of
+`1...=(n * n)`. This property is captured in the `WFGrid`. Moreover, we are allowed to assume that
+the grid has a side length `n ≥ 2`.
+
+The following lemmas fully characterize and formally verify `minPath`:
+
+* `length_minPath`: The length of the path returned by `minPath` is exactly `k`.
+* `map_getElem_minCoordPath`: `minCoordPath` is the list of coordinates of `minPath`'s entries.
+* `isChain_areNeighbors_minCoordPath`: Consecutive elements of `minCoordPath` are neighbors.
+* `minPath_le_of_isChain_areNeighbors`: The path returned by `minPath` is lexicographically minimal
+-/
+
+theorem getElem!_mem_rcc {grid : Vector (Vector Nat n) n} (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
+    grid[x]![y]! ∈ 1...=(n * n) := by
+  simp only [← Std.Rcc.mem_toList_iff_mem]
+  apply hg.mem_iff.mp
+  simp only [Vector.mem_toList_iff]
+  apply Vector.mem_flatten_of_mem (xs := grid[x]) <;> grind
+
+theorem getElem_mem_rcc {grid : Vector (Vector Nat n) n} (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
+    grid[x][y] ∈ 1...=(n * n) := by
+  have := getElem!_mem_rcc hg hx hy
+  grind
+
+theorem getElem_grid_inj {grid : Vector (Vector Nat n) n}
+    (hg : WFGrid grid) {p q : Nat × Nat} (hp : p.1 < n ∧ p.2 < n) (hq : q.1 < n ∧ q.2 < n)
+    (h : grid[p.1][p.2] = grid[q.1][q.2]) :
+    p = q := by
+  have hnodup : List.Nodup grid.flatten.toList := by
+    apply hg.nodup_iff.mpr
+    apply Rcc.nodup_toList
+  suffices n * p.1 + p.2 = n * q.1 + q.2 by
+    ext
+    · have (p : Nat × Nat) (hp : p.1 < n ∧ p.2 < n) : p.1 = (n * p.1 + p.2) / n := by
+        simp only [Nat.mul_add_div (show 0 < n by grind)]
+        grind [Nat.div_eq_zero_iff]
+      grind
+    · have (p : Nat × Nat) (hp : p.1 < n ∧ p.2 < n) : p.2 = (n * p.1 + p.2) % n := by
+        simp [Nat.mod_eq_of_lt hp.2]
+      grind
+  have (p : Nat × Nat) (h : p.1 < n ∧ p.2 < n) : n * p.1 + p.2 < n * n := by
+    have : n * n = n * (n - 1) + n * 1 := by rw [← Nat.mul_add, Nat.sub_add_cancel (by grind)]
+    have : n * p.1 ≤ n * (n - 1) := Nat.mul_le_mul_left n (by grind)
+    grind
+  have (p : Nat × Nat) (h : p.1 < n ∧ p.2 < n) :
+      haveI := this p h; grid[p.fst][p.snd] = grid.flatten[n * p.fst + p.snd] := by
+    haveI := this p h
+    simp only [Vector.getElem_flatten, Nat.mul_add_mod_self_left, Nat.mod_eq_of_lt h.2]
+    have hn0 : 0 < n := by grind
+    simp only [Nat.mul_add_div hn0]
+    grind [Nat.div_eq_zero_iff]
+  rw [this p hp, this q hq] at h
+  simp only [Vector.getElem_eq_getElem_toList] at h
+  rwa [← hnodup.getElem_inj_iff]
+
+inductive AreNeighbors : (p q : Nat × Nat) → Prop
+  | left : AreNeighbors (x + 1, y) (x, y)
+  | right : AreNeighbors (x, y) (x + 1, y)
+  | up : AreNeighbors (x, y) (x, y + 1)
+  | down : AreNeighbors (x, y + 1) (x, y)
+
+theorem AreNeighbors.symm {p q} (h : AreNeighbors p q) : AreNeighbors q p := by
+  grind [AreNeighbors]
+
+@[grind .]
+theorem AreNeighbors.left_of_pos {x y : Nat} (h : 0 < x) :
+    AreNeighbors (x, y) (x - 1, y) := by
+  have := AreNeighbors.left (x := x - 1) (y := y)
+  grind
+
+@[grind .]
+theorem AreNeighbors.down_of_pos {x y : Nat} (h : 0 < y) :
+    AreNeighbors (x, y) (x, y - 1) := by
+  have := AreNeighbors.down (x := x) (y := y - 1)
+  grind
+
+attribute [grind .] AreNeighbors.right AreNeighbors.up
+
+theorem exists_areNeighbors {p : Nat × Nat} (hn : 1 < n) (hp : p.1 < n ∧ p.2 < n) :
+    ∃ q, (q.1 < n ∧ q.2 < n) ∧ AreNeighbors p q := by
+  by_cases hx : 0 < p.1
+  · have := AreNeighbors.left (x := p.1 - 1) (y := p.2)
+    exact ⟨(p.1 - 1, p.2), by grind⟩
+  · have := AreNeighbors.right (x := p.1) (y := p.2)
+    exact ⟨(p.1 + 1, p.2), by grind⟩
+
+theorem exists_exists_areNeighbors {grid : Vector (Vector Nat n) n}
+    {p : Nat × Nat} (hn : 1 < n) (hp : p.1 < n ∧ p.2 < n) :
+    ∃ (k : Nat) (q : Nat × Nat) (_ : q.1 < n ∧ q.2 < n), k = grid[q.1][q.2] ∧ AreNeighbors p q := by
+  grind [exists_areNeighbors]
+
+theorem le_leastNeighborValue_iff {grid : Vector (Vector Nat n) n} {coords : Nat × Nat}
+    (hn : 1 < n) (hg : WFGrid grid) (hc : coords.1 < n ∧ coords.2 < n) :
+    k ≤ leastNeighborValue grid coords ↔ ∀ coords' (_ : coords'.1 < n ∧ coords'.2 < n), AreNeighbors coords coords' → k ≤ grid[coords'.1][coords'.2] := by
+  generalize hwp : leastNeighborValue grid coords = wp
+  apply Id.of_wp_run_eq hwp
+  mvcgen +jp
+  rename_i val₀ _ val₁ _ _ val₂ _ _ val₃ _ _ val₄ _ h₁ h₂ h₃ h₄
+  apply Iff.intro
+  · intro h coords' hcoords' hnb
+    cases hnb <;> grind
+  · intro h
+    obtain ⟨q, hq, h'⟩ := exists_areNeighbors (p := coords) hn hc
+    have hsq := h q hq h'
+    have : grid[q.1][q.2] < n * n + 1 := by
+      have : grid[q.1][q.2] ∈ (1...=(n * n)).toList := hg.mem_iff.mp (by simp [Vector.mem_flatten]; simp only [Vector.mem_iff_getElem]; grind)
+      simp only [Std.Rcc.mem_iff, Std.Rcc.mem_toList_iff_mem] at this
+      grind
+    replace h (x' y' : Nat) (hlt : x' < n ∧ y' < n) (hnb : AreNeighbors coords (x', y')) :
+        k ≤ grid[x'][y'] := h (x', y') hlt hnb
+    have : k ≤ val₀ := by grind
+    have : k ≤ val₁ := by split at h₁ <;> (simp only [h₁, le_min_iff]; grind)
+    have : k ≤ val₁ := by split at h₁ <;> (simp only [h₁, le_min_iff]; grind)
+    have : k ≤ val₂ := by split at h₂ <;> (simp only [h₂, le_min_iff]; grind)
+    have : k ≤ val₃ := by split at h₃ <;> (simp only [h₃, le_min_iff]; grind)
+    split at h₄ <;> (simp only [h₄, le_min_iff]; grind)
+
+theorem leastNeighborValue_eq_natFind {grid : Vector (Vector Nat n) n} {p : Nat × Nat}
+    (hn : 1 < n) (hg : WFGrid grid) (hp : p.1 < n ∧ p.2 < n) :
+    leastNeighborValue grid p = Nat.find (exists_exists_areNeighbors (grid := grid) hn hp) := by
+  apply le_antisymm
+  · simp only [Nat.le_find_iff]
+    grind [le_leastNeighborValue_iff]
+  · simp only [le_leastNeighborValue_iff hn hg hp]
+    intro q hq hnb
+    apply Nat.find_le
+    grind
+
+theorem leastNeighborValue_mem_rcc {grid : Vector (Vector Nat n) n} {p : Nat × Nat}
+    (hn : 1 < n) (hg : WFGrid grid) (hp : p.1 < n ∧ p.2 < n) :
+    leastNeighborValue grid p ∈ 1...=(n * n) := by
+  rw [leastNeighborValue_eq_natFind hn hg hp]
+  have := Nat.find_spec (exists_exists_areNeighbors (grid := grid) hn hp)
+  grind [getElem_mem_rcc]
+
+theorem leastNeighborValue_le {grid : Vector (Vector Nat n) n} {p q : Nat × Nat}
+    (hn : 1 < n) (hg : WFGrid grid) (hp : p.1 < n ∧ p.2 < n) (hq : q.1 < n ∧ q.2 < n)
+    (hnb : AreNeighbors p q) :
+    leastNeighborValue grid p ≤ grid[q.1][q.2] := by
+  rw [leastNeighborValue_eq_natFind hn hg hp]
+  apply Nat.find_le
+  grind
 
 theorem isSome_coordsOf? {grid : Vector (Vector Nat n) n} (h : WFGrid grid)
     (hl : l ∈ 1...=(n * n)) :
@@ -218,6 +434,49 @@ theorem isSome_coordsOf?_one {grid : Vector (Vector Nat n) n} (hn : 0 < n) (h : 
     (coordsOf? grid 1).isSome := by
   apply isSome_coordsOf? h
   grind [Rcc.mem_iff, Nat.le_mul_self n]
+
+theorem get!_coordsOf?_getElem {grid : Vector (Vector Nat n) n} {p : Nat × Nat}
+    (hg : WFGrid grid) (hx : p.1 < n ∧ p.2 < n) :
+    (coordsOf? grid grid[p.1][p.2]).get! = p := by
+  have hl : grid[p.1][p.2] ∈ 1...=(n * n) := by grind [getElem_mem_rcc]
+  have := isSome_coordsOf? hg hl
+  have := coordsOf?_spec (p := (coordsOf? grid grid[p.1][p.2]).get!) (l := grid[p.1][p.2]) (grid := grid) (by grind [Option.some_get!])
+  apply getElem_grid_inj hg <;> grind
+
+theorem areNeighbors_coordsOf?_leastNeighborValue {grid : Vector (Vector Nat n) n} {p : Nat × Nat}
+    (hn : 1 < n) (hg : WFGrid grid) (hp : p.1 < n ∧ p.2 < n) :
+    AreNeighbors p (coordsOf? grid (leastNeighborValue grid p)).get! := by
+  rw [leastNeighborValue_eq_natFind hn hg hp]
+  have := Nat.find_spec (exists_exists_areNeighbors (grid := grid) hn hp)
+  grind [get!_coordsOf?_getElem]
+
+theorem get_coordsOf?_bounds {grid : Vector (Vector Nat n) n} {l : Nat} {h} :
+    ((coordsOf? grid l).get h).fst < n ∧ ((coordsOf? grid l).get h).snd < n := by
+  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
+  grind [coordsOf?_spec]
+
+theorem get!_coordsOf?_bounds {grid : Vector (Vector Nat n) n} {l : Nat}
+    (hg : WFGrid grid) (hl : l ∈ 1...=(n * n)) :
+    (coordsOf? grid l).get!.fst < n ∧ (coordsOf? grid l).get!.snd < n := by
+  grind [coordsOf?_spec, Option.some_get!, isSome_coordsOf?]
+
+theorem getElem_get!_coordsOf? {grid : Vector (Vector Nat n) n} {l : Nat} (hg : WFGrid grid)
+    (hl : l ∈ 1...=n * n) :
+    letI coords := (coordsOf? grid l).get!
+    haveI := get!_coordsOf?_bounds hg hl
+    grid[coords.1][coords.2] = l := by
+  have := isSome_coordsOf? hg hl
+  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
+  grind [coordsOf?_spec]
+
+theorem getElem!_get!_coordsOf? {grid : Vector (Vector Nat n) n} {l : Nat}
+    (hg : WFGrid grid) (hl : l ∈ 1...=n * n) :
+    letI coords := (coordsOf? grid l).get!
+    haveI := get!_coordsOf?_bounds hg hl
+    grid[coords.1]![coords.2]! = l := by
+  have := isSome_coordsOf? hg hl
+  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
+  grind [coordsOf?_spec]
 
 theorem length_minPath {grid : Vector (Vector Nat n) n} {k : Nat} (hn : 0 < n) (h : WFGrid grid) :
     (minPath grid k).length = k := by
@@ -245,7 +504,7 @@ theorem getElem_minPath_of_odd {grid : Vector (Vector Nat n) n} {k : Nat} (hn : 
     {i : Nat} {h : i < (minPath grid k).length} (hi : i % 2 = 1) :
     let coords := (coordsOf? grid 1).get (isSome_coordsOf?_one (by grind) hg)
     have := coordsOf?_spec (Option.some_get (isSome_coordsOf?_one (by grind) hg)).symm
-    let val := (leastNeighborValue grid coords.1 coords.2 (by grind))
+    let val := (leastNeighborValue grid coords (by grind))
     (minPath grid k)[i]'h = val := by
   intro coords _ val
   simp only [List.getElem_eq_iff]
@@ -256,208 +515,6 @@ theorem getElem_minPath_of_odd {grid : Vector (Vector Nat n) n} {k : Nat} (hn : 
   invariants
   · ⇓⟨cur, xs⟩ => ⌜∀ j (hj : j < xs.length), j % 2 = 1 → xs[j] = val⌝
   with grind
-
-inductive AreNeighbors : (p q : Nat × Nat) → Prop
-  | left : AreNeighbors (x + 1, y) (x, y)
-  | right : AreNeighbors (x, y) (x + 1, y)
-  | up : AreNeighbors (x, y) (x, y + 1)
-  | down : AreNeighbors (x, y + 1) (x, y)
-
-theorem AreNeighbors.symm {p q} (h : AreNeighbors p q) : AreNeighbors q p := by
-  grind [AreNeighbors]
-
-@[grind .]
-theorem AreNeighbors.left_of_pos {x y : Nat} (h : 0 < x) :
-    AreNeighbors (x, y) (x - 1, y) := by
-  have := AreNeighbors.left (x := x - 1) (y := y)
-  grind
-
-@[grind .]
-theorem AreNeighbors.down_of_pos {x y : Nat} (h : 0 < y) :
-    AreNeighbors (x, y) (x, y - 1) := by
-  have := AreNeighbors.down (x := x) (y := y - 1)
-  grind
-
-attribute [grind .] AreNeighbors.right AreNeighbors.up
-
-theorem exists_areNeighbors {p : Nat × Nat} (hn : 1 < n) (hxn : p.1 < n) (hyn : p.2 < n) :
-    ∃ q, q.1 < n ∧ q.2 < n ∧ AreNeighbors p q := by
-  by_cases hx : 0 < p.1
-  · have := AreNeighbors.left (x := p.1 - 1) (y := p.2)
-    exact ⟨(p.1 - 1, p.2), by grind⟩
-  · have := AreNeighbors.right (x := p.1) (y := p.2)
-    exact ⟨(p.1 + 1, p.2), by grind⟩
-
-section Mathlib
-
-protected def Nat.findX {p : Nat → Prop}  (h : ∃ n, p n) : { n // p n ∧ ∀ m < n, ¬p m } := sorry
-protected def Nat.find {p : Nat → Prop} (h : ∃ n, p n) : Nat := (Nat.findX h).1
-protected theorem Nat.find_spec {p : Nat → Prop} (h : ∃ n, p n) : p (Nat.find h) :=
-  (Nat.findX h).2.left
-
--- slightly deviates from mathlib's formulation
-protected theorem Nat.le_find_iff {p : Nat → Prop} (h : ∃ n, p n) {n : Nat} : n ≤ Nat.find h ↔ ∀ m, p m → n ≤ m := by
-  sorry
-
-protected theorem Nat.find_le {p : Nat → Prop} {h : ∃ n, p n} (hn : p n) : Nat.find h ≤ n :=
-  sorry
-
-end Mathlib
-
-theorem le_leastNeighborValue_iff {grid : Vector (Vector Nat n) n} {x y : Nat}
-    (hn : 1 < n) (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
-    k ≤ leastNeighborValue grid x y ↔ ∀ x' y' (_ : x' < n) (_ : y' < n), AreNeighbors (x, y) (x', y') → k ≤ grid[x'][y'] := by
-  generalize hwp : leastNeighborValue grid x y = wp
-  apply Id.of_wp_run_eq hwp
-  mvcgen +jp
-  rename_i val₀ _ val₁ _ _ val₂ _ _ val₃ _ _ val₄ _ h₁ h₂ h₃ h₄
-  apply Iff.intro
-  · intro h x' y' hx' hy' hnb
-    cases hnb <;> grind
-  · intro h
-    obtain ⟨⟨x', y'⟩, hx', hy', h'⟩ := exists_areNeighbors (p := (x, y)) hn hx hy
-    have hsq := h x' y' hx' hy' h'
-    have : grid[x'][y'] < n * n + 1 := by
-      have : grid[x'][y'] ∈ (1...=(n * n)).toList := hg.mem_iff.mp (by simp [Vector.mem_flatten]; simp only [Vector.mem_iff_getElem]; grind)
-      simp only [Std.Rcc.mem_iff, Std.Rcc.mem_toList_iff_mem] at this
-      grind
-    have : k ≤ val₀ := by grind
-    have : k ≤ val₁ := by split at h₁ <;> (simp only [h₁, le_min_iff]; grind)
-    have : k ≤ val₂ := by split at h₂ <;> (simp only [h₂, le_min_iff]; grind)
-    have : k ≤ val₃ := by split at h₃ <;> (simp only [h₃, le_min_iff]; grind)
-    split at h₄ <;> (simp only [h₄, le_min_iff]; grind)
-
-theorem exists_exists_areNeighbors {grid : Vector (Vector Nat n) n} (hn : 1 < n) (hx : x < n) (hy : y < n) :
-    ∃ (k x' y' : _) (_ : x' < n) (_ : y' < n), k = grid[x'][y'] ∧ AreNeighbors (x, y) (x', y') := by
-  obtain ⟨⟨x', y'⟩, hx', hy', hnb⟩ := exists_areNeighbors hn (p := (x, y)) hx hy
-  exact ⟨_, x', y', hx', hy', rfl, hnb⟩
-
-theorem leastNeighborValue_eq_natFind {grid : Vector (Vector Nat n) n} {x y : Nat}
-    (hn : 1 < n) (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
-    leastNeighborValue grid x y = Nat.find (exists_exists_areNeighbors (grid := grid) hn hx hy) := by
-  apply le_antisymm
-  · simp only [Nat.le_find_iff]
-    grind [le_leastNeighborValue_iff]
-  · simp only [le_leastNeighborValue_iff hn hg hx hy]
-    intro x' y' hx' hy' hnb
-    apply Nat.find_le
-    grind
-
-theorem leastNeighborValue_mem_rcc {grid : Vector (Vector Nat n) n} {x y : Nat}
-    (hn : 1 < n) (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
-    leastNeighborValue grid x y ∈ 1...=(n * n) := by
-  rw [leastNeighborValue_eq_natFind hn hg hx hy]
-  obtain ⟨x', y', hx', hy', h, hnb⟩ := Nat.find_spec (exists_exists_areNeighbors (grid := grid) hn hx hy)
-  rw [h, ← Std.Rcc.mem_toList_iff_mem]
-  apply hg.mem_iff.mp
-  simp only [Vector.mem_toList_iff, Vector.mem_flatten]
-  exact ⟨grid[x'], by grind⟩
-
-theorem leastNeighborValue_le {grid : Vector (Vector Nat n) n} {x y x' y' : Nat}
-    (hn : 1 < n) (hg : WFGrid grid) (hx : x < n) (hy : y < n) (hx' : x' < n) (hy' : y' < n)
-    (hnb : AreNeighbors (x, y) (x', y')) :
-    leastNeighborValue grid x y ≤ grid[x'][y'] := by
-  rw [leastNeighborValue_eq_natFind hn hg hx hy]
-  apply Nat.find_le
-  exact ⟨x', y', hx', hy', rfl, hnb⟩
-
-section Mathlib
-
-theorem List.Nodup.getElem_inj_iff {l : List α} (h : List.Nodup l)
-    {i : Nat} {hi : i < l.length} {j : Nat} {hj : j < l.length} :
-    l[i] = l[j] ↔ i = j := by
-  sorry
-
-end Mathlib
-
-public theorem Std.Rxc.Iterator.nodup_toList [LE α] [DecidableLE α]
-    [PRange.UpwardEnumerable α] [Rxc.IsAlwaysFinite α] [PRange.LawfulUpwardEnumerable α]
-    [PRange.LawfulUpwardEnumerableLE α]
-    {it : Iter (α := Rxc.Iterator α) α} :
-    it.toList.Nodup := by
-  apply (Rxc.Iterator.pairwise_toList_upwardEnumerableLt it).imp
-  grind [PRange.UpwardEnumerable.ne_of_lt]
-
-public theorem Std.Rcc.nodup_toList [LE α] [DecidableLE α]
-    [PRange.UpwardEnumerable α] [Rxc.IsAlwaysFinite α] [PRange.LawfulUpwardEnumerable α]
-    [PRange.LawfulUpwardEnumerableLE α]
-    {a b : α} :
-    (a...=b).toList.Nodup := by
-  grind [=_ Std.Rcc.toList_iter, Std.Rxc.Iterator.nodup_toList]
-
-theorem Vector.getElem_eq_getElem_toList {xs : Vector α n} {i : Nat} {hi : i < n} :
-    xs[i] = xs.toList[i]'(by grind) := by
-  simp
-
-theorem getElem_grid_inj {grid : Vector (Vector Nat n) n}
-    (hg : WFGrid grid) {p q : Nat × Nat} (hp : p.1 < n ∧ p.2 < n) (hq : q.1 < n ∧ q.2 < n)
-    (h : grid[p.1][p.2] = grid[q.1][q.2]) :
-    p = q := by
-  have hnodup : List.Nodup grid.flatten.toList := by
-    apply hg.nodup_iff.mpr
-    apply Std.Rcc.nodup_toList
-  suffices n * p.1 + p.2 = n * q.1 + q.2 by
-    ext
-    · have (p : Nat × Nat) (hp : p.1 < n ∧ p.2 < n) : p.1 = (n * p.1 + p.2) / n := by
-        simp only [Nat.mul_add_div (show 0 < n by grind)]
-        grind [Nat.div_eq_zero_iff]
-      grind
-    · have (p : Nat × Nat) (hp : p.1 < n ∧ p.2 < n) : p.2 = (n * p.1 + p.2) % n := by
-        simp [Nat.mod_eq_of_lt hp.2]
-      grind
-  have (p : Nat × Nat) (h : p.1 < n ∧ p.2 < n) : n * p.1 + p.2 < n * n := by
-    have : n * n = n * (n - 1) + n * 1 := by rw [← Nat.mul_add, Nat.sub_add_cancel (by grind)]
-    have : n * p.1 ≤ n * (n - 1) := Nat.mul_le_mul_left n (by grind)
-    grind
-  have (p : Nat × Nat) (h : p.1 < n ∧ p.2 < n) :
-      haveI := this p h; grid[p.fst][p.snd] = grid.flatten[n * p.fst + p.snd] := by
-    haveI := this p h
-    simp only [Vector.getElem_flatten, Nat.mul_add_mod_self_left, Nat.mod_eq_of_lt h.2]
-    have hn0 : 0 < n := by grind
-    simp only [Nat.mul_add_div hn0]
-    grind [Nat.div_eq_zero_iff]
-  rw [this p hp, this q hq] at h
-  simp only [Vector.getElem_eq_getElem_toList] at h
-  rwa [← hnodup.getElem_inj_iff]
-
-theorem getElem!_mem_rcc {grid : Vector (Vector Nat n) n} (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
-    grid[x]![y]! ∈ 1...=(n * n) := by
-  simp only [← Std.Rcc.mem_toList_iff_mem]
-  apply hg.mem_iff.mp
-  simp only [Vector.mem_toList_iff]
-  apply Vector.mem_flatten_of_mem (xs := grid[x]) <;> grind
-
-theorem getElem_mem_rcc {grid : Vector (Vector Nat n) n} (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
-    grid[x][y] ∈ 1...=(n * n) := by
-  have := getElem!_mem_rcc hg hx hy
-  grind
-
-theorem get!_coordsOf?_getElem {grid : Vector (Vector Nat n) n}
-    (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
-    (coordsOf? grid grid[x][y]).get! = (x, y) := by
-  have hl : grid[x][y] ∈ 1...=(n * n) := by grind [getElem_mem_rcc]
-  have := isSome_coordsOf? hg hl
-  have := coordsOf?_spec (x := (coordsOf? grid grid[x][y]).get!.fst) (y := (coordsOf? grid grid[x][y]).get!.snd) (l := grid[x][y]) (grid := grid) (by simp only [Prod.eta, Option.some_get!, *])
-  apply getElem_grid_inj hg <;> grind
-
-theorem areNeighbors_coordsOf?_leastNeighborValue {grid : Vector (Vector Nat n) n} {p : Nat × Nat}
-    (hn : 1 < n) (hg : WFGrid grid) (hx : p.1 < n) (hy : p.2 < n) :
-    AreNeighbors p (coordsOf? grid (leastNeighborValue grid p.1 p.2)).get! := by
-  rw [leastNeighborValue_eq_natFind hn hg hx hy]
-  have := Nat.find_spec (exists_exists_areNeighbors (grid := grid) hn hx hy)
-  grind [get!_coordsOf?_getElem]
-
-theorem get_coordsOf?_bounds {grid : Vector (Vector Nat n) n} {l : Nat} {h} :
-    ((coordsOf? grid l).get h).fst < n ∧ ((coordsOf? grid l).get h).snd < n := by
-  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
-  grind [coordsOf?_spec]
-
-theorem get!_coordsOf?_bounds {grid : Vector (Vector Nat n) n} {l : Nat}
-    (hg : WFGrid grid) (hl : l ∈ 1...=(n * n)) :
-    (coordsOf? grid l).get!.fst < n ∧ (coordsOf? grid l).get!.snd < n := by
-  have := isSome_coordsOf? hg hl
-  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
-  grind [coordsOf?_spec]
 
 theorem getElem_minPath_mem_rcc {grid : Vector (Vector Nat n) n} {k : Nat} (hn : 1 < n)
     (hg : WFGrid grid) {i : Nat} {h : i < (minPath grid k).length} :
@@ -470,54 +527,11 @@ theorem getElem_minPath_mem_rcc {grid : Vector (Vector Nat n) n} {k : Nat} (hn :
     have (h : _) := get_coordsOf?_bounds (grid := grid) (l := 1) (h := h)
     grind [leastNeighborValue_mem_rcc]
 
-theorem getElem_get!_coordsOf? {grid : Vector (Vector Nat n) n} {l : Nat} (hg : WFGrid grid)
-    (hl : l ∈ 1...=n * n) :
-    letI coords := (coordsOf? grid l).get!
-    haveI := get!_coordsOf?_bounds hg hl
-    grid[coords.1][coords.2] = l := by
-  have := isSome_coordsOf? hg hl
-  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
-  grind [coordsOf?_spec]
-
-theorem getElem!_get!_coordsOf? {grid : Vector (Vector Nat n) n} {l : Nat}
-    (hg : WFGrid grid) (hl : l ∈ 1...=n * n) :
-    letI coords := (coordsOf? grid l).get!
-    haveI := get!_coordsOf?_bounds hg hl
-    grid[coords.1]![coords.2]! = l := by
-  have := isSome_coordsOf? hg hl
-  have : coordsOf? grid l = some ((coordsOf? grid l).get!.fst, (coordsOf? grid l).get!.snd) := by grind [Option.some_get!]
-  grind [coordsOf?_spec]
-
-section Batteries
-
-/-- `IsChain R l` means that `R` holds between adjacent elements of `l`.
-```
-IsChain R [a, b, c, d] ↔ R a b ∧ R b c ∧ R c d
-``` -/
-inductive List.IsChain (R : α → α → Prop) : List α → Prop where
-  /-- A list of length 0 is a chain. -/
-  | nil : IsChain R []
-  /-- A list of length 1 is a chain. -/
-  | singleton (a : α) : IsChain R [a]
-  /-- If `a` relates to `b` and `b::l` is a chain, then `a :: b :: l` is also a chain. -/
-  | cons_cons (hr : R a b) (h : IsChain R (b :: l)) : IsChain R (a :: b :: l)
-
-
-theorem List.isChain_iff_getElem {l : List α} :
-    IsChain R l ↔ ∀ (i : Nat) (_hi : i + 1 < l.length), R l[i] l[i + 1] := by
-  sorry
-
-theorem List.isChain_of_isChain_cons (p : List.IsChain R (b :: l)) :
-    List.IsChain R l := by
-  sorry
-
-end Batteries
-
 def minCoordPath (grid : Vector (Vector Nat n) n) (k : Nat) : List (Nat × Nat) :=
     (minPath grid k).map (fun val => (coordsOf? grid val).get!)
 
 theorem map_getElem_minCoordPath {grid : Vector (Vector Nat n) n} {k : Nat}
-    (hn : 2 < n) (hg : WFGrid grid) :
+    (hn : 1 < n) (hg : WFGrid grid) :
     (minCoordPath grid k).map (fun coord => grid[coord.1]![coord.2]!) = minPath grid k := by
   simp only [minCoordPath, List.map_map]
   apply List.ext_getElem
@@ -533,20 +547,19 @@ theorem areNeighbors_minPath {grid : Vector (Vector Nat n) n} {k i : Nat}
     let coords₂ := (coordsOf? grid ((minPath grid k)[i + 1]'(by grind [length_minPath]))).get!
     AreNeighbors coords₁ coords₂ := by
   intro coords₁ coords₂
+  have := coordsOf?_spec (grid := grid) (l := 1) (p := (coordsOf? grid 1).get!) (by grind [Option.some_get!, isSome_coordsOf?_one])
   by_cases h : i % 2 = 0
   · simp only [coords₁, coords₂]
     rw [getElem_minPath_eq_one (by grind), getElem_minPath_of_odd hn hg (by grind)]
     simp only [Option.get_eq_get!]
-    have := coordsOf?_spec (grid := grid) (l := 1) (x := (coordsOf? grid 1).get!.fst) (y := (coordsOf? grid 1).get!.snd) (Option.some_get! _ (isSome_coordsOf?_one (by grind) hg)).symm
     grind [areNeighbors_coordsOf?_leastNeighborValue]
   · simp only [coords₁, coords₂]
     rw [getElem_minPath_of_odd hn hg (by grind), getElem_minPath_eq_one (by grind)]
     simp only [Option.get_eq_get!]
-    have := coordsOf?_spec (grid := grid) (l := 1) (x := (coordsOf? grid 1).get!.fst) (y := (coordsOf? grid 1).get!.snd) (Option.some_get! _ (isSome_coordsOf?_one (by grind) hg)).symm
     grind [areNeighbors_coordsOf?_leastNeighborValue, AreNeighbors.symm]
 
 theorem isChain_areNeighbors_minCoordPath {grid : Vector (Vector Nat n) n} {k : Nat}
-    (hn : 2 < n) (hg : WFGrid grid) :
+    (hn : 1 < n) (hg : WFGrid grid) :
     (minCoordPath grid k).IsChain AreNeighbors := by
   simp only [List.isChain_iff_getElem]
   intro i hi
@@ -554,16 +567,16 @@ theorem isChain_areNeighbors_minCoordPath {grid : Vector (Vector Nat n) n} {k : 
   simp only [minCoordPath, List.getElem_map]
   grind
 
-theorem minPath_one {grid : Vector (Vector Nat n) n} (hn : 2 < n) (hg : WFGrid grid) :
+theorem minPath_one {grid : Vector (Vector Nat n) n} (hn : 1 < n) (hg : WFGrid grid) :
     minPath grid 1 = [1] := by
   apply List.ext_getElem
   · grind [length_minPath]
   · grind [getElem_minPath_eq_one]
 
-theorem minPath_add_two {grid : Vector (Vector Nat n) n} (hn : 2 < n) (hg : WFGrid grid) :
+theorem minPath_add_two {grid : Vector (Vector Nat n) n} (hn : 1 < n) (hg : WFGrid grid) :
     let coords := (coordsOf? grid 1).get (isSome_coordsOf?_one (by grind) hg)
     have := coordsOf?_spec (Option.some_get (isSome_coordsOf?_one (by grind) hg)).symm
-    let val := (leastNeighborValue grid coords.1 coords.2 (by grind))
+    let val := (leastNeighborValue grid coords (by grind))
     minPath grid (k + 2) = 1 :: val :: minPath grid k := by
   apply List.ext_getElem
   · grind [length_minPath]
@@ -573,7 +586,7 @@ theorem minPath_add_two {grid : Vector (Vector Nat n) n} (hn : 2 < n) (hg : WFGr
     · grind [getElem_minPath_of_odd]
 
 theorem minPath_le_of_isChain_areNeighbors {grid : Vector (Vector Nat n) n} {k : Nat}
-    (hn : 2 < n) (hg : WFGrid grid) {cs : List (Nat × Nat)} (hcl : cs.length = k)
+    (hn : 1 < n) (hg : WFGrid grid) {cs : List (Nat × Nat)} (hcl : cs.length = k)
     (hcb : ∀ c ∈ cs, c.1 < n ∧ c.2 < n)
     (hcc : cs.IsChain AreNeighbors) :
     (minPath grid k) ≤ cs.map (fun coord => grid[coord.1]![coord.2]!) := by
@@ -587,7 +600,7 @@ theorem minPath_le_of_isChain_areNeighbors {grid : Vector (Vector Nat n) n} {k :
       specialize hcb c (List.mem_singleton_self _)
       simp only [minPath_one hn hg, List.map_singleton, List.cons_le_cons_iff, List.nil_le, and_true]
       have : grid[c.fst]![c.snd]! ∈ 1...=(n * n) := by grind [getElem!_mem_rcc]
-      grind [Std.Rcc.mem_iff]
+      grind [Rcc.mem_iff]
     | _ :: _ :: _ => grind
   | k + 2 =>
     match cs, hcc with
@@ -598,17 +611,16 @@ theorem minPath_le_of_isChain_areNeighbors {grid : Vector (Vector Nat n) n} {k :
       by_cases 1 < grid[c₁.fst]![c₁.snd]!
       · grind
       · let coords := (coordsOf? grid 1).get!
-        have := coordsOf?_spec (grid := grid) (x := coords.1) (y := coords.2) (l := 1) (by grind [Option.some_get!, isSome_coordsOf?_one])
-        have : leastNeighborValue grid coords.1 coords.2 (by grind) ≤ grid[c₂.fst]![c₂.snd]! := by
+        have := coordsOf?_spec (grid := grid) (p := coords) (l := 1) (by grind [Option.some_get!, isSome_coordsOf?_one])
+        have : c₁ = (coordsOf? grid 1).get! := by
+          apply getElem_grid_inj hg (by grind) (by grind)
+          grind [Rcc.mem_iff]
+        have : leastNeighborValue grid coords (by grind) ≤ grid[c₂.fst]![c₂.snd]! := by
           rw [getElem!_pos (h := by grind), getElem!_pos (h := by grind)]
           apply leastNeighborValue_le (by grind) hg (by grind) (by grind)
-          simp only [coords, Prod.eta]
-          have : c₁ = (coordsOf? grid 1).get! := by
-            apply getElem_grid_inj hg (by grind) (by grind)
-            grind [Std.Rcc.mem_iff]
           grind
         have := minPath_le_of_isChain_areNeighbors hn hg (k := k) (cs := cs)  (by grind) (by grind) (by grind [List.isChain_of_isChain_cons])
-        grind [Std.Rcc.mem_iff, Option.get_eq_get!]
+        grind [Rcc.mem_iff, Option.get_eq_get!]
 
 /-!
 ## Prompt
