@@ -19,9 +19,9 @@ theorem Vector.toList_iter {xs : Vector α n} :
   simp [Vector.iter, Vector.toList_toArray]
 
 @[simp, grind =]
-theorem Vector.count_iter {xs : Vector α n} :
-    xs.iter.count = n := by
-  simp [Vector.iter, ← Iter.size_toArray_eq_count]
+theorem Vector.length_iter {xs : Vector α n} :
+    xs.iter.length = n := by
+  simp [Vector.iter, ← Iter.size_toArray_eq_length]
 
 def Std.Iter.zipIdx [Iterator α Id β] (it : Iter (α := α) β) :=
   (it.zip (*...* : Std.Rii Nat).iter : Iter (β × Nat))
@@ -45,11 +45,11 @@ theorem Std.Iter.mem_toList_iff [Iterator α Id β] [Iterators.Finite α Id]
 theorem Std.Iter.atIdxSlow?_eq_getElem?_toList_take {α β} [Iterator α Id β] [Iterators.Productive α Id]
     {it : Iter (α := α) β} {k : Nat} :
     it.atIdxSlow? k = (it.take (k + 1)).toList[k]? := by
-  fun_induction it.atIdxSlow? k with
-  | case1 it _ _ _ h
-  | case2 it _ _ _ _ _ h
-  | case3 _ it _ _ h
-  | case4 _ it _ h =>
+  induction k, it using Iter.atIdxSlow?.induct_unfolding with
+  | yield_zero it _ _ _ h
+  | yield_succ it _ _ _ _ _ h
+  | skip_case _ it _ _ h
+  | done_case _ it _ h =>
     rw [Iter.toList_eq_match_step, Iter.step_take, h]
     cases _ : it.step using PlausibleIterStep.casesOn <;> grind
 
@@ -132,11 +132,11 @@ theorem Std.Iter.toList_zipIdx [Iterator α Id β] [Iterators.Finite α Id] (it 
   simp only [zipIdx, toList_zip_of_finite_left, Nat.toList_take_iter_rii, Nat.toList_rio_eq_toList_rco, ← List.range_eq_toList_rco]
   simp only [List.zipIdx_eq_zip_range', List.range_eq_range']
 
-theorem Std.Iter.lt_count_of_mem_zipIdx [Iterator α Id β]
+theorem Std.Iter.lt_length_of_mem_zipIdx [Iterator α Id β]
     [IteratorLoop α Id Id] [LawfulIteratorLoop α Id Id]
     [Iterators.Finite α Id] {it : Iter (α := α) β} {p : β × Nat}
     (h : p ∈ it.zipIdx) :
-    p.2 < it.count := by
+    p.2 < it.length := by
   simp only [zipIdx] at h
   simp only [mem_zip_iff] at h
   simp only [← getElem?_toList_eq_atIdxSlow?] at h
@@ -144,7 +144,7 @@ theorem Std.Iter.lt_count_of_mem_zipIdx [Iterator α Id β]
   simp only [List.getElem?_eq_some_iff] at hn
   obtain ⟨hn, _⟩ := hn
   simp only [atIdxSlow?_eq_getElem?_toList_take] at h
-  grind [length_toList_eq_count, Nat.getElem_toList_rio, Nat.toList_take_iter_rii]
+  grind [length_toList_eq_length, Nat.getElem_toList_rio, Nat.toList_take_iter_rii]
 
 theorem List.isSome_findSome?_eq {xs : List α} {f : α → Option β} :
     (xs.findSome? f).isSome = xs.any (f · |>.isSome) := by
