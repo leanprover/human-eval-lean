@@ -224,9 +224,6 @@ end Batteries
 ## Implementation
 -/
 
-def WFGrid (grid : Vector (Vector Nat n) n) : Prop :=
-  grid.flatten.toList.Perm (1...=(n * n)).toList
-
 def coordsOf? (grid : Vector (Vector Nat n) m) (l : Nat) : Option (Nat × Nat) :=
     grid.iter.zipIdx.findSome? (fun (row, x) =>
         row.iter.zipIdx.findSome? (fun (cell, y) =>
@@ -270,11 +267,73 @@ def minPath (grid : Vector (Vector Nat n) n) (k : Nat) : List Nat := Id.run do
   | none => return []
 
 /-!
+## Tests
+-/
+
+example : minPath #v[
+  #v[1, 2, 3],
+  #v[4, 5, 6],
+  #v[7, 8, 9]] 3 = [1, 2, 1] := by native_decide
+
+example : minPath #v[
+  #v[5, 9, 3],
+  #v[4, 1, 6],
+  #v[7, 8, 2]] 1 = [1] := by native_decide
+
+example : minPath #v[
+  #v[1, 2, 3, 4],
+  #v[5, 6, 7, 8],
+  #v[9, 10, 11, 12],
+  #v[13, 14, 15, 16]] 4 = [1, 2, 1, 2] := by native_decide
+
+example : minPath #v[
+  #v[6, 4, 13, 10],
+  #v[5, 7, 12, 1],
+  #v[3, 16, 11, 15],
+  #v[8, 14, 9, 2]] 7 = [1, 10, 1, 10, 1, 10, 1] := by native_decide
+
+example : minPath #v[
+  #v[8, 14, 9, 2],
+  #v[6, 4, 13, 15],
+  #v[5, 7, 1, 12],
+  #v[3, 10, 11, 16]] 5 = [1, 7, 1, 7, 1] := by native_decide
+
+example : minPath #v[
+  #v[11, 8, 7, 2],
+  #v[5, 16, 14, 4],
+  #v[9, 3, 15, 6],
+  #v[12, 13, 10, 1]] 9 = [1, 6, 1, 6, 1, 6, 1, 6, 1] := by native_decide
+
+example : minPath #v[
+  #v[12, 13, 10, 1],
+  #v[9, 3, 15, 6],
+  #v[5, 16, 14, 4],
+  #v[11, 8, 7, 2]] 12 = [1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6] := by native_decide
+
+example : minPath #v[
+  #v[2, 7, 4],
+  #v[3, 1, 5],
+  #v[6, 8, 9]] 8 = [1, 3, 1, 3, 1, 3, 1, 3] := by native_decide
+
+example : minPath #v[
+  #v[6, 1, 5],
+  #v[3, 8, 9],
+  #v[2, 7, 4]] 8 = [1, 5, 1, 5, 1, 5, 1, 5] := by native_decide
+
+example : minPath #v[
+  #v[1, 2],
+  #v[3, 4]] 10 = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2] := by native_decide
+
+example : minPath #v[
+  #v[1, 3],
+  #v[3, 2]] 10 = [1, 3, 1, 3, 1, 3, 1, 3, 1, 3] := by native_decide
+
+/-!
 ## Verification
 
 We model the grid as `grid : Vector (Vector Nat n) n` such that `grid.flatten` is a permutation of
-`1...=(n * n)`. This property is captured in the `WFGrid`. Moreover, we are allowed to assume that
-the grid has a side length `n ≥ 2`.
+`1...=(n * n)`. This property is captured in the `WFGrid` predicate. Moreover, we are allowed to
+assume that the grid has a side length `n ≥ 2`.
 
 The following lemmas fully characterize and formally verify `minPath`:
 
@@ -283,6 +342,29 @@ The following lemmas fully characterize and formally verify `minPath`:
 * `isChain_areNeighbors_minCoordPath`: Consecutive elements of `minCoordPath` are neighbors.
 * `minPath_le_of_isChain_areNeighbors`: The path returned by `minPath` is lexicographically minimal
 -/
+
+/--
+States that the given grid is well-formed in the sense that its entries are exactly the numbers
+from `1` to `n * n` in arbitrary order.
+-/
+def WFGrid (grid : Vector (Vector Nat n) n) : Prop :=
+  grid.flatten.toList.Perm (1...=(n * n)).toList
+
+/--
+States that the two pairs of coordinates are next to each other, either horizontally or vertically.
+This relation does not impose any bounds on the coordinates.
+-/
+inductive AreNeighbors : (p q : Nat × Nat) → Prop
+  | left : AreNeighbors (x + 1, y) (x, y)
+  | right : AreNeighbors (x, y) (x + 1, y)
+  | up : AreNeighbors (x, y) (x, y + 1)
+  | down : AreNeighbors (x, y + 1) (x, y)
+
+/--
+The list of coordinates of `minPath`'s entries.
+-/
+def minCoordPath (grid : Vector (Vector Nat n) n) (k : Nat) : List (Nat × Nat) :=
+    (minPath grid k).map (fun val => (coordsOf? grid val).get!)
 
 theorem getElem!_mem_rcc {grid : Vector (Vector Nat n) n} (hg : WFGrid grid) (hx : x < n) (hy : y < n) :
     grid[x]![y]! ∈ 1...=(n * n) := by
@@ -326,12 +408,6 @@ theorem getElem_grid_inj {grid : Vector (Vector Nat n) n}
   rw [this p hp, this q hq] at h
   simp only [Vector.getElem_eq_getElem_toList] at h
   rwa [← hnodup.getElem_inj_iff]
-
-inductive AreNeighbors : (p q : Nat × Nat) → Prop
-  | left : AreNeighbors (x + 1, y) (x, y)
-  | right : AreNeighbors (x, y) (x + 1, y)
-  | up : AreNeighbors (x, y) (x, y + 1)
-  | down : AreNeighbors (x, y + 1) (x, y)
 
 theorem AreNeighbors.symm {p q} (h : AreNeighbors p q) : AreNeighbors q p := by
   grind [AreNeighbors]
@@ -526,9 +602,6 @@ theorem getElem_minPath_mem_rcc {grid : Vector (Vector Nat n) n} {k : Nat} (hn :
   · rw [getElem_minPath_of_odd hn hg (by grind)]
     have (h : _) := get_coordsOf?_bounds (grid := grid) (l := 1) (h := h)
     grind [leastNeighborValue_mem_rcc]
-
-def minCoordPath (grid : Vector (Vector Nat n) n) (k : Nat) : List (Nat × Nat) :=
-    (minPath grid k).map (fun val => (coordsOf? grid val).get!)
 
 theorem map_getElem_minCoordPath {grid : Vector (Vector Nat n) n} {k : Nat}
     (hn : 1 < n) (hg : WFGrid grid) :
