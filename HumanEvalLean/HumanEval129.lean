@@ -6,6 +6,10 @@ open Std Std.Do
 
 set_option mvcgen.warning false
 
+/-!
+## Missing Api
+-/
+
 def Vector.iter (xs : Vector α n) :=
     (xs.toArray.iter : Iter α)
 
@@ -19,14 +23,7 @@ theorem Vector.count_iter {xs : Vector α n} :
     xs.iter.count = n := by
   simp [Vector.iter, ← Iter.size_toArray_eq_count]
 
-/-
-Zip restructuring plan:
-
-* have zipWith
-* provide proof that there's an i s.t. x = it₁.atIdxSlow? i ∧ y = it₂.atIdxSlow? i ∧
--/
-
-def Std.Iter.enumerate [Iterator α Id β] (it : Iter (α := α) β) :=
+def Std.Iter.zipIdx [Iterator α Id β] (it : Iter (α := α) β) :=
   (it.zip (*...* : Std.Rii Nat).iter : Iter (β × Nat))
 
 instance [Iterator α Id β] [Iterators.Productive α Id] : Membership β (Iter (α := α) β) where
@@ -92,11 +89,11 @@ theorem Nat.toList_take_iter_rii {n : Nat} :
     ((*...* : Std.Rii Nat).iter.take n).toList = (*...n).toList := by
   simpa using Nat.toList_take_iter_rci (m := 0) (n := n)
 
-theorem Std.Iter.mem_enumerate_iff [Iterator α Id β]
+theorem Std.Iter.mem_zipIdx_iff [Iterator α Id β]
     [Iterators.Finite α Id] {it : Iter (α := α) β}
     {p : β × Nat} :
-    p ∈ it.enumerate ↔ it.atIdxSlow? p.2 = some p.1 := by
-  simp only [enumerate, mem_zip_iff, ← getElem?_toList_eq_atIdxSlow?,
+    p ∈ it.zipIdx ↔ it.atIdxSlow? p.2 = some p.1 := by
+  simp only [zipIdx, mem_zip_iff, ← getElem?_toList_eq_atIdxSlow?,
     atIdxSlow?_eq_getElem?_toList_take, Nat.toList_take_iter_rii, Nat.getElem?_toList_rio_eq_some_iff]
   grind
 
@@ -118,17 +115,17 @@ theorem Vector.mem_iter_iff {xs : Vector α n} {x : α} :
     x ∈ xs.iter ↔ x ∈ xs := by
   simp [Vector.iter, Array.mem_iter_iff]
 
-theorem Vector.mem_enumerate_iter_iff {xs : Vector α n} {p : α × Nat} :
-    p ∈ xs.iter.enumerate ↔ ∃ (h : p.2 < n), xs[p.2] = p.1 := by
-  rw [Iter.mem_enumerate_iff, Vector.atIdxSlow?_iter]
+theorem Vector.mem_zipIdx_iter_iff {xs : Vector α n} {p : α × Nat} :
+    p ∈ xs.iter.zipIdx ↔ ∃ (h : p.2 < n), xs[p.2] = p.1 := by
+  rw [Iter.mem_zipIdx_iff, Vector.atIdxSlow?_iter]
   grind
 
-theorem Std.Iter.lt_count_of_mem_enumerate [Iterator α Id β]
+theorem Std.Iter.lt_count_of_mem_zipIdx [Iterator α Id β]
     [IteratorLoop α Id Id] [LawfulIteratorLoop α Id Id]
     [Iterators.Finite α Id] {it : Iter (α := α) β} {p : β × Nat}
-    (h : p ∈ it.enumerate) :
+    (h : p ∈ it.zipIdx) :
     p.2 < it.count := by
-  simp only [enumerate] at h
+  simp only [zipIdx] at h
   simp only [mem_zip_iff] at h
   simp only [← getElem?_toList_eq_atIdxSlow?] at h
   obtain ⟨n, hn, h⟩ := h
@@ -137,16 +134,16 @@ theorem Std.Iter.lt_count_of_mem_enumerate [Iterator α Id β]
   simp only [atIdxSlow?_eq_getElem?_toList_take] at h
   grind [length_toList_eq_count, Nat.getElem_toList_rio, Nat.toList_take_iter_rii]
 
-theorem Std.Iter.mem_of_mem_enumerate [Iterator α Id β] [Iterators.Productive α Id]
-    {it : Iter (α := α) β} {p : β × Nat} (h : p ∈ it.enumerate) :
+theorem Std.Iter.mem_of_mem_zipIdx [Iterator α Id β] [Iterators.Productive α Id]
+    {it : Iter (α := α) β} {p : β × Nat} (h : p ∈ it.zipIdx) :
     p.1 ∈ it := by
-  simp only [enumerate, mem_zip_iff] at h
+  simp only [zipIdx, mem_zip_iff] at h
   obtain ⟨n, hn, _⟩ := h
   exact ⟨n, hn⟩
 
-theorem Std.Iter.toList_enumerate [Iterator α Id β] [Iterators.Finite α Id] (it : Iter (α := α) β) :
-    it.enumerate.toList = it.toList.zipIdx := by
-  simp only [enumerate, toList_zip_of_finite_left, Nat.toList_take_iter_rii, Nat.toList_rio_eq_toList_rco, ← List.range_eq_toList_rco]
+theorem Std.Iter.toList_zipIdx [Iterator α Id β] [Iterators.Finite α Id] (it : Iter (α := α) β) :
+    it.zipIdx.toList = it.toList.zipIdx := by
+  simp only [zipIdx, toList_zip_of_finite_left, Nat.toList_take_iter_rii, Nat.toList_rio_eq_toList_rco, ← List.range_eq_toList_rco]
   simp only [List.zipIdx_eq_zip_range', List.range_eq_range']
 
 def WFGrid (grid : Vector (Vector Nat n) n) : Prop :=
@@ -160,15 +157,15 @@ theorem List.isSome_findSome? {xs : List α} {f : α → Option β} :
   grind
 
 def coordsOf? (grid : Vector (Vector Nat n) m) (l : Nat) : Option (Nat × Nat) :=
-    grid.iter.enumerate.findSome? (fun (row, x) =>
-        row.iter.enumerate.findSome? (fun (cell, y) =>
+    grid.iter.zipIdx.findSome? (fun (row, x) =>
+        row.iter.zipIdx.findSome? (fun (cell, y) =>
             if cell = l then some (x, y) else none))
 
 theorem isSome_coordsOf? {grid : Vector (Vector Nat n) n} (h : WFGrid grid)
     (hl : l ∈ 1...=(n * n)) :
     (coordsOf? grid l).isSome := by
   simp only [WFGrid] at h
-  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_enumerate, Vector.toList_iter]
+  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_zipIdx, Vector.toList_iter]
   simp only [List.isSome_findSome?]
   have : l ∈ grid.flatten.toList := h.mem_iff.mpr (by simpa [Std.Rcc.mem_toList_iff_mem])
   simp [Vector.flatten, Vector.toList_toArray] at this
@@ -183,7 +180,7 @@ theorem isSome_coordsOf? {grid : Vector (Vector Nat n) n} (h : WFGrid grid)
 theorem isSome_coordsOf?_one {grid : Vector (Vector Nat n) n} (hn : 0 < n) (h : WFGrid grid) :
     (coordsOf? grid 1).isSome := by
   simp only [WFGrid] at h
-  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_enumerate, Vector.toList_iter]
+  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_zipIdx, Vector.toList_iter]
   simp only [List.isSome_findSome?]
   have : 1 ∈ grid.flatten.toList := h.mem_iff.mpr (by simp [Std.Rcc.mem_toList_iff_mem, Std.Rcc.mem_iff]; grind [Nat.le_mul_self n])
   simp [Vector.flatten, Vector.toList_toArray] at this
@@ -202,10 +199,10 @@ theorem coordsOf?_spec {grid : Vector (Vector Nat n) m} {l : Nat} {x y : Nat}
   simp only [coordsOf?] at h
   simp only [← Iter.findSome?_toList] at h
   obtain ⟨⟨row, x'⟩, h₁, h⟩ := List.exists_of_findSome?_eq_some h
-  simp only [Iter.mem_toList_iff, Vector.mem_enumerate_iter_iff] at h₁
+  simp only [Iter.mem_toList_iff, Vector.mem_zipIdx_iter_iff] at h₁
   obtain ⟨hx, hrow⟩ := h₁
   obtain ⟨y', h₂, h⟩ := List.exists_of_findSome?_eq_some h
-  simp only [Iter.mem_toList_iff, Vector.mem_enumerate_iter_iff] at h₂
+  simp only [Iter.mem_toList_iff, Vector.mem_zipIdx_iter_iff] at h₂
   obtain ⟨hy, hcell⟩ := h₂
   grind
 
