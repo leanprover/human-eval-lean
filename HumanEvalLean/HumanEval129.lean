@@ -120,6 +120,18 @@ theorem Vector.mem_zipIdx_iter_iff {xs : Vector α n} {p : α × Nat} :
   rw [Iter.mem_zipIdx_iff, Vector.atIdxSlow?_iter]
   grind
 
+theorem Std.Iter.mem_of_mem_zipIdx [Iterator α Id β] [Iterators.Productive α Id]
+    {it : Iter (α := α) β} {p : β × Nat} (h : p ∈ it.zipIdx) :
+    p.1 ∈ it := by
+  simp only [zipIdx, mem_zip_iff] at h
+  obtain ⟨n, hn, _⟩ := h
+  exact ⟨n, hn⟩
+
+theorem Std.Iter.toList_zipIdx [Iterator α Id β] [Iterators.Finite α Id] (it : Iter (α := α) β) :
+    it.zipIdx.toList = it.toList.zipIdx := by
+  simp only [zipIdx, toList_zip_of_finite_left, Nat.toList_take_iter_rii, Nat.toList_rio_eq_toList_rco, ← List.range_eq_toList_rco]
+  simp only [List.zipIdx_eq_zip_range', List.range_eq_range']
+
 theorem Std.Iter.lt_count_of_mem_zipIdx [Iterator α Id β]
     [IteratorLoop α Id Id] [LawfulIteratorLoop α Id Id]
     [Iterators.Finite α Id] {it : Iter (α := α) β} {p : β × Nat}
@@ -134,77 +146,33 @@ theorem Std.Iter.lt_count_of_mem_zipIdx [Iterator α Id β]
   simp only [atIdxSlow?_eq_getElem?_toList_take] at h
   grind [length_toList_eq_count, Nat.getElem_toList_rio, Nat.toList_take_iter_rii]
 
-theorem Std.Iter.mem_of_mem_zipIdx [Iterator α Id β] [Iterators.Productive α Id]
-    {it : Iter (α := α) β} {p : β × Nat} (h : p ∈ it.zipIdx) :
-    p.1 ∈ it := by
-  simp only [zipIdx, mem_zip_iff] at h
-  obtain ⟨n, hn, _⟩ := h
-  exact ⟨n, hn⟩
-
-theorem Std.Iter.toList_zipIdx [Iterator α Id β] [Iterators.Finite α Id] (it : Iter (α := α) β) :
-    it.zipIdx.toList = it.toList.zipIdx := by
-  simp only [zipIdx, toList_zip_of_finite_left, Nat.toList_take_iter_rii, Nat.toList_rio_eq_toList_rco, ← List.range_eq_toList_rco]
-  simp only [List.zipIdx_eq_zip_range', List.range_eq_range']
-
-def WFGrid (grid : Vector (Vector Nat n) n) : Prop :=
-  grid.flatten.toList.Perm (1...=(n * n)).toList
-
-theorem List.isSome_findSome? {xs : List α} {f : α → Option β} :
+theorem List.isSome_findSome?_eq {xs : List α} {f : α → Option β} :
     (xs.findSome? f).isSome = xs.any (f · |>.isSome) := by
   rw [Bool.eq_iff_iff]
   simp only [Option.isSome_iff_ne_none, ne_eq, findSome?_eq_none_iff, Classical.not_forall]
   simp only [← Option.isSome_iff_ne_none]
   grind
 
+/-!
+## Implementation
+-/
+
+def WFGrid (grid : Vector (Vector Nat n) n) : Prop :=
+  grid.flatten.toList.Perm (1...=(n * n)).toList
+
 def coordsOf? (grid : Vector (Vector Nat n) m) (l : Nat) : Option (Nat × Nat) :=
     grid.iter.zipIdx.findSome? (fun (row, x) =>
         row.iter.zipIdx.findSome? (fun (cell, y) =>
             if cell = l then some (x, y) else none))
 
-theorem isSome_coordsOf? {grid : Vector (Vector Nat n) n} (h : WFGrid grid)
-    (hl : l ∈ 1...=(n * n)) :
-    (coordsOf? grid l).isSome := by
-  simp only [WFGrid] at h
-  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_zipIdx, Vector.toList_iter]
-  simp only [List.isSome_findSome?]
-  have : l ∈ grid.flatten.toList := h.mem_iff.mpr (by simpa [Std.Rcc.mem_toList_iff_mem])
-  simp [Vector.flatten, Vector.toList_toArray] at this
-  obtain ⟨xs, ⟨⟨col, h_col_mem, heq⟩, h_l_mem⟩⟩ := this
-  simp only [Vector.mem_iff_getElem] at h_col_mem
-  obtain ⟨x, hx, hcol⟩ := h_col_mem
-  simp only [List.mem_iff_getElem] at h_l_mem
-  obtain ⟨y, hy, hcell⟩ := h_l_mem
-  simp only [List.any_eq_true, List.mem_zipIdx_iff_getElem?]
-  exact ⟨⟨col, x⟩, by grind, ⟨l, y⟩, by grind⟩
-
-theorem isSome_coordsOf?_one {grid : Vector (Vector Nat n) n} (hn : 0 < n) (h : WFGrid grid) :
-    (coordsOf? grid 1).isSome := by
-  simp only [WFGrid] at h
-  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_zipIdx, Vector.toList_iter]
-  simp only [List.isSome_findSome?]
-  have : 1 ∈ grid.flatten.toList := h.mem_iff.mpr (by simp [Std.Rcc.mem_toList_iff_mem, Std.Rcc.mem_iff]; grind [Nat.le_mul_self n])
-  simp [Vector.flatten, Vector.toList_toArray] at this
-  obtain ⟨l, ⟨⟨col, h_col_mem, heq⟩, h_one_mem⟩⟩ := this
-  simp only [Vector.mem_iff_getElem] at h_col_mem
-  obtain ⟨x, hx, hcol⟩ := h_col_mem
-  simp only [List.mem_iff_getElem] at h_one_mem
-  obtain ⟨y, hy, hcell⟩ := h_one_mem
-  simp only [List.any_eq_true, List.mem_zipIdx_iff_getElem?]
-  exact ⟨⟨col, x⟩, by grind, ⟨1, y⟩, by grind⟩
-
 @[grind →]
 theorem coordsOf?_spec {grid : Vector (Vector Nat n) m} {l : Nat} {x y : Nat}
     (h : coordsOf? grid l = some (x, y)) :
     ∃ (_ : x < m) (_ : y < n), grid[x][y] = l := by
-  simp only [coordsOf?] at h
-  simp only [← Iter.findSome?_toList] at h
+  simp only [coordsOf?, ← Iter.findSome?_toList] at h
   obtain ⟨⟨row, x'⟩, h₁, h⟩ := List.exists_of_findSome?_eq_some h
-  simp only [Iter.mem_toList_iff, Vector.mem_zipIdx_iter_iff] at h₁
-  obtain ⟨hx, hrow⟩ := h₁
   obtain ⟨y', h₂, h⟩ := List.exists_of_findSome?_eq_some h
-  simp only [Iter.mem_toList_iff, Vector.mem_zipIdx_iter_iff] at h₂
-  obtain ⟨hy, hcell⟩ := h₂
-  grind
+  grind [Iter.mem_toList_iff, Vector.mem_zipIdx_iter_iff]
 
 def leastNeighborValue (grid : Vector (Vector Nat n) m) (x y : Nat)
     (hxy : x < m ∧ y < n := by grind) : Nat := Id.run do
@@ -221,13 +189,35 @@ def leastNeighborValue (grid : Vector (Vector Nat n) m) (x y : Nat)
 
 def minPath (grid : Vector (Vector Nat n) n) (k : Nat) : List Nat := Id.run do
   match h : coordsOf? grid 1 with
-  | none => return []
   | some (x, y) =>
     let val := leastNeighborValue grid x y
     let mut result := if k % 2 = 1 then [1] else []
     for _ in *...(k / 2) do
       result := 1 :: val :: result
     return result
+  | none => return []
+
+/-! ## Verification -/
+
+theorem isSome_coordsOf? {grid : Vector (Vector Nat n) n} (h : WFGrid grid)
+    (hl : l ∈ 1...=(n * n)) :
+    (coordsOf? grid l).isSome := by
+  simp only [WFGrid] at h
+  have : l ∈ grid.flatten.toList := h.mem_iff.mpr (by simpa [Std.Rcc.mem_toList_iff_mem])
+  simp [Vector.flatten, Vector.toList_toArray] at this
+  obtain ⟨xs, ⟨⟨col, h_col_mem, heq⟩, h_l_mem⟩⟩ := this
+  simp only [Vector.mem_iff_getElem] at h_col_mem
+  obtain ⟨x, hx, hcol⟩ := h_col_mem
+  simp only [List.mem_iff_getElem] at h_l_mem
+  obtain ⟨y, hy, hcell⟩ := h_l_mem
+  simp only [coordsOf?, ← Iter.findSome?_toList, Iter.toList_zipIdx, Vector.toList_iter,
+    List.isSome_findSome?_eq, List.any_eq_true, List.mem_zipIdx_iff_getElem?]
+  exact ⟨⟨col, x⟩, by grind, ⟨l, y⟩, by grind⟩
+
+theorem isSome_coordsOf?_one {grid : Vector (Vector Nat n) n} (hn : 0 < n) (h : WFGrid grid) :
+    (coordsOf? grid 1).isSome := by
+  apply isSome_coordsOf? h
+  grind [Rcc.mem_iff, Nat.le_mul_self n]
 
 theorem length_minPath {grid : Vector (Vector Nat n) n} {k : Nat} (hn : 0 < n) (h : WFGrid grid) :
     (minPath grid k).length = k := by
