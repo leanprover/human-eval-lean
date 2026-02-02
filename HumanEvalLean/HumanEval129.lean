@@ -7,7 +7,7 @@ open Std Std.Do
 set_option mvcgen.warning false
 
 /-!
-## Missing Api
+## Missing API
 -/
 
 def Vector.iter (xs : Vector α n) :=
