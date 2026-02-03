@@ -45,30 +45,16 @@ actions needed.
 attribute [grind =] Vector.sum_mk List.zip_cons_cons List.zip_nil_right List.zip_nil_left
 
 @[simp, grind =]
-theorem Vector.sum_toList {xs : Vector Nat α} :
-    xs.toList.sum = xs.sum := by
-  rw [← Vector.mk_toArray (xs := xs), Vector.toList_mk, Vector.sum_mk, Array.sum_eq_sum_toList]
-
-@[simp, grind =]
-theorem Vector.sum_toArray {xs : Vector Nat α} :
-    xs.toArray.sum = xs.sum := by
-  rw [Vector.sum_mk]
-
-@[simp, grind =]
 theorem Vector.toList_zip {as : Vector α n} {bs : Vector β n} :
     (Vector.zip as bs).toList = List.zip as.toList bs.toList := by
   rcases as with ⟨as, rfl⟩
   rcases bs with ⟨bs, h⟩
   simp
 
-theorem List.exists_mem_iff_exists_getElem (P : α → Prop) (l : List α) :
-    (∃ x ∈ l, P x) ↔ ∃ (i : Nat), ∃ hi, P (l[i]'hi) := by
-  grind [mem_iff_getElem]
-
 theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
     ∀ (i : Nat) (hi : i < l.length), l[i] = 0 := by
   rw [← Decidable.not_iff_not]
-  simp [← Nat.pos_iff_ne_zero, Nat.sum_pos_iff_exists_pos, List.exists_mem_iff_exists_getElem]
+  simp [← Nat.pos_iff_ne_zero, List.sum_pos_iff_exists_pos_nat, List.exists_mem_iff_exists_getElem]
 
 theorem Vector.sum_eq_zero {xs : Vector Nat n} : xs.sum = 0 ↔ ∀ (i : Nat) (hi : i < n), xs[i] = 0 := by
   rw [← Vector.sum_toList, List.sum_eq_zero]
@@ -84,15 +70,6 @@ theorem Array.sum_eq_foldl {xs : Array Nat} :
     xs.sum = xs.foldl (init := 0) (· + ·) := by
   rw [← Array.toArray_toList (xs := xs)]
   grind [List.sum_eq_foldl]
-
-theorem Vector.ofFn_getElem {xs : Vector α n} :
-    Vector.ofFn (fun i : Fin n => xs[i.val]) = xs := by
-  grind
-
-theorem Array.map_ofFn {f : Fin n → α} {g : α → β} :
-    (Array.ofFn f).map g = Array.ofFn (g ∘ f) := by
-  apply Array.ext_getElem?
-  grind [Array.getElem?_ofFn]
 
 /-!
 ### The concrete model

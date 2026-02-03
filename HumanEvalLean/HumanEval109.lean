@@ -5,14 +5,10 @@ section helper
 theorem Nat.lt_two_iff {n : Nat} : n < 2 ↔ n = 0 ∨ n = 1 := by
   omega
 
-theorem List.exists_mem_iff_exists_getElem (P : α → Prop) (l : List α) :
-    (∃ x ∈ l, P x) ↔ ∃ (i : Nat), ∃ hi, P (l[i]'hi) := by
-  grind [mem_iff_getElem]
-
 theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
     ∀ (i : Nat) (hi : i < l.length), l[i]'hi = 0 := by
   rw [← Decidable.not_iff_not]
-  simp [← Nat.pos_iff_ne_zero, Nat.sum_pos_iff_exists_pos, List.exists_mem_iff_exists_getElem]
+  simp [← Nat.pos_iff_ne_zero, List.sum_pos_iff_exists_pos_nat, List.exists_mem_iff_exists_getElem]
 
 theorem List.sum_eq_one_iff {l : List Nat} : l.sum = 1 ↔ ∃ (i : Nat) (hi : i < l.length),
     l[i] = 1 ∧ ∀ (j : Nat) (hj : j < l.length), i ≠ j → l[j] = 0 := by
@@ -189,14 +185,6 @@ theorem List.two_le_sum_iff {l : List Nat} (h : ∀ (i : Nat) (hi : i < l.length
 -- from mathlib
 @[simp] theorem List.take_eq_self_iff (x : List α) {n : Nat} : x.take n = x ↔ x.length ≤ n :=
   ⟨fun h ↦ by rw [← h]; simp only [length_take]; omega, List.take_of_length_le⟩
-
-theorem List.sum_append {l₁ l₂ : List Nat} :
-    (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
-  induction l₁ with
-  | nil => simp
-  | cons hd tl ih =>
-    simp only [cons_append, sum_cons, ih]
-    omega
 
 end helper
 

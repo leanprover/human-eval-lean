@@ -71,9 +71,6 @@ example : solution' [3, 13, 2, 9] = 3 := by decide
 ## Verification 2
 -/
 
-theorem List.sum_append_int {l₁ l₂ : List Int} : (l₁ ++ l₂).sum = l₁.sum + l₂.sum := by
-  induction l₁ generalizing l₂ <;> simp_all [Int.add_assoc]
-
 theorem solution'_spec {xs : List Int} :
     solution' xs = (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
   generalize h : solution' xs = r
@@ -81,9 +78,9 @@ theorem solution'_spec {xs : List Int} :
   mvcgen
   · exact ⇓⟨cur, even, sum⟩ => ⌜even = (cur.prefix.length % 2 = 0) ∧ sum = (cur.prefix.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum⌝
   · mleave
-    simp [List.sum_append_int]
+    simp
     grind
-  · simp [List.sum_append_int]
+  · simp
     grind
   · grind
   · grind

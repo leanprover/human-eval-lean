@@ -8,18 +8,6 @@ public def isExchangePossible (xs ys : Array Int) : String :=
   if need ≤ available then "YES" else "NO"
 
 /-!
-## Prerequisites
--/
-
-theorem Vector.exists_mem_iff_exists_getElem (P : α → Prop) (xs : Vector α n) :
-    (∃ x ∈ xs, P x) ↔ ∃ (i : Nat), ∃ hi, P (xs[i]'hi) := by
-  grind [mem_iff_getElem]
-
-theorem Vector.forall_mem_iff_forall_getElem (P : α → Prop) (xs : Vector α n) :
-    (∀ x ∈ xs, P x) ↔ ∀ (i : Nat) hi, P (xs[i]'hi) := by
-  grind [mem_iff_getElem]
-
-/-!
 ## Verification
 -/
 
