@@ -4,6 +4,14 @@ open Std Std.Do
 
 set_option mvcgen.warning false
 
+/-!
+# Problem 130: Tribonacci Sequence
+
+This file provides two complete and fully verified implementations:
+- `tri`: iterator-based functional implementation
+- `tri'`: imperative implementation using `do` notation
+-/
+
 /-! ## Implementation using iterators -/
 
 /--
