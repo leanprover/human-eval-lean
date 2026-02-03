@@ -21,18 +21,6 @@ def sumProductDo (xs : List Int) : Int × Int := Id.run do
   return (sum, product)
 
 @[grind =]
-theorem List.sum_append (xs : List Int) (ys : List Int) :
-    sum (xs ++ ys) = sum xs + sum ys := by
-  induction xs with
-  | nil =>
-    change sum ys = 0 + sum ys
-    omega
-  | cons x xs hi =>
-    change x + sum (xs ++ ys) = x + sum xs + sum ys
-    rw [hi]
-    omega
-
-@[grind =]
 theorem List.product_append (xs : List Int) (ys : List Int) :
     product (xs ++ ys) = product xs * product ys := by
   induction xs with

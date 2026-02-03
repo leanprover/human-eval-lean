@@ -3,10 +3,6 @@ import Std.Tactic.Do
 
 open Std Do
 
-theorem List.exists_mem_iff_exists_getElem (P : α → Prop) (l : List α) :
-    (∃ x ∈ l, P x) ↔ ∃ (i : Nat), ∃ hi, P (l[i]'hi) := by
-  grind [mem_iff_getElem]
-
 structure List.Any₂ (P : α → α → Prop) (l : List α) where
   not_pairwise : ¬ l.Pairwise (fun x y => ¬P x y)
 
@@ -167,11 +163,11 @@ theorem List.any₂_iff_exists_getElem (P : α → α → Prop) (l : List α) :
   rw [List.any₂_iff_exists]
   constructor
   · rintro ⟨xs, x, ys, ⟨rfl, h⟩⟩
-    obtain ⟨j₀, hj₀, hj₀'⟩ := (List.exists_mem_iff_exists_getElem _ _).1 h
+    obtain ⟨j₀, hj₀, hj₀'⟩ := List.exists_mem_iff_exists_getElem.1 h
     exact ⟨xs.length, xs.length + 1 + j₀, by grind⟩
   · rintro ⟨i, j, hi, hj, hij, h⟩
     exact ⟨l.take i, l[i], l.drop (i + 1), by simp,
-      (List.exists_mem_iff_exists_getElem _ _).2 ⟨j - i - 1, by grind, by grind⟩⟩
+      List.exists_mem_iff_exists_getElem.2 ⟨j - i - 1, by grind, by grind⟩⟩
 
 @[simp, grind =]
 theorem List.any₂_append_singleton {P : α → α → Prop} {xs : List α} {x : α} :
