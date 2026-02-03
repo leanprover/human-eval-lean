@@ -239,15 +239,9 @@ theorem tri'_recurrence {n i} {h : i ≤ n} :
     · simp only [Inv₅] at h₅ ⊢
       intro i hi
       by_cases i + 2 = xs.size
-      · have : xs'[i + 2] = lastₒ' := by grind
-        simp only [this, lastₒ']
-        have : i % 2 = 1 := by grind [Inv₁]
-        rw [if_neg (by grind [Inv₁])]
-        have : cur = i + 2 := by grind [Inv₁]
-        simp only [Inv₃] at h₃
-        have h₃₁ := h₃ (by grind) (i + 1) (by grind)
+      · have h₃₁ := h₃ (by grind) (i + 1) (by grind)
         have h₃₂ := h₃ (by grind) i (by grind)
-        grind
+        grind [Inv₁]
       · grind
   case vc3 => grind [Inv₁, Inv₂, Inv₃, Inv₄, Inv₅]
   case vc4 args hinv =>
