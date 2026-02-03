@@ -8,6 +8,15 @@ set_option mvcgen.warning false
 ## Implementation
 -/
 
+/--
+The Tribonacci sequence has an unusual recurrence for odd indices:
+`tri(n) = tri(n-1) + tri(n-2) + tri(n+1)` when `n ≥ 2` is odd.
+
+This creates a forward reference, but since `n + 1` is even, we can substitute
+`tri(n + 1) = 1 + (n + 1) / 2 = (n + 3) / 2`, giving us a recurrence only depending on predecessors:
+
+`tri(n) = tri(n - 1) + tri(n - 2) + (n + 3) / 2` when `n ≥ 2` is odd.
+-/
 def tri (n : Nat) : List Nat := Id.run do
   let mut xs : Array Nat := #[]
   let mut lastₑ := 1
@@ -37,8 +46,18 @@ example : tri 0 = [1] := by native_decide
 example : tri 1 = [1, 3] := by native_decide
 
 /-!
-## Verification
+## Missing API
 -/
+
+theorem Nat.eq_add_of_toList_rcc_eq_append_cons {a b : Nat} {pref cur suff}
+    (h : (a...=b).toList = pref ++ cur :: suff) :
+    cur = a + pref.length := by
+  have := Rcc.eq_succMany?_of_toList_eq_append_cons h
+  grind [PRange.Nat.succMany?_eq]
+
+/-! ## Verification -/
+
+/-! ### Loop invariants -/
 
 def Inv₁ (cur : (0...=n).toList.Cursor) (xs : Array Nat) : Prop :=
   xs.size = cur.pos
@@ -57,24 +76,14 @@ def Inv₅ (xs : Array Nat) : Prop :=
   ∀ (i : Nat) (_ : i + 2 < xs.size),
     if i % 2 = 0 then xs[i + 2] = 1 + (i + 2) / 2 else xs[i + 2] = xs[i] + xs[i + 1] + (i + 5) / 2
 
--- theorem inv₁ (h₁ : inv₁ )
+/-!
+### Basic correctness theorems
 
-theorem Nat.eq_add_of_toList_rcc_eq_append_cons {a b : Nat} {pref cur suff}
-    (h : (a...=b).toList = pref ++ cur :: suff) :
-    cur = a + pref.length := by
-  have := Rcc.eq_succMany?_of_toList_eq_append_cons h
-  grind [PRange.Nat.succMany?_eq]
+We start by verifying that the elements of `tri n` satisfy a recurrence relation.
+-/
 
-@[simp, grind =]
-theorem length_tri : (tri n).length = n + 1 := by
-  generalize hwp : tri n = wp
-  apply Id.of_wp_run_eq hwp
-  mvcgen
-  invariants
-  · ⇓⟨cur, lastₑ, lastₒ, xs⟩ => ⌜xs.size = cur.pos⌝
-  with grind [Nat.length_toList_rcc]
-
-theorem bla {n i} {h : i ≤ n} :
+/-- Auxiliary lemma, corollaries with simpler statements follow afterwards. -/
+theorem tri_recurrence {n i} {h : i ≤ n} :
     (tri n)[i]! =
       if i = 0 then
         1
@@ -149,36 +158,48 @@ theorem bla {n i} {h : i ≤ n} :
         specialize h₅ (i - 2) (by grind)
         grind
 
-/--
-The zero-th value is `1`. This would also follow from `tri_of_even`.
--/
+/-! ### Main theorems -/
+
+/-- `tri n` is a list with `n + 1` elements. -/
+@[simp, grind =]
+theorem length_tri : (tri n).length = n + 1 := by
+  generalize hwp : tri n = wp
+  apply Id.of_wp_run_eq hwp
+  mvcgen
+  invariants
+  · ⇓⟨cur, lastₑ, lastₒ, xs⟩ => ⌜xs.size = cur.pos⌝
+  with grind [Nat.length_toList_rcc]
+
+/-- The zero-th value is `1`. This would also follow from `tri_of_even`. -/
 theorem tri_zero :
     (tri n)[0] = 1 := by
-  have := bla (n := n) (i := 0) (h := by grind)
+  have := tri_recurrence (n := n) (i := 0) (h := by grind)
   grind
 
-/--
-The first value is `3`.
--/
+/-- The first value is `3`. -/
 theorem tri_one (h : 1 ≤ n) :
     (tri n)[1]'(by grind) = 3 := by
-  have := bla (n := n) (i := 1) (h := h)
+  have := tri_recurrence (n := n) (i := 1) (h := h)
   grind
 
-/--
-The value at even position `i` is `1 + (i / 2)`.
--/
+/-- The value at even position `i` is `1 + (i / 2)`. -/
 theorem tri_of_even (h : i ≤ n) (hi : i % 2 = 0) :
     (tri n)[i]'(by grind) = 1 + (i / 2) := by
-  have := bla (n := n) (i := i) (h := h)
+  have := tri_recurrence (n := n) (i := i) (h := h)
   grind
 
 /--
-The value at even position `i ≥ 2` is the sum of its two predecessors plus `(i + 3) / 2`.
+The value at odd position `i ≥ 2` is the sum of its two predecessors plus `(i + 3) / 2`.
+
+The next lemma, `tri_of_odd₂`, will prove the exact equation for odd positions provided by the
+problem description, which expresses `tri(i)` in terms of `tri(i - 2)`, `tri(i - 1)` and
+`tri(i + 1)`. Therefore, `tri-of_odd₂` needs to assume `i + 1 ≤ n` in order for `(tri n)[i + 1]` to
+exist. In contrast, the given lemma does not rely on `(tri n)[i + 1]`, making it also applicable for
+`i ≤ n`.
 -/
 theorem tri_of_odd₁ (h : i ≤ n) (hge : 2 ≤ i) (hi : i % 2 = 1) :
     (tri n)[i]'(by grind) = (tri n)[i - 2]'(by grind) + (tri n)[i - 1]'(by grind) + (i + 3) / 2 := by
-  have := bla (n := n) (i := i) (h := h)
+  have := tri_recurrence (n := n) (i := i) (h := h)
   grind
 
 /--
@@ -189,6 +210,13 @@ theorem tri_of_odd₂ (h : i + 1 ≤ n) (hge : 2 ≤ i) (hi : i % 2 = 1) :
     (tri n)[i]'(by grind) = (tri n)[i - 2]'(by grind) + (tri n)[i - 1]'(by grind) + (tri n)[i + 1]'(by grind) := by
   grind [tri_of_odd₁, tri_of_even]
 
+/--
+If `m ≤ n`, then `tri m` is a prefix of `tri n`.
+
+This proves that `tri` always return a prefix of the very same infinite sequence.
+Together with the lemmas `tri_one`, `tri_of_even` and `tri_of_odd₂`, it follows that this sequence
+obeys the laws of the tribonacci sequence, as stated in the problem description.
+-/
 theorem prefix_tri_of_le (h : m ≤ n) :
     tri m <+: tri n := by
   simp only [List.IsPrefix]
