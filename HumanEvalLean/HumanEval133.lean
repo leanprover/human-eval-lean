@@ -17,16 +17,7 @@ example : sumSquares [0] = 0 := by native_decide
 example : sumSquares [-1] = 1 := by native_decide
 example : sumSquares [-1, 1, 0] = 2 := by native_decide
 
-/-! ## Verification -/
-
-@[grind =]
-theorem sumSquares_nil :
-    sumSquares [] = 0 := by
-  grind [sumSquares]
-
-theorem sumSquares_singleton :
-    sumSquares [x] = x.ceil ^ 2 := by
-  grind [sumSquares]
+/-! ## Missing API -/
 
 theorem Int.neg_le_iff {x y : Int} :
     - x ≤ y ↔ - y ≤ x := by
@@ -62,9 +53,6 @@ theorem Rat.le_ceil {x : Rat} :
     x ≤ x.ceil := by
   simp only [Rat.ceil_eq_neg_floor_neg, Rat.intCast_neg, Rat.le_neg_iff, Rat.floor_le]
 
--- Rat.intCast_le_iff
--- Rat.intCast_ceil
-
 theorem Rat.ceil_le_intCast {x : Rat} {y : Int} :
     (x + y).ceil ≤ x.ceil + y := by
   simp only [Rat.ceil_le_iff]
@@ -87,13 +75,33 @@ theorem Rat.ceil_lt {x : Rat} :
   rw [← Rat.lt_ceil_iff, Rat.ceil_add_one]
   grind
 
-theorem Int.pow_two {x : Int} :
-    x ^ (2 : Nat) = x * x := by
-  grind
+/-!
+## Verification
+
+We start pointing to lemmas that verify `Rat.ceil` and then express the correctness lemmas in
+terms of `Rat.ceil`.
+-/
+
+/-- info: Rat.ceil_lt {x : Rat} : ↑x.ceil < x + 1 -/
+#guard_msgs in
+#check Rat.ceil_lt
+
+/-- info: Rat.le_ceil {x : Rat} : x ≤ ↑x.ceil -/
+#guard_msgs in
+#check Rat.le_ceil
+
+@[grind =]
+theorem sumSquares_nil :
+    sumSquares [] = 0 := by
+  grind [sumSquares]
+
+theorem sumSquares_singleton :
+    sumSquares [x] = x.ceil * x.ceil := by
+  grind [sumSquares]
 
 theorem sumSquares_append {xs ys : List Rat} :
     sumSquares (xs ++ ys) = sumSquares xs + sumSquares ys := by
-  grind [sumSquares, List.sum_append]
+  grind [sumSquares]
 
 /-!
 ## Prompt
