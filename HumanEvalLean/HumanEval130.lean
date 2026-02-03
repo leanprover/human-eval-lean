@@ -8,23 +8,6 @@ set_option mvcgen.warning false
 ## Implementation
 -/
 
--- def tri (n : Nat) : List Nat := Id.run do
---   let mut xs : Array Nat := #[]
---   let mut lastₑ := 1
---   let mut lastₒ := 0
---   for i in 0...=n do
---     (xs, lastₑ, lastₒ) := (go i xs lastₑ lastₒ).run
---   return xs.toList
--- where
---   @[inline]
---   go (i : Nat) (xs : Array Nat) (lastₑ lastₒ : Nat) : Id (Array Nat × Nat × Nat) := do
---     if i % 2 == 0 then
---       let lastₑ := i / 2 + 1
---       return (xs.push lastₑ, lastₑ, lastₒ)
---     else
---       let lastₒ := lastₑ + lastₒ + (i + 3) / 2
---       return (xs.push lastₒ, lastₑ, lastₒ)
-
 def tri (n : Nat) : List Nat := Id.run do
   let mut xs : Array Nat := #[]
   let mut lastₑ := 1
@@ -37,21 +20,6 @@ def tri (n : Nat) : List Nat := Id.run do
       lastₒ := (lastₑ + lastₒ + (i + 3) / 2)
       xs := xs.push lastₒ
   return xs.toList
-
--- def tri (n : Nat) : List Nat :=
---   (go 0 1 0 #[]).toList
--- where
---   go (i : Nat) (lastₑ lastₒ : Nat) (acc : Array Nat) : Array Nat :=
---     if i ≤ n then
---       if i % 2 == 0 then
---         let lastₑ := i / 2 + 1
---         go (i + 1) lastₑ lastₒ (acc.push lastₑ)
---       else
---         let lastₒ := lastₑ + lastₒ + (i + 3) / 2
---         go (i + 1) lastₑ lastₒ (acc.push lastₒ)
---     else
---       acc
---   termination_by n + 1 - i
 
 /-!
 ## Tests
@@ -72,32 +40,20 @@ example : tri 1 = [1, 3] := by native_decide
 ## Verification
 -/
 
--- theorem length_triGo :
---     (tri.go n i lastₑ lastₒ acc).size = acc.size + (n + 1 - i) := by
---   sorry
-
-/-
-      ⌜(cur.pos < 2 → (lastₑ, lastₒ) = (1, 0)) ∧
-        ∃ (h : xs.size = cur.pos), (_ : 2 ≤ cur.pos) →
-          (∀ i, (h : i = cur.pos - 1 ∨ i = cur.pos - 2) → if i % 2 = 0 then lastₑ = xs[i] else lastₒ = xs[i]) ∧
-          ((_ : 0 < cur.pos) → xs[0] = 1) ∧ ((_ : 1 < cur.pos) → xs[1] = 3) ∧
-          (∀ i, (_ : i + 2 < cur.pos) → if i % 2 = 0 then xs[i + 2] = 1 + n / 2 else xs[i + 2] = xs[i] + xs[i + 1] + (i + 5) / 2)⌝
--/
-
-def Inv₁ (cur : (0...=n).toList.Cursor) (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
+def Inv₁ (cur : (0...=n).toList.Cursor) (xs : Array Nat) : Prop :=
   xs.size = cur.pos
 
-def Inv₂ (cur : (0...=n).toList.Cursor) (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
+def Inv₂ (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
   xs.size < 2 → (lastₑ, lastₒ) = (1, 0)
 
-def Inv₃ (cur : (0...=n).toList.Cursor) (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
+def Inv₃ (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
   ∀ (_ : 2 ≤ xs.size) (i : Nat) (_ : i = xs.size - 2 ∨ i = xs.size - 1),
     if i % 2 = 0 then lastₑ = xs[i] else lastₒ = xs[i]
 
-def Inv₄ (cur : (0...=n).toList.Cursor) (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
+def Inv₄ (xs : Array Nat) : Prop :=
   ((_ : 0 < xs.size) → xs[0] = 1) ∧ ((_ : 1 < xs.size) → xs[1] = 3)
 
-def Inv₅ (cur : (0...=n).toList.Cursor) (lastₑ lastₒ : Nat) (xs : Array Nat) : Prop :=
+def Inv₅ (xs : Array Nat) : Prop :=
   ∀ (i : Nat) (_ : i + 2 < xs.size),
     if i % 2 = 0 then xs[i + 2] = 1 + (i + 2) / 2 else xs[i + 2] = xs[i] + xs[i + 1] + (i + 5) / 2
 
@@ -136,11 +92,7 @@ theorem bla {n i} {h : i ≤ n} :
   mvcgen
   invariants
   · ⇓⟨cur, lastₑ, lastₒ, xs⟩ =>
-      ⌜Inv₁ cur lastₑ lastₒ xs ∧
-        Inv₂ cur lastₑ lastₒ xs ∧
-        Inv₃ cur lastₑ lastₒ xs ∧
-        Inv₄ cur lastₑ lastₒ xs ∧
-        Inv₅ cur lastₑ lastₒ xs⌝
+      ⌜Inv₁ cur xs ∧ Inv₂ lastₑ lastₒ xs ∧ Inv₃ lastₑ lastₒ xs ∧ Inv₄ xs ∧ Inv₅ xs⌝
   case vc1 pref cur suff h_append_cons args lastₑ args₂ lastₒ' xs hmod lastₑ' xs' hinv =>
     obtain ⟨h₁, h₂, h₃, h₄, h₅⟩ := hinv
     have hcur := Nat.eq_add_of_toList_rcc_eq_append_cons h_append_cons
@@ -197,23 +149,32 @@ theorem bla {n i} {h : i ≤ n} :
         specialize h₅ (i - 2) (by grind)
         grind
 
+/--
+The zero-th value is `1`. This would also follow from `tri_of_even`.
+-/
 theorem tri_zero :
     (tri n)[0] = 1 := by
   have := bla (n := n) (i := 0) (h := by grind)
   grind
 
+/--
+The first value is `3`.
+-/
 theorem tri_one (h : 1 ≤ n) :
     (tri n)[1]'(by grind) = 3 := by
   have := bla (n := n) (i := 1) (h := h)
   grind
 
+/--
+The value at even position `i` is `1 + (i / 2)`.
+-/
 theorem tri_of_even (h : i ≤ n) (hi : i % 2 = 0) :
     (tri n)[i]'(by grind) = 1 + (i / 2) := by
   have := bla (n := n) (i := i) (h := h)
   grind
 
 /--
-Expresses the value at an even position in terms of its two predecessors.
+The value at even position `i ≥ 2` is the sum of its two predecessors plus `(i + 3) / 2`.
 -/
 theorem tri_of_odd₁ (h : i ≤ n) (hge : 2 ≤ i) (hi : i % 2 = 1) :
     (tri n)[i]'(by grind) = (tri n)[i - 2]'(by grind) + (tri n)[i - 1]'(by grind) + (i + 3) / 2 := by
@@ -222,7 +183,7 @@ theorem tri_of_odd₁ (h : i ≤ n) (hge : 2 ≤ i) (hi : i % 2 = 1) :
 
 /--
 This is the property specified for the value at even positions:
-It is equal to the sum of its two predecessors and its successor.
+The value at even position `i ≥ 2` is the sum of its two predecessors and its immediate successor.
 -/
 theorem tri_of_odd₂ (h : i + 1 ≤ n) (hge : 2 ≤ i) (hi : i % 2 = 1) :
     (tri n)[i]'(by grind) = (tri n)[i - 2]'(by grind) + (tri n)[i - 1]'(by grind) + (tri n)[i + 1]'(by grind) := by
