@@ -214,29 +214,76 @@ theorem Rat.abs_nonneg {x : Rat} :
   simp only [Rat.abs]
   grind
 
+theorem Rat.abs_of_nonneg {x : Rat} (h : 0 ≤ x) :
+    x.abs = x := by
+  grind [Rat.abs]
+
+theorem Rat.abs_sub_comm {x y : Rat} :
+    (x - y).abs = (y - x).abs := by
+  grind [Rat.abs]
+
 theorem Nat.eq_add_of_toList_rio_eq_append_cons {a : Nat} {pref cur suff}
     (h : (*...a).toList = pref ++ cur :: suff) :
     cur = pref.length := by
   have := Rio.eq_succMany?_of_toList_eq_append_cons h
   simpa [PRange.UpwardEnumerable.least, PRange.least?] using this
 
+@[simp, grind =]
+theorem Array.size_mergeSort {xs : Array α} :
+    (xs.mergeSort le).size = xs.size := by
+  sorry
+
+theorem Array.mergeSort_perm {xs : Array α} :
+    (xs.mergeSort le).Perm xs := by
+  sorry
+
+theorem Array.Perm.pairwise_iff {R : α → α → Prop} (S : ∀ {x y}, R x y → R y x) :
+    ∀ {l₁ l₂ : Array α} (_p : l₁.Perm l₂), l₁.toList.Pairwise R ↔ l₂.toList.Pairwise R :=
+  sorry
+
+theorem Array.pairwise_mergeSort
+    (trans : ∀ (a b c : α), le a b → le b c → le a c)
+    (total : ∀ (a b : α), le a b || le b a) :
+    (l : Array α) → (mergeSort l le).toList.Pairwise (le · ·) :=
+  sorry
+
+attribute [simp, grind =] Rio.mem_iff
+
 def hasCloseElements (xs : Array Rat) (threshold : Rat) : Bool := Id.run do
   let sorted := xs.mergeSort
-  for h : i in *...(xs.size - 1) do
-    if (xs[i + 1] - xs[i]).abs < threshold then
+  for h : i in *...(xs.mergeSort.size - 1) do
+    if (xs.mergeSort[i + 1] - xs.mergeSort[i]).abs < threshold then
       return true
   return false
 
-theorem hasCloseElements_iff {xs threshold} :
-    hasCloseElements xs threshold ↔ ∃ (i : Nat) (_ : i < xs.size - 1), (xs[i + 1] - xs[i]).abs < threshold := by
+theorem hasCloseElements_iff_mergeSort {xs threshold} :
+    hasCloseElements xs threshold ↔ ∃ (i : Nat) (_ : i < xs.mergeSort.size - 1), (xs.mergeSort[i + 1] - xs.mergeSort[i]).abs < threshold := by
   generalize hwp : hasCloseElements xs threshold = wp
   apply Id.of_wp_run_eq hwp
   mvcgen
   invariants
   · .withEarlyReturn
-      (fun cur _ => ⌜∀ i < cur.prefix.length, threshold ≤ (xs[i + 1]! - xs[i]!).abs⌝)
-      (fun r _ => ⌜r = true ∧ ∃ (i : Nat) (_ : i < xs.size - 1), (xs[i + 1] - xs[i]).abs < threshold⌝)
+      (fun cur _ => ⌜∀ i < cur.prefix.length, threshold ≤ (xs.mergeSort[i + 1]! - xs.mergeSort[i]!).abs⌝)
+      (fun r _ => ⌜r = true ∧ ∃ (i : Nat) (_ : i < xs.mergeSort.size - 1), (xs.mergeSort[i + 1] - xs.mergeSort[i]).abs < threshold⌝)
   with grind [Nat.eq_add_of_toList_rio_eq_append_cons, Rio.length_toList, Nat.size_rio]
+
+theorem hasCloseElements_iff {xs threshold} :
+    hasCloseElements xs threshold ↔ ¬ xs.toList.Pairwise (fun a b => threshold ≤ (b - a).abs) := by
+  simp only [hasCloseElements_iff_mergeSort]
+  have := xs.mergeSort_perm (le := (· ≤ ·))
+  rw [← this.pairwise_iff]
+  · apply Iff.intro
+    · simp only [List.pairwise_iff_getElem, Classical.not_forall]
+      grind
+    · simp only [List.pairwise_iff_getElem, Classical.not_forall]
+      rintro ⟨i, j, hi, hj, hij, h⟩
+      refine ⟨i, by grind, ?_⟩
+      have h_sorted := xs.pairwise_mergeSort (le := (· ≤ ·)) (by grind) (by grind)
+      rw [List.pairwise_iff_getElem] at h_sorted
+      rw [Rat.abs_of_nonneg (by grind)] at ⊢ h
+      have : xs.mergeSort[i + 1]'(by grind) ≤ xs.mergeSort[j] := by by_cases i + 1 = j <;> grind
+      grind
+  · simp [Rat.abs_sub_comm]
 
 /-!
 ## Prompt
