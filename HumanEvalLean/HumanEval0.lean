@@ -97,7 +97,7 @@ theorem Std.Slice.fold_iter [ToIterator (Slice γ) Id α β]
     s.iter.fold (init := init) f = s.foldl (init := init) f := by
   rfl
 
-theorem Std.Slice.foldl_toList [ToIterator (Slice γ) Id α β] {s : Std.Slice γ}
+theorem Std.Slice.foldl_toList [ToIterator (Slice γ) Id α β]
     [Iterator α Id β] [IteratorLoop α Id Id] [LawfulIteratorLoop α Id Id]
     [Iterators.Finite α Id] {s : Slice γ} :
     s.toList.foldl (init := init) f = s.foldl (init := init) f := by
@@ -115,11 +115,23 @@ theorem Subarray.toList_drop {xs : Subarray α} :
     (xs.drop n).toList = xs.toList.drop n := by
   simp [Subarray.toList_eq_drop_take, drop, start, stop, array]
 
-theorem blub {xs ys : Subarray α} {hxs hys le acc} :
+theorem Array.MergeSort.merge.go_eq_listMerge {xs ys : Subarray α} {hxs hys le acc} :
     (Array.MergeSort.merge.go le xs ys hxs hys acc).toList = acc.toList ++ List.merge xs.toList ys.toList le := by
   fun_induction Array.MergeSort.merge.go le xs ys hxs hys acc
-  · rw [List.merge.eq_def]
-    sorry
+  · rename_i xs ys _ _ _ _ _ _ _ _
+    rw [List.merge.eq_def]
+    split
+    · have : xs.size = 0 := by simp [← Subarray.length_toList, *]
+      omega
+    · have : ys.size = 0 := by simp [← Subarray.length_toList, *]
+      omega
+    · rename_i x' xs' y' ys' _ _
+      simp +zetaDelta only at *
+      have h₁ : x' = xs[0] := by simp [Subarray.getElem_eq_getElem_toList, *]
+      have h₂ : y' = ys[0] := by simp [Subarray.getElem_eq_getElem_toList, *]
+      cases h₁
+      cases h₂
+      simp [Subarray.toList_drop, *]
   · rename_i xs ys _ _ _ _ _ _ _
     rw [List.merge.eq_def]
     split
@@ -173,18 +185,22 @@ theorem blub {xs ys : Subarray α} {hxs hys le acc} :
       rw [← Subarray.foldl_toList]
       simp [*]
 
-theorem blub' {xs ys : Array α} {le} :
+attribute [- simp] List.mkSlice_rio_eq_mkSlice_rco
+  Array.mkSlice_rci_eq_mkSlice_rco
+  Subarray.mkSlice_rio_eq_mkSlice_rco Subarray.mkSlice_rci_eq_mkSlice_rco
+
+theorem Array.MergeSort.merge_eq_listMerge {xs ys : Array α} {le} :
     (Array.MergeSort.merge xs ys le).toList = List.merge xs.toList ys.toList le := by
   rw [Array.MergeSort.merge]
   split <;> rename_i heq₁
   · split <;> rename_i heq₂
-    · simp only [Array.toList_mkSlice_rii, Array.emptyWithCapacity_eq, blub, List.nil_append]
+    · simp [Array.MergeSort.merge.go_eq_listMerge]
     · have : ys.toList = [] := by simp_all
       simp [this]
   · have : xs.toList = [] := by simp_all
     simp [this]
 
-theorem List.mergeSort_eq_bla {xs : List α} :
+theorem List.mergeSort_eq_merge_mkSlice {xs : List α} :
     xs.mergeSort le =
       if 1 < xs.length then
         merge (xs[*...((xs.length + 1) / 2)].toList.mergeSort le) (xs[((xs.length + 1) / 2)...*].toList.mergeSort le) le
@@ -196,15 +212,16 @@ theorem List.mergeSort_eq_bla {xs : List α} :
   · rename_i x y ys lr hl hr
     simp [lr]
 
-attribute [- simp] List.mkSlice_rio_eq_mkSlice_rco
-  Subarray.mkSlice_rio_eq_mkSlice_rco Subarray.mkSlice_rci_eq_mkSlice_rco
-
-theorem bla {xs : Subarray α} {le : α → α → Bool} :
+theorem Subarray.toList_mergeSort {xs : Subarray α} {le : α → α → Bool} :
     (xs.mergeSort le).toList = xs.toList.mergeSort le := by
   fun_induction xs.mergeSort le
-  · rw [List.mergeSort_eq_bla]
-    simp +zetaDelta [blub', Subarray.sliceSize_eq_size, *]
-  · simp [List.mergeSort_eq_bla, Subarray.sliceSize_eq_size, *]
+  · rw [List.mergeSort_eq_merge_mkSlice]
+    simp +zetaDelta [Array.MergeSort.merge_eq_listMerge, Subarray.sliceSize_eq_size, *]
+  · simp [List.mergeSort_eq_merge_mkSlice, Subarray.sliceSize_eq_size, *]
+
+theorem Array.toList_mergeSort {xs : Array α} {le : α → α → Bool} :
+    (xs.mergeSort le).toList = xs.toList.mergeSort le := by
+  rw [Array.mergeSort, Subarray.toList_mergeSort, Array.toList_mkSlice_rii]
 
 def Rat.abs (x : Rat) : Rat :=
   if 0 ≤ x then x else - x
@@ -231,23 +248,29 @@ theorem Nat.eq_add_of_toList_rio_eq_append_cons {a : Nat} {pref cur suff}
 @[simp, grind =]
 theorem Array.size_mergeSort {xs : Array α} :
     (xs.mergeSort le).size = xs.size := by
-  sorry
+  rw [← length_toList, Array.toList_mergeSort, List.length_mergeSort, length_toList]
 
 theorem Array.mergeSort_perm {xs : Array α} :
     (xs.mergeSort le).Perm xs := by
-  sorry
+  simpa only [perm_iff_toList_perm, Array.toList_mergeSort] using List.mergeSort_perm _ _
 
 theorem Array.Perm.pairwise_iff {R : α → α → Prop} (S : ∀ {x y}, R x y → R y x) :
-    ∀ {l₁ l₂ : Array α} (_p : l₁.Perm l₂), l₁.toList.Pairwise R ↔ l₂.toList.Pairwise R :=
-  sorry
+    ∀ {l₁ l₂ : Array α} (_p : l₁.Perm l₂), l₁.toList.Pairwise R ↔ l₂.toList.Pairwise R := by
+  intro xs ys
+  simpa only [perm_iff_toList_perm] using List.Perm.pairwise_iff S
 
 theorem Array.pairwise_mergeSort
     (trans : ∀ (a b c : α), le a b → le b c → le a c)
     (total : ∀ (a b : α), le a b || le b a) :
-    (l : Array α) → (mergeSort l le).toList.Pairwise (le · ·) :=
-  sorry
+    (l : Array α) → (mergeSort l le).toList.Pairwise (le · ·) := by
+  intro xs
+  simpa [toList_mergeSort] using List.pairwise_mergeSort trans total _
 
 attribute [simp, grind =] Rio.mem_iff
+
+/-!
+## Implementation
+-/
 
 def hasCloseElements (xs : Array Rat) (threshold : Rat) : Bool := Id.run do
   let sorted := xs.mergeSort
@@ -255,6 +278,10 @@ def hasCloseElements (xs : Array Rat) (threshold : Rat) : Bool := Id.run do
     if (xs.mergeSort[i + 1] - xs.mergeSort[i]).abs < threshold then
       return true
   return false
+
+/-!
+## Verification
+-/
 
 theorem hasCloseElements_iff_mergeSort {xs threshold} :
     hasCloseElements xs threshold ↔ ∃ (i : Nat) (_ : i < xs.mergeSort.size - 1), (xs.mergeSort[i + 1] - xs.mergeSort[i]).abs < threshold := by
