@@ -49,6 +49,23 @@ theorem Array.sum_push [Add α] [Zero α]
 def Rat.abs (x : Rat) :=
   if 0 ≤ x then x else - x
 
+theorem Rat.abs_nonneg {x : Rat} :
+    0 ≤ x.abs := by
+  simp only [Rat.abs]
+  grind
+
+theorem Rat.abs_of_nonneg {x : Rat} (h : 0 ≤ x) :
+    x.abs = x := by
+  grind [Rat.abs]
+
+theorem Rat.abs_of_nonpos {x : Rat} (h : x ≤ 0) :
+    x.abs = - x := by
+  grind [Rat.abs]
+
+theorem Rat.abs_sub_comm {x y : Rat} :
+    (x - y).abs = (y - x).abs := by
+  grind [Rat.abs]
+
 instance Rat.instAssociativeHAdd : Associative (α := Rat) (· + ·) := ⟨Rat.add_assoc⟩
 instance Rat.instCommutativeHAdd : Commutative (α := Rat) (· + ·) := ⟨Rat.add_comm⟩
 instance : Std.LawfulIdentity (· + ·) (0 : Rat) where
@@ -75,10 +92,10 @@ example : meanAbsoluteDeviation #[(1 : Rat), 2, 3, 4, 5] = (6 : Rat) / 5 := by n
 /-!
 ## Verification
 
-In order to verify the implementation, we point to library lemmas verifying `Array.sum`,
+In order to verify the implementation, we point to library lemmas verifying `Array.sum`, `Rat.abs`,
 `Array.size` and `Array.map`. Then we show that `mean` is actually the quotient of `sum` and `size`
 and that `meanAbsoluteDeviation` computes the mean of absolute deviations from the mean,
-expressed using said three library functions.
+expressed using said four library functions.
 -/
 
 section API
@@ -89,6 +106,10 @@ example : (#[] : Array Rat).sum = 0 := Array.sum_empty
 example : (#[x]).sum = x := Array.sum_singleton
 example : (xs.push x).sum = xs.sum + x := Array.sum_push
 example : (xs ++ ys).sum = xs.sum + ys.sum := Array.sum_append
+
+example (h : 0 ≤ x) : x.abs = x := Rat.abs_of_nonneg h
+example (h : x ≤ 0) : x.abs = - x := Rat.abs_of_nonpos h
+example : 0 ≤ x.abs := Rat.abs_nonneg
 
 example : (#[] : Array Rat).size = 0 := Array.size_empty
 example : (#[x]).size = 1 := Array.size_singleton
