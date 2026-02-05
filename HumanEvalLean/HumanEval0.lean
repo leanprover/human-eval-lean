@@ -1,6 +1,12 @@
 import Std
 open Std Std.Do
 
+set_option mvcgen.warning false
+
+/-!
+## Missing API
+-/
+
 @[simp, grind =]
 theorem Subarray.size_drop {xs : Subarray α} {n : Nat} :
     (xs.drop n).size = xs.size - n := by
@@ -274,10 +280,22 @@ attribute [simp, grind =] Rio.mem_iff
 
 def hasCloseElements (xs : Array Rat) (threshold : Rat) : Bool := Id.run do
   let sorted := xs.mergeSort
-  for h : i in *...(xs.mergeSort.size - 1) do
-    if (xs.mergeSort[i + 1] - xs.mergeSort[i]).abs < threshold then
+  for h : i in *...(sorted.size - 1) do
+    if (sorted[i + 1] - sorted[i]).abs < threshold then
       return true
   return false
+
+/-!
+## Tests
+-/
+
+example : hasCloseElements #[1.0, 2.0, 3.9, 4.0, 5.0, 2.2] 0.3 = true := by native_decide
+example : hasCloseElements #[1.0, 2.0, 3.9, 4.0, 5.0, 2.2] 0.05 = false := by native_decide
+example : hasCloseElements #[1.0, 2.0, 5.9, 4.0, 5.0] 0.95 = true := by native_decide
+example : hasCloseElements #[1.0, 2.0, 5.9, 4.0, 5.0] 0.8 = false := by native_decide
+example : hasCloseElements #[1.0, 2.0, 3.0, 4.0, 5.0, 2.0] 0.1 = true := by native_decide
+example : hasCloseElements #[1.1, 2.2, 3.1, 4.1, 5.1] 1.0 = true := by native_decide
+example : hasCloseElements #[1.1, 2.2, 3.1, 4.1, 5.1] 0.5 = false := by native_decide
 
 /-!
 ## Verification
