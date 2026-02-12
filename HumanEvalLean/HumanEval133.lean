@@ -1,4 +1,3 @@
-
 def sumSquares (xs : List Rat) : Int :=
   xs.map (·.ceil ^ (2 : Nat)) |>.sum
 
@@ -16,64 +15,6 @@ example : sumSquares [-1.4, 17.9, 18.9, 19.9] = 1086 := by native_decide
 example : sumSquares [0] = 0 := by native_decide
 example : sumSquares [-1] = 1 := by native_decide
 example : sumSquares [-1, 1, 0] = 2 := by native_decide
-
-/-! ## Missing API -/
-
-theorem Int.neg_le_iff {x y : Int} :
-    - x ≤ y ↔ - y ≤ x := by
-  grind
-
-theorem Int.lt_neg_iff {x y : Int} :
-    x < - y ↔ y < - x := by
-  grind
-
-theorem Rat.le_neg_iff {x y : Rat} :
-    x ≤ - y ↔ y ≤ - x := by
-  grind
-
-theorem Rat.add_lt_add_iff_right (c : Rat) :
-    a + c < b + c ↔ a < b := by
-  grind
-
-theorem Rat.lt_iff_le_not_le {x y : Rat} :
-    x < y ↔ x ≤ y ∧ ¬ y ≤ x := by
-  grind
-
-theorem Rat.ceil_le_iff {x : Rat} {y : Int} :
-    x.ceil ≤ y ↔ x ≤ y := by
-  simp only [Rat.ceil_eq_neg_floor_neg, Int.neg_le_iff, Rat.le_floor_iff]
-  grind
-
-theorem Rat.lt_ceil_iff {x : Rat} {y : Int} :
-    y < x.ceil ↔ y < x := by
-  simp only [Rat.ceil_eq_neg_floor_neg, Int.lt_neg_iff, Rat.floor_lt_iff]
-  grind
-
-theorem Rat.le_ceil {x : Rat} :
-    x ≤ x.ceil := by
-  simp only [Rat.ceil_eq_neg_floor_neg, Rat.intCast_neg, Rat.le_neg_iff, Rat.floor_le]
-
-theorem Rat.ceil_le_intCast {x : Rat} {y : Int} :
-    (x + y).ceil ≤ x.ceil + y := by
-  simp only [Rat.ceil_le_iff]
-  grind [Rat.le_ceil]
-
-theorem Rat.ceil_add_intCast {x : Rat} {y : Int} :
-    (x + y).ceil = x.ceil + y := by
-  apply Std.le_antisymm
-  · apply ceil_le_intCast
-  · have := ceil_le_intCast (x := x + y) (y := - y)
-    grind
-
-theorem Rat.ceil_add_one {x : Rat} :
-    (x + 1).ceil = x.ceil + 1 := by
-  have := ceil_add_intCast (x := x) (y := 1)
-  grind
-
-theorem Rat.ceil_lt {x : Rat} :
-    x.ceil < x + 1 := by
-  rw [← Rat.lt_ceil_iff, Rat.ceil_add_one]
-  grind
 
 /-!
 ## Verification

@@ -44,12 +44,9 @@ actions needed.
 
 attribute [grind =] Vector.sum_mk List.zip_cons_cons List.zip_nil_right List.zip_nil_left
 
-@[simp, grind =]
 theorem Vector.toList_zip {as : Vector α n} {bs : Vector β n} :
-    (Vector.zip as bs).toList = List.zip as.toList bs.toList := by
-  rcases as with ⟨as, rfl⟩
-  rcases bs with ⟨bs, h⟩
-  simp
+    (Vector.zip as bs).toList = List.zip as.toList bs.toList :=
+  Vector.Vector.toList_zip
 
 theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
     ∀ (i : Nat) (hi : i < l.length), l[i] = 0 := by
@@ -252,7 +249,8 @@ theorem AbstractWellAction.apply_list {well : AbstractWell} {as : List (Abstract
 @[grind =]
 theorem isWellEmpty_iff_isEmpty_abstract {well : Vector Nat n} :
     IsWellEmpty well ↔ (abstract well).IsEmpty := by
-  grind [abstract, IsWellEmpty, Vector.sum_eq_zero]
+  simp [abstract, AbstractWell.IsEmpty, Vector.sum_eq_zero_iff_forall_eq_nat,
+    Vector.forall_mem_iff_forall_getElem, IsWellEmpty]
 
 theorem minimalAbstractWellActions_abstract_iff {well : Vector Nat n} {c : Nat} {r : Nat} :
     MinimalAbstractWellActions (abstract well) c r ↔ MinimalWellActions well c r := by
@@ -329,8 +327,7 @@ theorem maxFill_eq_sum_minimalWellActions {grid : (Vector (Vector Nat n) m)} {c 
   refine ⟨.ofFn fun i => (grid[i.val].sum + c - 1) / c, ?_, ?_⟩
   · grind [minimalWellActions]
   · simp only [maxFill]
-    -- Should rename `Array.toArray_toIter` to `Array.toArray_iter`
-    rw [← Iter.foldl_toArray, Iter.toArray_map, Array.toArray_toIter, ← Array.sum_eq_foldl]
+    rw [← Iter.foldl_toArray, Iter.toArray_map, Array.toArray_iter, ← Array.sum_eq_foldl]
     conv => lhs; rw [← Vector.ofFn_getElem (xs := grid), Vector.toArray_ofFn, Array.map_ofFn]
     rw [← Vector.sum_toArray, Vector.toArray_ofFn, Function.comp_def]
 

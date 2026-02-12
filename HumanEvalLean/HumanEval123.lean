@@ -17,19 +17,8 @@ two approaches to handling this:
 /-!
 ## Potentially missing API
 
-This section provides declarations that might be added to the standard library.
+This section provides a `grind` attribute that is missing.
 -/
-
-theorem Acc.invTransGen {x y : α} (h₁ : Acc r x) (h₂ : Relation.TransGen r y x) : Acc r y := by
-  simpa [acc_transGen_iff] using h₁.transGen.inv h₂
-
-theorem Std.compare_ne_eq [Ord α] [LawfulEqOrd α] {x y : α} :
-    compare x y ≠ .eq ↔ x ≠ y := by
-  simp
-
-instance : LawfulOrderOrd Nat where
-  isLE_compare := by grind [Nat.isLE_compare]
-  isGE_compare := by grind [Nat.isGE_compare]
 
 attribute [grind =] TreeSet.mem_toList
 
@@ -157,7 +146,7 @@ theorem mem_oddCollatz₀_of_mem_oddCollatz₀_of_collatzRel {k m n : Nat} (hm :
 theorem mem_oddCollatz₀_of_mem_oddCollatz₀_of_transGen {k m n : Nat} (hn : Acc CollatzRel n)
     (hrel : Relation.TransGen CollatzRel m n) (hmem : k ∈ oddCollatz₀ m) :
     k ∈ oddCollatz₀ n := by
-  have hm : Acc CollatzRel m := hn.invTransGen hrel
+  have hm : Acc CollatzRel m := hn.inv_of_transGen hrel
   induction hrel
   · grind [mem_oddCollatz₀_of_mem_oddCollatz₀_of_collatzRel]
   · grind [Acc.inv, mem_oddCollatz₀_of_mem_oddCollatz₀_of_collatzRel]
@@ -165,7 +154,7 @@ theorem mem_oddCollatz₀_of_mem_oddCollatz₀_of_transGen {k m n : Nat} (hn : A
 theorem mem_oddCollatz₀_of_transGen {m n : Nat} (hn : Acc CollatzRel n)
     (h : Relation.TransGen CollatzRel m n) (h' : m % 2 = 1) :
     m ∈ oddCollatz₀ n := by
-  have hm : Acc CollatzRel m := hn.invTransGen h
+  have hm : Acc CollatzRel m := hn.inv_of_transGen h
   grind [mem_oddCollatz₀_of_mem_oddCollatz₀_of_transGen, mem_self_oddCollatz₀]
 
 theorem mem_oddCollatz₀_iff {m n : Nat} (h : Acc CollatzRel n) :
@@ -350,13 +339,13 @@ public theorem WellFounded.partialExtrinsicFix_eq [∀ a, Nonempty (C a)] (R : �
     refine InvImage.accessible _ ?_
     cases x.2 <;> rename_i hx
     · rwa [hx]
-    · exact h.invTransGen hx
+    · exact h.inv_of_transGen hx
   · constructor
     intro x
     refine InvImage.accessible _ ?_
     cases x.2 <;> rename_i hx
     · rwa [hx]
-    · exact h.invTransGen hx
+    · exact h.inv_of_transGen hx
 
 @[inline]
 public def WellFounded.partialExtrinsicFix₂ [∀ a b, Nonempty (C₂ a b)]
@@ -403,7 +392,7 @@ public theorem WellFounded.partialExtrinsicFix₂_eq_partialExtrinsicFix [∀ a 
   apply InvImage.accessible
   cases x.2 <;> rename_i heq
   · rwa [heq]
-  · exact h.invTransGen heq
+  · exact h.inv_of_transGen heq
 
 public def WellFounded.partialExtrinsicFix₂_eq [∀ a b, Nonempty (C₂ a b)]
     {R : (a : α) ×' β a → (a : α) ×' β a → Prop}

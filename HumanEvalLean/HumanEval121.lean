@@ -130,8 +130,7 @@ public theorem Rxi.Iterator.toList_take_eq_match
       · simp [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep,
           Rxi.Iterator.Monadic.step, Iter.toIterM] at heq
       · simp only [Iter.IsPlausibleStep, IterM.IsPlausibleStep, Iterator.IsPlausibleStep,
-        IterStep.mapIterator_yield, Iter.toIterM, Rxi.Iterator.Monadic.step, IterStep.yield.injEq,
-        IterM.mk'.injEq] at heq
+        IterStep.mapIterator_yield, Iter.toIterM, Rxi.Iterator.Monadic.step, IterStep.yield.injEq] at heq
         cases heq.2
         cases it'
         simp at heq
