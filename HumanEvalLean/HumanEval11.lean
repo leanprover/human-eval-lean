@@ -1,3 +1,5 @@
+module
+
 import Std.Data.Iterators
 
 def stringXor (a b : List Bool) : List Bool :=

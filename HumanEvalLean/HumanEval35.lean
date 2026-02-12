@@ -1,3 +1,5 @@
+module
+
 def max_element : Unit :=
   ()
 

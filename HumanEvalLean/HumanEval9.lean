@@ -1,3 +1,5 @@
+module
+
 def rolling_max : Unit :=
   ()
 

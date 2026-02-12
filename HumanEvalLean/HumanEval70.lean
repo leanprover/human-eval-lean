@@ -1,3 +1,5 @@
+module
+
 def strange_sort_list : Unit :=
   ()
 

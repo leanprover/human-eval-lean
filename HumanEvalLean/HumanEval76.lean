@@ -1,3 +1,5 @@
+module
+
 def is_simple_power : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def do_algebra : Unit :=
   ()
 

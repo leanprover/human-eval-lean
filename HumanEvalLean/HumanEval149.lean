@@ -1,3 +1,5 @@
+module
+
 def sorted_list_sum : Unit :=
   ()
 

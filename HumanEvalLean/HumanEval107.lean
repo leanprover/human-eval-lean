@@ -1,3 +1,5 @@
+module
+
 def even_odd_palindrome : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def correct_bracketing : Unit :=
   ()
 

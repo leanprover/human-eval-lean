@@ -1,3 +1,5 @@
+module
+
 def parse_music : Unit :=
   ()
 

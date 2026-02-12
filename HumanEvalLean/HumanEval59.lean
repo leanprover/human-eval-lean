@@ -1,3 +1,5 @@
+module
+
 def largest_prime_factor : Unit :=
   ()
 

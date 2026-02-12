@@ -1,3 +1,5 @@
+module
+
 def get_positive : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def fizz_buzz : Unit :=
   ()
 

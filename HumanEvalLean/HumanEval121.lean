@@ -1,5 +1,10 @@
--- This can't be a module right now because `Rxi.Iterator.Monadic.Step` is not exposed
-import Std
+module
+
+public import Std
+-- `Rxi.Iterator.Monadic.Step` is not exposed
+import all Init.Data.Range.Polymorphic.RangeIterator
+
+public section
 
 open Std Std.PRange Std.Do
 
@@ -34,7 +39,7 @@ example : solution'' [3, 13, 2, 9] = 3 := by decide
 ## Verification 1
 -/
 
-theorem solution''_aux {xs : List Int} {acc : Int} :
+private theorem solution''_aux {xs : List Int} {acc : Int} :
     solution''.go xs acc = acc + (xs.mapIdx (fun i x => if i % 2 = 0 ∧ x % 2 = 1 then x else 0)).sum := by
   fun_induction solution''.go xs acc <;> grind
 

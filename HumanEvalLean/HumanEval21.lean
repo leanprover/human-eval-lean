@@ -1,3 +1,5 @@
+module
+
 def rescale_to_unit : Unit :=
   ()
 

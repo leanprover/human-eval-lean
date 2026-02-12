@@ -1,3 +1,5 @@
+module
+
 def odd_count : Unit :=
   ()
 

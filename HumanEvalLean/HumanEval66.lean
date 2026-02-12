@@ -1,3 +1,5 @@
+module
+
 def digitSum : Unit :=
   ()
 

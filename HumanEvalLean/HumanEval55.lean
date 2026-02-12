@@ -1,3 +1,5 @@
+module
+
 def fib : Unit :=
   ()
 

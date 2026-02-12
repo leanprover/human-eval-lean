@@ -1,3 +1,5 @@
+module
+
 def split_words : Unit :=
   ()
 

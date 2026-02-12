@@ -1,3 +1,5 @@
+module
+
 import Std
 import Lean.LibrarySuggestions.Default
 open Std Std.Do

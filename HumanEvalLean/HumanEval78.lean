@@ -1,3 +1,5 @@
+module
+
 def hex_key : Unit :=
   ()
 

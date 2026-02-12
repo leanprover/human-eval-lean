@@ -1,3 +1,5 @@
+module
+
 def filter_integers : Unit :=
   ()
 

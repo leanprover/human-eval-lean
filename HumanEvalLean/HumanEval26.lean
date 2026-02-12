@@ -1,3 +1,5 @@
+module
+
 def remove_duplicates : Unit :=
   ()
 

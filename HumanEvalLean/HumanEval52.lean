@@ -1,3 +1,5 @@
+module
+
 def below_threshold : Unit :=
   ()
 

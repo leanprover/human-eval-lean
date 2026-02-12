@@ -1,3 +1,5 @@
+module
+
 def triples_sum_to_zero : Unit :=
   ()
 

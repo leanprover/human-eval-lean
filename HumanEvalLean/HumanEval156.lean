@@ -1,3 +1,5 @@
+module
+
 /-- Table lookup version per Wikipedia. This essentially defines what Roman numerals are. -/
 def intToMiniRoman (n : Nat) (hn' : n ≤ 1000 := by decide) : String :=
   ["", "m"][n / 1000]'(by grind) ++

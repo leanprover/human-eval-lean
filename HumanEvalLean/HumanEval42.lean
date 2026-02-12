@@ -1,3 +1,5 @@
+module
+
 def incr_list : Unit :=
   ()
 

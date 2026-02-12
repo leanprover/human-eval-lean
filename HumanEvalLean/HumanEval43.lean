@@ -1,3 +1,5 @@
+module
+
 import Std.Data.HashSet.Lemmas
 import Std.Tactic.Do
 

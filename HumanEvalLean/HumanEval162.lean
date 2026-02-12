@@ -1,3 +1,5 @@
+module
+
 def string_to_md5 : Unit :=
   ()
 

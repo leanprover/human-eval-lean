@@ -1,3 +1,5 @@
+module
+
 def separate_paren_groups : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def Nat.isEven (n : Nat) : Bool :=
   n % 2 = 0
 

@@ -1,3 +1,5 @@
+module
+
 def compare : Unit :=
   ()
 

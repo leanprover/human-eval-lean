@@ -1,3 +1,5 @@
+module
+
 def closest_integer : Unit :=
   ()
 

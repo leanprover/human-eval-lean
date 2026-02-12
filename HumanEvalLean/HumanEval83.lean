@@ -1,3 +1,5 @@
+module
+
 def starts_one_ends : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def all_prefixes : Unit :=
   ()
 

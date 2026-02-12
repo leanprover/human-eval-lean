@@ -1,3 +1,5 @@
+module
+
 def get_closest_vowel : Unit :=
   ()
 

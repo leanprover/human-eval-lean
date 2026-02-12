@@ -1,3 +1,5 @@
+module
+
 def order_by_points : Unit :=
   ()
 

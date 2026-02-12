@@ -1,3 +1,5 @@
+module
+
 def sumSquares (xs : List Rat) : Int :=
   xs.map (·.ceil ^ (2 : Nat)) |>.sum
 
