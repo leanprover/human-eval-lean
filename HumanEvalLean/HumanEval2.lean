@@ -18,32 +18,6 @@ example : truncateNumber (133/100) = 33/100 := by native_decide
 example : truncateNumber (123456/1000) = 456/1000 := by native_decide
 
 /-!
-## Missing API
--/
-
-theorem Rat.intCast_le_floor {x : Rat} {y : Int} :
-    x.floor + y ≤ (x + y).floor := by
-  simp only [Rat.le_floor_iff]
-  grind [Rat.floor_le]
-
-theorem Rat.floor_add_intCast {x : Rat} {y : Int} :
-    (x + y).floor = x.floor + y := by
-  apply Std.le_antisymm
-  · have := intCast_le_floor (x := x + y) (y := - y)
-    grind
-  · apply intCast_le_floor
-
-theorem Rat.floor_sub_one {x : Rat} :
-    (x - 1).floor = x.floor - 1 := by
-  have := floor_add_intCast (x := x) (y := - 1)
-  grind
-
-theorem Rat.lt_floor {x : Rat} :
-    x - 1 < x.floor := by
-  rw [← Rat.floor_lt_iff, Rat.floor_sub_one]
-  grind
-
-/-!
 ## Verification
 -/
 

@@ -53,8 +53,6 @@ instance : LawfulOrderOrd Nat where
   isLE_compare := by grind [Nat.isLE_compare]
   isGE_compare := by grind [Nat.isGE_compare]
 
-attribute [- grind] Array.mkSlice_rci_eq_mkSlice_rco
-attribute [grind =] Array.toList_mkSlice_rci
 attribute [grind .] List.Pairwise.nil
 
 grind_pattern compare_eq_lt => compare a b, Ordering.lt where

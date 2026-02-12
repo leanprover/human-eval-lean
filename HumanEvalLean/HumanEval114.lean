@@ -170,15 +170,6 @@ theorem isMinSuffixSum₀_append_singleton_eq {xs : List Int} {x minSuff : Int}
       · simp only [IsMinSuffixSum₀] at h
         grind
 
-theorem List.zero_le_min_of_zero_le_sum {xs : List Int} (hne : xs ≠ []) (h : xs.sum ≤ 0) :
-    xs.min hne ≤ 0 := by
-  induction xs
-  · grind
-  · rename_i x xs ih
-    cases xs
-    · simp_all [List.min_eq_get_min?]
-    · grind [min?_cons, min_eq_get_min?]
-
 theorem List.length_mul_le_sum {xs : List Int} {m : Int} (h : ∀ x, x ∈ xs → m ≤ x) :
     xs.length * m ≤ xs.sum := by
   induction xs

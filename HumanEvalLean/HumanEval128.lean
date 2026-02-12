@@ -40,10 +40,11 @@ theorem List.product_eq_zero_iff {xs : List Int} :
 theorem Option.of_wp {α} {prog : Option α} (P : Option α → Prop) :
     (⊢ₛ wp⟦prog⟧ post⟨fun a => ⌜P (some a)⌝, fun _ => ⌜P none⌝⟩) → P prog := by
   intro hspec
-  simp only [wp, PredTrans.pushOption_apply, PredTrans.pure_apply] at hspec
+  simp only [wp, PredTrans.apply_pushOption, PredTrans.apply_Pure_pure, SPred.entails_nil,
+    SPred.down_pure, forall_const] at hspec
   split at hspec
-  case h_1 a s' heq => rw [← heq] at hspec; exact hspec True.intro
-  case h_2 s' heq => rw [← heq] at hspec; exact hspec True.intro
+  case h_1 a s' heq => rw [← heq] at hspec; exact hspec
+  case h_2 s' heq => rw [← heq] at hspec; exact hspec
 
 theorem Option.of_wp_eq {α : Type} {x : Option α} {prog : Option α} (h : prog = x) (P : Option α → Prop) :
     (⊢ₛ wp⟦prog⟧ post⟨fun a => ⌜P (some a)⌝, fun _ => ⌜P none⌝⟩) → P x := by

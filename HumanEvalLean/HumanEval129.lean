@@ -10,30 +10,20 @@ set_option mvcgen.warning false
 ## Missing API
 -/
 
-def Vector.iter (xs : Vector α n) :=
-    (xs.toArray.iter : Iter α)
-
-@[simp, grind =]
-theorem Vector.toList_iter {xs : Vector α n} :
-    xs.iter.toList = xs.toList := by
-  simp [Vector.iter, Vector.toList_toArray]
-
-@[simp, grind =]
-theorem Vector.length_iter {xs : Vector α n} :
-    xs.iter.length = n := by
-  simp [Vector.iter, ← Iter.size_toArray_eq_length]
-
 def Std.Iter.zipIdx [Iterator α Id β] (it : Iter (α := α) β) :=
   (it.zip (*...* : Std.Rii Nat).iter : Iter (β × Nat))
 
 instance [Iterator α Id β] [Iterators.Productive α Id] : Membership β (Iter (α := α) β) where
   mem it x := ∃ n : Nat, it.atIdxSlow? n = some x
 
+theorem Iter.mem_iff_exists [Iterator α Id β] [Iterators.Productive α Id] {it : Iter (α := α) β} :
+    x ∈ it ↔ ∃ n : Nat, it.atIdxSlow? n = some x :=
+  Iff.rfl
+
 theorem Std.Iter.mem_toList_iff [Iterator α Id β] [Iterators.Finite α Id]
     {it : Iter (α := α) β} {x : β} :
     x ∈ it.toList ↔ x ∈ it := by
-  simp only [instMembershipIterOfProductiveId_humanEvalLean, List.mem_iff_getElem,
-    List.getElem_eq_getElem?_get, getElem?_toList_eq_atIdxSlow?]
+  simp only [List.mem_iff_getElem, List.getElem_eq_getElem?_get, getElem?_toList_eq_atIdxSlow?]
   apply Iff.intro
   · rintro ⟨i, hi, rfl⟩
     exact ⟨i, by grind⟩
@@ -103,17 +93,17 @@ theorem Array.atIdxSlow?_iter {xs : Array α} {i : Nat} :
 
 theorem Vector.atIdxSlow?_iter {xs : Vector α n} {i : Nat} :
     xs.iter.atIdxSlow? i = xs[i]? := by
-  simp [Vector.iter, Array.atIdxSlow?_iter]
+  simp [Vector.iter, Array.atIdxSlow?_iter, - iter_toArray]
 
 theorem Array.mem_iter_iff {xs : Array α} {x : α} :
     x ∈ xs.iter ↔ x ∈ xs := by
-  simp only [instMembershipIterOfProductiveId_humanEvalLean]
+  simp only [Iter.mem_iff_exists]
   simp only [atIdxSlow?_iter, mem_iff_getElem]
   grind
 
 theorem Vector.mem_iter_iff {xs : Vector α n} {x : α} :
     x ∈ xs.iter ↔ x ∈ xs := by
-  simp [Vector.iter, Array.mem_iter_iff]
+  simp [Vector.iter, Array.mem_iter_iff, - iter_toArray]
 
 theorem Vector.mem_zipIdx_iter_iff {xs : Vector α n} {p : α × Nat} :
     p ∈ xs.iter.zipIdx ↔ ∃ (h : p.2 < n), xs[p.2] = p.1 := by

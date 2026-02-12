@@ -46,32 +46,6 @@ theorem Array.sum_push [Add α] [Zero α]
   simp [Array.sum_eq_foldr, LawfulRightIdentity.right_id, LawfulLeftIdentity.left_id,
     ← Array.foldr_assoc]
 
-def Rat.abs (x : Rat) :=
-  if 0 ≤ x then x else - x
-
-theorem Rat.abs_nonneg {x : Rat} :
-    0 ≤ x.abs := by
-  simp only [Rat.abs]
-  grind
-
-theorem Rat.abs_of_nonneg {x : Rat} (h : 0 ≤ x) :
-    x.abs = x := by
-  grind [Rat.abs]
-
-theorem Rat.abs_of_nonpos {x : Rat} (h : x ≤ 0) :
-    x.abs = - x := by
-  grind [Rat.abs]
-
-theorem Rat.abs_sub_comm {x y : Rat} :
-    (x - y).abs = (y - x).abs := by
-  grind [Rat.abs]
-
-instance Rat.instAssociativeHAdd : Associative (α := Rat) (· + ·) := ⟨Rat.add_assoc⟩
-instance Rat.instCommutativeHAdd : Commutative (α := Rat) (· + ·) := ⟨Rat.add_comm⟩
-instance : Std.LawfulIdentity (· + ·) (0 : Rat) where
-  left_id := Rat.zero_add
-  right_id := Rat.add_zero
-
 /-! ## Implementation -/
 
 def mean (xs : Array Rat) : Rat :=
@@ -107,9 +81,9 @@ example : (#[x]).sum = x := Array.sum_singleton
 example : (xs.push x).sum = xs.sum + x := Array.sum_push
 example : (xs ++ ys).sum = xs.sum + ys.sum := Array.sum_append
 
-example (h : 0 ≤ x) : x.abs = x := Rat.abs_of_nonneg h
-example (h : x ≤ 0) : x.abs = - x := Rat.abs_of_nonpos h
-example : 0 ≤ x.abs := Rat.abs_nonneg
+example (h : 0 ≤ x) : x.abs = x := Rat.Rat.abs_of_nonneg h
+example (h : x ≤ 0) : x.abs = -x := Rat.Rat.abs_of_nonpos h
+example : 0 ≤ x.abs := Rat.Rat.abs_nonneg
 
 example : (#[] : Array Rat).size = 0 := Array.size_empty
 example : (#[x]).size = 1 := Array.size_singleton

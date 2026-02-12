@@ -1,4 +1,9 @@
+module
+
 import Std
+import all Init.Data.List.Sort.Basic
+import all Init.Data.Slice.Array.Lemmas
+import all Init.Data.Range.Polymorphic.UpwardEnumerable -- UpwardEnumerable.least not exposed
 open Std Std.Do
 
 set_option mvcgen.warning false
@@ -6,22 +11,6 @@ set_option mvcgen.warning false
 /-!
 ## Missing API
 -/
-
-@[simp, grind =]
-theorem Subarray.size_drop {xs : Subarray α} {n : Nat} :
-    (xs.drop n).size = xs.size - n := by
-  simp only [size, stop, drop, start]
-  omega
-
-@[grind =, simp]
-theorem Subarray.size_mkSlice_rio {xs : Subarray α} :
-    xs[*...i].size = min i xs.size := by
-  simp [← Subarray.size_toArray]
-
-@[grind =, simp]
-theorem Subarray.size_mkSlice_rci {xs : Subarray α} :
-    xs[i...*].size = xs.size - i := by
-  simp [← Subarray.size_toArray]
 
 namespace Array
 
@@ -67,14 +56,6 @@ def mergeSort (xs : Array α) (le : α → α → Bool := by exact (· ≤ ·)) 
 
 end Array
 
-theorem Subarray.sliceSize_eq_size {xs : Subarray α} :
-    Std.Slice.size xs = xs.size := by
-  rfl
-
-theorem Subarray.getElem_eq_getElem_array {xs : Subarray α} {h : i < xs.size} :
-    xs[i] = xs.array[xs.start + i]'(by simp only [size] at h; have := xs.stop_le_array_size; omega) := by
-  rfl
-
 -- The current `List.extract_eq_drop_take` should be called `List.extract_eq_take_drop`
 @[simp] theorem List.extract_eq_drop_take' {l : List α} {start stop : Nat} :
     l.extract start stop = (l.take stop).drop start := by
@@ -85,41 +66,6 @@ theorem Subarray.getElem_eq_getElem_array {xs : Subarray α} {h : i < xs.size} :
     have h₂ : min stop l.length ≤ stop := by omega
     simp only [Nat.add_zero, drop_take_self, nil_eq, drop_eq_nil_iff, length_take, ge_iff_le, h₁]
     omega
-
-theorem Subarray.toList_eq_drop_take {xs : Subarray α} :
-    xs.toList = (xs.array.toList.take xs.stop).drop xs.start := by
-  rw [Subarray.toList_eq, Array.toList_extract, List.extract_eq_drop_take']
-
-theorem Subarray.getElem_toList {xs : Subarray α} {h : i < xs.toList.length} :
-    xs.toList[i]'h = xs[i]'(by simpa using h) := by
-  simp [getElem_eq_getElem_array, toList_eq_drop_take]
-
-theorem Subarray.getElem_eq_getElem_toList {xs : Subarray α} {h : i < xs.size} :
-    xs[i]'h = xs.toList[i]'(by simpa using h) := by
-  rw [getElem_toList]
-
-theorem Std.Slice.fold_iter [ToIterator (Slice γ) Id α β]
-    [Iterator α Id β] [IteratorLoop α Id Id] [Iterators.Finite α Id] {s : Slice γ} :
-    s.iter.fold (init := init) f = s.foldl (init := init) f := by
-  rfl
-
-theorem Std.Slice.foldl_toList [ToIterator (Slice γ) Id α β]
-    [Iterator α Id β] [IteratorLoop α Id Id] [LawfulIteratorLoop α Id Id]
-    [Iterators.Finite α Id] {s : Slice γ} :
-    s.toList.foldl (init := init) f = s.foldl (init := init) f := by
-  simp [← Std.Slice.toList_iter, Iter.foldl_toList, fold_iter]
-
-theorem Subarray.fold_iter {xs : Subarray α} :
-    xs.iter.fold (init := init) f = xs.foldl (init := init) f := by
-  rfl
-
-theorem Subarray.foldl_toList {xs : Subarray α} :
-    xs.toList.foldl (init := init) f = xs.foldl (init := init) f := by
-  simp only [← Std.Slice.toList_iter, Iter.foldl_toList, fold_iter]
-
-theorem Subarray.toList_drop {xs : Subarray α} :
-    (xs.drop n).toList = xs.toList.drop n := by
-  simp [Subarray.toList_eq_drop_take, drop, start, stop, array]
 
 theorem Array.MergeSort.merge.go_eq_listMerge {xs ys : Subarray α} {hxs hys le acc} :
     (Array.MergeSort.merge.go le xs ys hxs hys acc).toList = acc.toList ++ List.merge xs.toList ys.toList le := by
@@ -191,10 +137,6 @@ theorem Array.MergeSort.merge.go_eq_listMerge {xs ys : Subarray α} {hxs hys le 
       rw [← Subarray.foldl_toList]
       simp [*]
 
-attribute [- simp] List.mkSlice_rio_eq_mkSlice_rco
-  Array.mkSlice_rci_eq_mkSlice_rco
-  Subarray.mkSlice_rio_eq_mkSlice_rco Subarray.mkSlice_rci_eq_mkSlice_rco
-
 theorem Array.MergeSort.merge_eq_listMerge {xs ys : Array α} {le} :
     (Array.MergeSort.merge xs ys le).toList = List.merge xs.toList ys.toList le := by
   rw [Array.MergeSort.merge]
@@ -228,22 +170,6 @@ theorem Subarray.toList_mergeSort {xs : Subarray α} {le : α → α → Bool} :
 theorem Array.toList_mergeSort {xs : Array α} {le : α → α → Bool} :
     (xs.mergeSort le).toList = xs.toList.mergeSort le := by
   rw [Array.mergeSort, Subarray.toList_mergeSort, Array.toList_mkSlice_rii]
-
-def Rat.abs (x : Rat) : Rat :=
-  if 0 ≤ x then x else - x
-
-theorem Rat.abs_nonneg {x : Rat} :
-    0 ≤ x.abs := by
-  simp only [Rat.abs]
-  grind
-
-theorem Rat.abs_of_nonneg {x : Rat} (h : 0 ≤ x) :
-    x.abs = x := by
-  grind [Rat.abs]
-
-theorem Rat.abs_sub_comm {x y : Rat} :
-    (x - y).abs = (y - x).abs := by
-  grind [Rat.abs]
 
 theorem Nat.eq_add_of_toList_rio_eq_append_cons {a : Nat} {pref cur suff}
     (h : (*...a).toList = pref ++ cur :: suff) :
@@ -325,10 +251,10 @@ theorem hasCloseElements_iff {xs threshold} :
       refine ⟨i, by grind, ?_⟩
       have h_sorted := xs.pairwise_mergeSort (le := (· ≤ ·)) (by grind) (by grind)
       rw [List.pairwise_iff_getElem] at h_sorted
-      rw [Rat.abs_of_nonneg (by grind)] at ⊢ h
+      rw [Rat.Rat.abs_of_nonneg (by grind)] at ⊢ h
       have : xs.mergeSort[i + 1]'(by grind) ≤ xs.mergeSort[j] := by by_cases i + 1 = j <;> grind
       grind
-  · simp [Rat.abs_sub_comm]
+  · simp [Rat.Rat.abs_sub_comm]
 
 /-!
 ## Prompt
