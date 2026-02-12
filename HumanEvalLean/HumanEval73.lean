@@ -1,3 +1,5 @@
+module
+
 def smallest_change : Unit :=
   ()
 

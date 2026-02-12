@@ -1,3 +1,5 @@
+module
+
 def cycpattern_check : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 example : [].intersperse 7 = []                              := rfl
 example : [5, 6, 3, 2].intersperse 8 = [5, 8, 6, 8, 3, 8, 2] := rfl
 example : [2, 2, 2].intersperse 2 = [2, 2, 2, 2, 2]          := rfl

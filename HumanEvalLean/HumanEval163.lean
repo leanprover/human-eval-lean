@@ -1,3 +1,5 @@
+module
+
 def generate_integers : Unit :=
   ()
 

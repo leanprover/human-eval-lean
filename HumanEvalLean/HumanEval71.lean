@@ -1,3 +1,5 @@
+module
+
 def triangle_area : Unit :=
   ()
 

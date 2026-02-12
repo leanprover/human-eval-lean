@@ -1,3 +1,5 @@
+module
+
 def find_closest_elements : Unit :=
   ()
 

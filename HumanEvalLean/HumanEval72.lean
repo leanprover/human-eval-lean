@@ -1,3 +1,5 @@
+module
+
 def will_it_fly : Unit :=
   ()
 

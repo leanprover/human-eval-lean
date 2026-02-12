@@ -1,3 +1,7 @@
+module
+
+public section
+
 -- from Mathlib
 def Nat.factorial : Nat → Nat
   | 0 => 1
@@ -6,20 +10,20 @@ def Nat.factorial : Nat → Nat
 notation:10000 n "!" => Nat.factorial n
 
 @[simp] theorem Nat.factorial_zero : 0! = 1 :=
-  rfl
+  (rfl)
 
 theorem Nat.factorial_succ (n : Nat) : (n + 1)! = (n + 1) * n ! :=
-  rfl
+  (rfl)
 
 def Nat.brazilianFactorial : Nat → Nat
   | .zero => 1
   | .succ n => (Nat.succ n)! * brazilianFactorial n
 
 @[simp] theorem Nat.brazilianFactorial_zero : brazilianFactorial 0 = 1 :=
-  rfl
+  (rfl)
 
 theorem Nat.brazilianFactorial_succ (n : Nat) : brazilianFactorial (n + 1) = (n + 1)! * (brazilianFactorial n) :=
-  rfl
+  (rfl)
 
 def special_factorial (n : Nat) : Nat :=
   special_factorial.go n 1 1 0

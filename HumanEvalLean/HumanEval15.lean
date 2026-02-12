@@ -1,3 +1,5 @@
+module
+
 def string_sequence : Unit :=
   ()
 

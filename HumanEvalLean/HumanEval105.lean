@@ -1,3 +1,5 @@
+module
+
 def by_length : Unit :=
   ()
 

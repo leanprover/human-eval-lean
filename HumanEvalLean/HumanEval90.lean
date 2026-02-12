@@ -1,3 +1,5 @@
+module
+
 def next_smallest : Unit :=
   ()
 

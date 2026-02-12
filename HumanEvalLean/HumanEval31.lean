@@ -1,3 +1,5 @@
+module
+
 def is_prime : Unit :=
   ()
 

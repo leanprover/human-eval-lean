@@ -1,3 +1,5 @@
+module
+
 def check_dict_case : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def count_distinct_characters : Unit :=
   ()
 

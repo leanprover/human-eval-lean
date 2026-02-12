@@ -1,3 +1,5 @@
+module
+
 def vowels_count : Unit :=
   ()
 

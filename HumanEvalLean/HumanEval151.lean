@@ -1,3 +1,5 @@
+module
+
 def double_the_difference : Unit :=
   ()
 

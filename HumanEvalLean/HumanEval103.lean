@@ -1,3 +1,5 @@
+module
+
 def rounded_avg : Unit :=
   ()
 

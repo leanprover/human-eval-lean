@@ -1,3 +1,5 @@
+module
+
 def Strongest_Extension : Unit :=
   ()
 

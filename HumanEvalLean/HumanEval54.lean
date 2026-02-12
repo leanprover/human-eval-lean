@@ -1,3 +1,5 @@
+module
+
 def same_chars : Unit :=
   ()
 

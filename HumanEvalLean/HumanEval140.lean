@@ -1,3 +1,5 @@
+module
+
 def fix_spaces : Unit :=
   ()
 

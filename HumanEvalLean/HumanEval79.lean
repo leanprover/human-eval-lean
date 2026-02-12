@@ -1,3 +1,5 @@
+module
+
 def decimal_to_binary : Unit :=
   ()
 

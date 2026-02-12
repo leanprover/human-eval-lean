@@ -1,3 +1,5 @@
+module
+
 def largest_smallest_integers : Unit :=
   ()
 

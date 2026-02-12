@@ -1,3 +1,5 @@
+module
+
 def numerical_letter_grade : Unit :=
   ()
 

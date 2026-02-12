@@ -1,3 +1,5 @@
+module
+
 import Std.Tactic.Do
 open Std.Do
 set_option mvcgen.warning false

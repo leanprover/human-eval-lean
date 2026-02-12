@@ -1,3 +1,5 @@
+module
+
 /-- Computes the largest divisor in O(sqrt n) via trial divison. -/
 def largestDivisor (n : Nat) : Nat :=
   go 2

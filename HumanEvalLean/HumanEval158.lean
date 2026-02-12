@@ -1,3 +1,5 @@
+module
+
 def find_max : Unit :=
   ()
 

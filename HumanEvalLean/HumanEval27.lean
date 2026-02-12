@@ -1,3 +1,5 @@
+module
+
 def flip_case : Unit :=
   ()
 

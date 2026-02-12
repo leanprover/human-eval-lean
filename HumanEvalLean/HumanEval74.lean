@@ -1,3 +1,5 @@
+module
+
 def total_match : Unit :=
   ()
 

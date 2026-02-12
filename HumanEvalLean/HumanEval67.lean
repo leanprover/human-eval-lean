@@ -1,3 +1,5 @@
+module
+
 def fruit_distribution : Unit :=
   ()
 

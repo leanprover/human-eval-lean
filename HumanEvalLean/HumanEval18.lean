@@ -1,3 +1,5 @@
+module
+
 def how_many_times : Unit :=
   ()
 

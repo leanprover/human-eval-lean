@@ -1,3 +1,5 @@
+module
+
 def count_up_to : Unit :=
   ()
 

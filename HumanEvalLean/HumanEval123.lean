@@ -1,4 +1,9 @@
-import Std
+module
+
+public import Std
+import all Init.WFExtrinsicFix -- to be removed as soon as partial extrinsic fixpoints are upstreamed
+
+public section
 
 open Std
 
@@ -80,7 +85,7 @@ theorem collatzRel_collatzStep {n : Nat} (h : n > 1) :
     CollatzRel (collatzStep n) n := by
   grind [CollatzRel]
 
-theorem mod_two_eq_one_of_mem_collectOddCollatz {m n : Nat} {acc : TreeSet Nat compare}
+private theorem mod_two_eq_one_of_mem_collectOddCollatz {m n : Nat} {acc : TreeSet Nat compare}
     (h : Acc CollatzRel n) (hm : m ∈ oddCollatz₀.collectOddCollatz n acc) (ha : ∀ x ∈ acc, x % 2 = 1) :
     m % 2 = 1 := by
   induction h generalizing acc
@@ -90,7 +95,7 @@ theorem mod_two_eq_one_of_mem_oddCollatz₀ {m n : Nat} {h : Acc CollatzRel n} (
     m % 2 = 1 := by
   grind [oddCollatz₀, mod_two_eq_one_of_mem_collectOddCollatz]
 
-theorem transGen_collatzRel_of_mem_collectOddCollatz {m n s : Nat} {acc : TreeSet Nat compare}
+private theorem transGen_collatzRel_of_mem_collectOddCollatz {m n s : Nat} {acc : TreeSet Nat compare}
     (h : Acc CollatzRel s) (hm : m ∈ oddCollatz₀.collectOddCollatz s acc)
     (hs : s = n ∨ Relation.TransGen CollatzRel s n)
     (ha : ∀ x ∈ acc, x = n ∨ Relation.TransGen CollatzRel x n) :
@@ -116,13 +121,13 @@ theorem transGen_collatzRel_of_mem_oddCollatz₀ {m n : Nat} {h : Acc CollatzRel
     Relation.TransGen CollatzRel m n := by
   grind [oddCollatz₀, transGen_collatzRel_of_mem_collectOddCollatz]
 
-theorem mem_collectOddCollatz_of_mem {n : Nat} (hn : Acc CollatzRel n) {acc : TreeSet Nat}
+private theorem mem_collectOddCollatz_of_mem {n : Nat} (hn : Acc CollatzRel n) {acc : TreeSet Nat}
     {m : Nat} (h : m ∈ acc) :
     m ∈ oddCollatz₀.collectOddCollatz n acc := by
   induction hn generalizing acc
   grind [oddCollatz₀.collectOddCollatz, collatzRel_collatzStep]
 
-theorem mem_self_collectOddCollatz {n : Nat} (hn : Acc CollatzRel n) {acc : TreeSet Nat}
+private theorem mem_self_collectOddCollatz {n : Nat} (hn : Acc CollatzRel n) {acc : TreeSet Nat}
     (h : n % 2 = 1) :
     n ∈ oddCollatz₀.collectOddCollatz n acc := by
   induction hn generalizing acc
@@ -132,7 +137,7 @@ theorem mem_self_oddCollatz₀ {n : Nat} (h : Acc CollatzRel n) (h' : n % 2 = 1)
     n ∈ oddCollatz₀ n := by
   grind [oddCollatz₀, mem_self_collectOddCollatz]
 
-theorem collectOddCollatz_mono {n : Nat} (hn : Acc CollatzRel n) {acc' acc : TreeSet Nat}
+private theorem collectOddCollatz_mono {n : Nat} (hn : Acc CollatzRel n) {acc' acc : TreeSet Nat}
     (h : ∀ x, x ∈ acc' → x ∈ acc) {x : Nat} (hx : x ∈ oddCollatz₀.collectOddCollatz n acc') :
     x ∈ oddCollatz₀.collectOddCollatz n acc := by
   induction hn generalizing acc acc'
@@ -257,7 +262,7 @@ theorem oddCollatz₁_pairwise_lt {n : Nat} {h : Acc CollatzRel n} :
     (oddCollatz₁ n h).Pairwise (· < ·) := by
   simpa [oddCollatz₁, compare_eq_lt] using TreeSet.ordered_toList (α := Nat) (cmp := compare)
 
-theorem collectOddCollatz₁_eq_collectOddCollatz₀ {m} (hm : Acc CollatzRel m.val) :
+private theorem collectOddCollatz₁_eq_collectOddCollatz₀ {m} (hm : Acc CollatzRel m.val) :
     oddCollatz₁.collectOddCollatz m acc = oddCollatz₀.collectOddCollatz m.val acc := by
   fun_induction oddCollatz₁.collectOddCollatz m acc <;> grind [oddCollatz₀.collectOddCollatz]
 
@@ -457,7 +462,7 @@ theorem oddCollatz₂_pairwise_lt {n : Nat} :
     (oddCollatz₂ n).Pairwise (· < ·) := by
   simpa [oddCollatz₁, compare_eq_lt] using TreeSet.ordered_toList (α := Nat) (cmp := compare)
 
-theorem collectOddCollatz_eq_collectOddCollatz {m} (hm : Acc CollatzRel m) :
+private theorem collectOddCollatz_eq_collectOddCollatz {m} (hm : Acc CollatzRel m) :
     oddCollatz₂.collectOddCollatz m acc = oddCollatz₁.collectOddCollatz ⟨m, hm⟩ acc := by
   rw [oddCollatz₂.collectOddCollatz]
   induction hm generalizing acc

@@ -1,3 +1,5 @@
+module
+
 def sum_to_n : Unit :=
   ()
 

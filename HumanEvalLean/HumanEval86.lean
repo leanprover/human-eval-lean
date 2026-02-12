@@ -1,3 +1,5 @@
+module
+
 def anti_shuffle : Unit :=
   ()
 

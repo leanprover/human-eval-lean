@@ -1,3 +1,5 @@
+module
+
 def any_int : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def prime_length : Unit :=
   ()
 

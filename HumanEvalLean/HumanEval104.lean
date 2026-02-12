@@ -1,3 +1,5 @@
+module
+
 def unique_digits : Unit :=
   ()
 

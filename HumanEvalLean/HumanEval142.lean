@@ -1,3 +1,5 @@
+module
+
 def sum_squares : Unit :=
   ()
 

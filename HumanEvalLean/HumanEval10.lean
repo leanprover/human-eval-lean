@@ -1,3 +1,5 @@
+module
+
 def make_palindrome : Unit :=
   ()
 

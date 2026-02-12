@@ -1,3 +1,5 @@
+module
+
 def select_words : Unit :=
   ()
 

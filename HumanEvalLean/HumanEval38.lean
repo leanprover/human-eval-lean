@@ -1,3 +1,5 @@
+module
+
 def decode_cyclic : Unit :=
   ()
 

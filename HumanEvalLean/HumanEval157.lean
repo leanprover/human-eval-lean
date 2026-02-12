@@ -1,3 +1,5 @@
+module
+
 def right_angle_triangle : Unit :=
   ()
 

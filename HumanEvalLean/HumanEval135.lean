@@ -1,3 +1,5 @@
+module
+
 def can_arrange : Unit :=
   ()
 

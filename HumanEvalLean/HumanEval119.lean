@@ -1,3 +1,5 @@
+module
+
 def match_parens : Unit :=
   ()
 

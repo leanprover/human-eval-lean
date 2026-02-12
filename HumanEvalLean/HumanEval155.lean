@@ -1,3 +1,9 @@
+module
+
+import all Init.Data.Repr -- to be removed as soon as all of this is upstreamed to stdlib
+
+public section
+
 section Batteries -- https://github.com/leanprover-community/batteries/pull/1267
 
 namespace Nat

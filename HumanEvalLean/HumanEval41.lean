@@ -1,3 +1,5 @@
+module
+
 def car_race_collision : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def find_zero : Unit :=
   ()
 

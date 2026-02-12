@@ -1,3 +1,5 @@
+module
+
 def words_in_sentence : Unit :=
   ()
 

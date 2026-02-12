@@ -1,3 +1,5 @@
+module
+
 def get_max_triples : Unit :=
   ()
 

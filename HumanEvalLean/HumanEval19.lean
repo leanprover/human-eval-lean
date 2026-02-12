@@ -1,3 +1,5 @@
+module
+
 def sort_numbers : Unit :=
   ()
 

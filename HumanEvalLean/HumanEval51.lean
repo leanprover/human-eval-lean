@@ -1,3 +1,5 @@
+module
+
 def IsSubseq (s₁ : String) (s₂ : String) : Prop :=
   List.Sublist s₁.toList s₂.toList
 

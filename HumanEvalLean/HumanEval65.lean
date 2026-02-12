@@ -1,3 +1,5 @@
+module
+
 def circular_shift : Unit :=
   ()
 

@@ -1,3 +1,5 @@
+module
+
 def multiply : Unit :=
   ()
 
