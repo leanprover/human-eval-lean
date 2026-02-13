@@ -1,6 +1,7 @@
 module
 
 public import HumanEvalLean.Common.IsPrime
+meta import HumanEvalLean.Common.IsPrime
 
 public section
 
