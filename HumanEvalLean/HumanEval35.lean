@@ -1,7 +1,24 @@
 module
 
-def max_element : Unit :=
-  ()
+/-! ## Implementation -/
+
+def maxElement (xs : Array Int) : Int :=
+  xs.max?.getD 0
+
+/-! ## Tests -/
+
+example : maxElement #[1, 2, 3] = 3 := by native_decide
+example : maxElement #[5, 3, -5, 2, -3, 3, 9, 0, 124, 1, -10] = 124 := by native_decide
+
+/-! ## Verification -/
+
+theorem maxElement_le_iff {xs : Array Int} {y : Int} (h : xs ≠ #[]) :
+    maxElement xs ≤ y ↔ ∀ x ∈ xs, x ≤ y := by
+  simp [maxElement, Array.max?_eq_some_max h, Array.max_le_iff]
+
+theorem maxElement_mem {xs : Array Int} (h : xs ≠ #[]) :
+    maxElement xs ∈ xs := by
+  simpa [maxElement, Array.max?_eq_some_max h] using Array.max_mem h
 
 /-!
 ## Prompt
