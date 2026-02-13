@@ -1,7 +1,37 @@
 module
 
-def get_positive : Unit :=
-  ()
+public import Std
+open Std
+
+public section
+
+/-! ## Implementation -/
+
+@[grind =]
+def getPositive (xs : Array Int): Array Int :=
+  xs.filter (0 < ·)
+
+/-! ## Tests -/
+
+example : getPositive #[-1, -2, 4, 5, 6] = #[4, 5, 6] := by native_decide
+example : getPositive #[5, 3, -5, 2, 3, 3, 9, 0, 123, 1, -10] = #[5, 3, 2, 3, 3, 9, 123, 1] := by native_decide
+example : getPositive #[-1, -2] = #[] := by native_decide
+example : getPositive #[] = #[] := by native_decide
+
+/-! ## Verification -/
+
+section Verification
+
+variable {xs ys : Array Int}
+
+theorem getPositive_empty : getPositive #[] = #[] := by grind
+theorem getPositive_singleton_of_pos (h : 0 < x) : getPositive #[x] = #[x] := by grind
+theorem getPositive_singleton_of_nonpos (h : x ≤ 0) : getPositive #[x] = #[] := by grind
+theorem getPositive_push_of_pos (h : 0 < x) : getPositive (xs.push x) = (getPositive xs).push x := by grind
+theorem getPositive_push_of_nonpos (h : x ≤ 0) : getPositive (xs.push x) = getPositive xs := by grind
+theorem getPositive_append : getPositive (x ++ y) = getPositive x ++ getPositive y := by grind
+
+end Verification
 
 /-!
 ## Prompt
