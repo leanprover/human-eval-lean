@@ -9,6 +9,7 @@ public def isPrime (n : Nat) : Bool :=
   let divisors := (2...<n).iter.takeWhile (fun i => i * i ≤ n) |>.filter (· ∣ n)
   2 ≤ n ∧ divisors.fold (init := 0) (fun count _ => count + 1) = 0
 
+@[expose]
 public def IsPrime (n : Nat) : Prop :=
   2 ≤ n ∧ ∀ d : Nat, d ∣ n → d = 1 ∨ d = n
 
