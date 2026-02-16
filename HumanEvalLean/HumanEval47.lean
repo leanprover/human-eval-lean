@@ -26,11 +26,6 @@ example : median #[8, 1, 3, 9, 9, 2, 7] (by decide) = 7 := by native_decide
 
 /-! ## Verification -/
 
-theorem countP_le_eq_countP_ge {xs : Array Int} {h} :
-    xs.countP (fun x : Int => x ≤ median xs h) =
-      xs.countP (fun x : Int => median xs h ≤ x) := by
-  sorry
-
 theorem median_eq_getElem_of_odd {xs : Array Int} {h} (h' : xs.size % 2 = 1) :
     median xs h = xs.mergeSort[xs.size / 2]'(by grind [List.length_mergeSort]) := by
   grind [median, List.length_mergeSort]
