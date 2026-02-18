@@ -35,23 +35,6 @@ inductive IsGroup : List Paren → Prop where
 def parens (s : String) : List Paren :=
   s.toList.filterMap (fun c => if c = '(' then some .open else if c = ')' then some .close else none)
 
-/-
-@[spec]
-theorem Spec.forIn_list
-    {xs : List α} {init : β} {f : α → β → m (ForInStep β)}
-    (inv : Invariant xs β ps)
-    (step : ∀ pref cur suff (h : xs = pref ++ cur :: suff) b,
-      Triple
-        (f cur b)
-        (inv.1 (⟨pref, cur::suff, h.symm⟩, b))
-        (fun r => match r with
-          | .yield b' => inv.1 (⟨pref ++ [cur], suff, by simp [h]⟩, b')
-          | .done b' => inv.1 (⟨xs, [], by simp⟩, b'), inv.2)) :
-    Triple (forIn xs init f) (inv.1 (⟨[], xs, rfl⟩, init)) (fun b => inv.1 (⟨xs, [], by simp⟩, b), inv.2) := by
-  simp only [← forIn'_eq_forIn]
-  exact Spec.forIn'_list inv step
--/
-
 namespace Std.Do
 variable {β : Type u} {m : Type u → Type v} {ps : PostShape.{u}}
 variable [Monad m] [WPMonad m ps]
@@ -67,7 +50,25 @@ theorem Spec.forIn_string
         (fun r => match r with
           | .yield b' => inv.1 (pos.next h, b')
           | .done b' => inv.1 (s.endPos, b'), inv.2)) :
-    Triple (forIn s init f) (inv.1 (s.startPos, init)) (fun b => inv.1 (s.endPos, b), inv.2) := sorry
+    Triple (forIn s init f) (inv.1 (s.startPos, init)) (fun b => inv.1 (s.endPos, b), inv.2) := by
+  suffices h : ∀ (p : s.Pos) (t₁ t₂ : String) (h : p.Splits t₁ t₂),
+      Triple (forIn t₂.toList init f) (inv.1 (p, init)) (fun b => inv.1 (s.endPos, b), inv.2) by
+    simpa using h s.startPos _ _ s.splits_startPos
+  intro p
+  induction p using String.Pos.next_induction generalizing init with
+  | next p hp ih =>
+    intro t₁ t₂ hsp
+    obtain ⟨t₂, rfl⟩ := hsp.exists_eq_singleton_append hp
+    simp only [String.toList_append, String.toList_singleton, List.cons_append, List.nil_append,
+      List.forIn_cons]
+    apply Triple.bind
+    case hx => exact step _ _ hp
+    case hf =>
+      intro r
+      split
+      next => apply Triple.pure; simp
+      next b => simp [ih _ _ hsp.next]
+  | endPos => simpa using Triple.pure _ (by simp)
 
 end Std.Do
 
