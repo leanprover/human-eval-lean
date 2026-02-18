@@ -143,21 +143,6 @@ theorem List.isSome_findSome?_eq {xs : List α} {f : α → Option β} :
   simp only [← Option.isSome_iff_ne_none]
   grind
 
-theorem Std.Rxc.Iterator.nodup_toList [LE α] [DecidableLE α]
-    [PRange.UpwardEnumerable α] [Rxc.IsAlwaysFinite α] [PRange.LawfulUpwardEnumerable α]
-    [PRange.LawfulUpwardEnumerableLE α]
-    {it : Iter (α := Rxc.Iterator α) α} :
-    it.toList.Nodup := by
-  apply (Rxc.Iterator.pairwise_toList_upwardEnumerableLt it).imp
-  grind [PRange.UpwardEnumerable.ne_of_lt]
-
-theorem Std.Rcc.nodup_toList [LE α] [DecidableLE α]
-    [PRange.UpwardEnumerable α] [Rxc.IsAlwaysFinite α] [PRange.LawfulUpwardEnumerable α]
-    [PRange.LawfulUpwardEnumerableLE α]
-    {a b : α} :
-    (a...=b).toList.Nodup := by
-  grind [=_ Std.Rcc.toList_iter, Std.Rxc.Iterator.nodup_toList]
-
 theorem Vector.getElem_eq_getElem_toList {xs : Vector α n} {i : Nat} {hi : i < n} :
     xs[i] = xs.toList[i]'(by grind) := by
   simp

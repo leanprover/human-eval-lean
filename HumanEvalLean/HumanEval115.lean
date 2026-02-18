@@ -44,10 +44,6 @@ actions needed.
 
 attribute [grind =] Vector.sum_mk List.zip_cons_cons List.zip_nil_right List.zip_nil_left
 
-theorem Vector.toList_zip {as : Vector α n} {bs : Vector β n} :
-    (Vector.zip as bs).toList = List.zip as.toList bs.toList :=
-  Vector.Vector.toList_zip
-
 theorem List.sum_eq_zero {l : List Nat} : l.sum = 0 ↔
     ∀ (i : Nat) (hi : i < l.length), l[i] = 0 := by
   rw [← Decidable.not_iff_not]

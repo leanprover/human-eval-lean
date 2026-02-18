@@ -79,7 +79,9 @@ theorem exists_mem_findClosestElements {xs : Array Rat} {h : 2 ≤ xs.size} :
   invariants
   | inv1 sorted _ _ => ⇓⟨cur, closest⟩ => ⌜∃ (i j : Nat) (hi : i < sorted.size) (hj : j < sorted.size) (hij : i ≠ j),
         closest = (sorted[i], sorted[j])⌝
-  with grind [List.length_mergeSort, List.pairwise_iff_getElem]
+  case vc1 => grind [List.length_mergeSort, List.pairwise_iff_getElem]
+  case vc3 => exact ⟨0, 1, by grind⟩
+  case vc4 => grind [List.length_mergeSort, List.pairwise_iff_getElem]
 
 /--
 This lemma is an intermediate step towards `pairwise_abs_findClosestElements_le`.
@@ -120,11 +122,11 @@ theorem pairwise_abs_findClosestElements_le {xs : Array Rat} {h : 2 ≤ xs.size}
     letI closest := findClosestElements xs
     xs.toList.Pairwise (fun x y => (closest.2 - closest.1).abs ≤ (y - x).abs) := by
   have := xs.toList.mergeSort_perm (· ≤ ·)
-  rw [← this.pairwise_iff (by grind [Rat.Rat.abs_sub_comm]), List.pairwise_iff_getElem]
+  rw [← this.pairwise_iff (by grind [Rat.abs_sub_comm]), List.pairwise_iff_getElem]
   intro i j hi hj hij
   have := abs_findClosestElements_le_mergeSort (xs := xs) (h := h) i (by grind)
   have h_sorted := xs.toList.pairwise_mergeSort (le := (· ≤ ·)) (by grind) (by grind)
-  grind [List.pairwise_iff_getElem, Rat.Rat.abs_of_nonneg]
+  grind [List.pairwise_iff_getElem, Rat.abs_of_nonneg]
 
 /-!
 ## Prompt
