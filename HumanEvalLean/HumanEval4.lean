@@ -81,9 +81,9 @@ example : (#[x]).sum = x := Array.sum_singleton
 example : (xs.push x).sum = xs.sum + x := Array.sum_push
 example : (xs ++ ys).sum = xs.sum + ys.sum := Array.sum_append
 
-example (h : 0 ≤ x) : x.abs = x := Rat.Rat.abs_of_nonneg h
-example (h : x ≤ 0) : x.abs = -x := Rat.Rat.abs_of_nonpos h
-example : 0 ≤ x.abs := Rat.Rat.abs_nonneg
+example (h : 0 ≤ x) : x.abs = x := Rat.abs_of_nonneg h
+example (h : x ≤ 0) : x.abs = -x := Rat.abs_of_nonpos h
+example : 0 ≤ x.abs := Rat.abs_nonneg
 
 example : (#[] : Array Rat).size = 0 := Array.size_empty
 example : (#[x]).size = 1 := Array.size_singleton
@@ -104,7 +104,7 @@ theorem mean_spec {xs : Array Rat} :
 theorem meanAbsoluteDeviation_spec {xs : Array Rat} :
     meanAbsoluteDeviation xs =
       mean (xs.map (fun x => (x - mean xs).abs)) := by
-  simp [meanAbsoluteDeviation, mean, ← Iter.sum_toList, ← Array.sum_toList]
+  simp +instances [meanAbsoluteDeviation, mean, ← Iter.sum_toList, ← Array.sum_toList]
 
 /-!
 ## Prompt

@@ -56,17 +56,6 @@ def mergeSort (xs : Array α) (le : α → α → Bool := by exact (· ≤ ·)) 
 
 end Array
 
--- The current `List.extract_eq_drop_take` should be called `List.extract_eq_take_drop`
-@[simp] theorem List.extract_eq_drop_take' {l : List α} {start stop : Nat} :
-    l.extract start stop = (l.take stop).drop start := by
-  simp [List.take_drop]
-  by_cases start ≤ stop
-  · simp [*]
-  · have h₁ : stop - start = 0 := by omega
-    have h₂ : min stop l.length ≤ stop := by omega
-    simp only [Nat.add_zero, drop_take_self, nil_eq, drop_eq_nil_iff, length_take, ge_iff_le, h₁]
-    omega
-
 theorem Array.MergeSort.merge.go_eq_listMerge {xs ys : Subarray α} {hxs hys le acc} :
     (Array.MergeSort.merge.go le xs ys hxs hys acc).toList = acc.toList ++ List.merge xs.toList ys.toList le := by
   fun_induction Array.MergeSort.merge.go le xs ys hxs hys acc
@@ -251,10 +240,10 @@ theorem hasCloseElements_iff {xs threshold} :
       refine ⟨i, by grind, ?_⟩
       have h_sorted := xs.pairwise_mergeSort (le := (· ≤ ·)) (by grind) (by grind)
       rw [List.pairwise_iff_getElem] at h_sorted
-      rw [Rat.Rat.abs_of_nonneg (by grind)] at ⊢ h
+      rw [Rat.abs_of_nonneg (by grind)] at ⊢ h
       have : xs.mergeSort[i + 1]'(by grind) ≤ xs.mergeSort[j] := by by_cases i + 1 = j <;> grind
       grind
-  · simp [Rat.Rat.abs_sub_comm]
+  · simp [Rat.abs_sub_comm]
 
 /-!
 ## Prompt
