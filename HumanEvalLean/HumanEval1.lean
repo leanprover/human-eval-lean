@@ -24,16 +24,88 @@ inductive Paren where
   | open : Paren
   | close : Paren
 
+def Paren.toInt : Paren → Int
+  | .open => 1
+  | .close => -1
+
+@[simp, grind =] theorem Paren.toInt_open : Paren.open.toInt = 1 := rfl
+@[simp, grind =] theorem Paren.toInt_close : Paren.close.toInt = -1 := rfl
+
 inductive IsBalanced : List Paren → Prop where
   | empty : IsBalanced []
-  | append : IsBalanced l₁ → IsBalanced l₂ → IsBalanced (l₁ ++ l₂)
-  | enclose : IsBalanced l → IsBalanced (.open :: l ++ [.close])
+  | append (l₁ l₂) : IsBalanced l₁ → IsBalanced l₂ → IsBalanced (l₁ ++ l₂)
+  | enclose (l) : IsBalanced l → IsBalanced (.open :: l ++ [.close])
+
+attribute [simp] IsBalanced.empty
 
 inductive IsGroup : List Paren → Prop where
   | enclose : IsBalanced l → IsGroup (.open :: l ++ [.close])
 
 def parens (s : String) : List Paren :=
   s.toList.filterMap (fun c => if c = '(' then some .open else if c = ')' then some .close else none)
+
+-- theorem List.take_append_eq_if {l₁ l₂ : List α} {n} :
+--     (l₁ ++ l₂).take n = if n ≤ l₁.length then l₁.take n else l₁ ++ l₂.take (n - l₁.length) := by
+--   split
+--   case isTrue h => rw [List.take_append_of_le_length h]
+--   next h => rw [List.take_append, take_of_length_le (by omega)]
+
+def balance (l : List Paren) : Int :=
+  l.map (·.toInt) |>.sum
+
+@[simp, grind =]
+theorem balance_nil : balance [] = 0 := by
+  simp [balance]
+
+@[simp, grind =]
+theorem balance_append : balance (l₁ ++ l₂) = balance l₁ + balance l₂ := by
+  simp [balance]
+
+@[simp, grind =]
+theorem balance_cons : balance (p :: l) = p.toInt + balance l := by
+  simp [balance]
+
+theorem List.take_cons_eq_if {l : List α} {a : α} {n : Nat} :
+    (a::l).take n = if 0 < n then a :: l.take (n - 1) else [] := by
+  split
+  · exact take_cons ‹_›
+  · obtain rfl : n = 0 := by omega
+    simp
+
+theorem List.take_singleton {a : α} {n : Nat} : [a].take n = if n = 0 then [] else [a] := by
+  sorry
+
+theorem isBalanced_iff {l : List Paren} :
+    IsBalanced l ↔ (balance l = 0 ∧ ∀ k, 0 ≤ balance (l.take k)) := by
+  refine ⟨fun h => ?_, fun ⟨h₁, h₂⟩ => ?_⟩
+  ·  induction h with
+    | empty => simp
+    | append l₁ l₂ ih₁ ih₂ h₁ h₂ => exact ⟨by grind, by grind [List.take_append]⟩ -- https://github.com/leanprover/lean4/issues/12581
+    | enclose l h ih =>
+      refine ⟨by grind, fun k => ?_⟩
+      simp only [List.cons_append, List.take_cons_eq_if]
+      grind [List.take_append, List.take_singleton]
+  ·
+  -- generalize h : l.length = n
+  -- induction n using Nat.strongRecOn generalizing l with | ind n ih
+  -- refine ⟨fun h => ?_, ?_⟩
+  -- ·
+  --   induction h generalizing n with
+  --   | empty => simp
+  --   | append l₁ l₂ ih₁ ih₂ h₁ h₂ =>
+
+  --     skip
+
+
+  --   | enclose => sorry
+  -- · sorry
+
+
+  -- | zero => simp_all
+  -- | succ n ih =>
+
+
+
 
 namespace Std.Do
 variable {β : Type u} {m : Type u → Type v} {ps : PostShape.{u}}
@@ -94,7 +166,11 @@ theorem goal₁ {s : String} {h : IsBalanced (parens s)} :
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
   case vc1.inv => exact ⇓⟨pos, ⟨curr, depth, result⟩⟩ =>
-    ⌜(curr = "" ↔ depth = 0) ∧ ∀ t₁ t₂, pos.Splits t₁ t₂ → result.toList.flatMap String.toList ++ curr.toList = t₁.toList.filter (fun c => c = '(' ∨ c = ')')⌝
+    ⌜(curr = "" ↔ depth = 0) ∧
+        ∀ t₁ t₂, pos.Splits t₁ t₂ →
+          result.toList.flatMap String.toList ++ curr.toList = t₁.toList.filter (fun c => c = '(' ∨ c = ')')
+
+          ⌝
   next pos _ h curr _ depth result h₁ ih =>
     simp at ih
     simp
