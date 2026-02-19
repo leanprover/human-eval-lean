@@ -89,16 +89,6 @@ theorem List.min_cons {a : α} {l : List α} [Min α] [Std.Associative (α := α
 theorem List.min_cons_cons_nil [Min α] {a b : α} : [a, b].min (by simp) = min a b := by
   simp [List.min_cons_cons]
 
-theorem List.ne_nil_induction {P : (l : List α) → Prop} (l : List α)
-    (nil : P [])
-    (singleton : (a : α) → P [a]) (cons : (a : α) → (l : List α) → (h : l ≠ []) → P l → P (a :: l)) : P l := by
-  induction l with
-  | nil => exact nil
-  | cons hd tl ih =>
-    match tl with
-    | [] => exact singleton _
-    | t::tl => exact cons _ _ (by simp) ih
-
 theorem add_min [Add α] [Min α] [LE α] [comm : Std.Commutative (α := α) (· + ·)] [Std.IsPartialOrder α] [Std.LawfulOrderMin α]
     [Lean.Grind.OrderedAdd α] {a b c : α} : a + min b c = min (a + b) (a + c) := by
   refine Std.le_antisymm ?_ ?_
@@ -147,7 +137,7 @@ theorem isBalanced_iff {l : List Paren} :
     IsBalanced l ↔ (balance l = 0 ∧ minBalance l = 0) := by
   rw [minBalance_eq_zero_iff]
   refine ⟨fun h => ?_, fun h => ?_⟩
-  ·  induction h with
+  · induction h with
     | empty => simp
     | append l₁ l₂ ih₁ ih₂ h₁ h₂ => exact ⟨by grind, by grind [List.take_append]⟩ -- https://github.com/leanprover/lean4/issues/12581
     | enclose l h ih =>
@@ -277,8 +267,6 @@ theorem Spec.forIn_string
 end Std.Do
 
 open Std.Do
-
-#check String.Pos.Splits.next
 
 theorem String.Pos.Splits.of_next {s : String} {p : s.Pos} {hp}
     (h : (p.next hp).Splits (t₁ ++ singleton c) t₂) : p.Splits t₁ (singleton c ++ t₂) := by
