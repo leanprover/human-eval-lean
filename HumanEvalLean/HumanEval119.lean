@@ -1,6 +1,7 @@
 module
 
 import HumanEvalLean.Common.Brackets
+import Std.Tactic.Do
 
 def computeBalance (s : String.Slice) : Int × Int := Id.run do
   let mut balance := 0

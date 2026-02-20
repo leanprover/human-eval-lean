@@ -1,6 +1,6 @@
 module
 
-public import Std.Tactic.Do
+import Std.Tactic.Do
 public section
 
 inductive Paren where
@@ -254,96 +254,7 @@ def isBalanced (openBracket closeBracket : Char) (s : String) : Bool := Id.run d
       depth := depth - 1
   return depth == 0
 
-namespace Std.Do
-variable {β : Type u} {m : Type u → Type v} {ps : PostShape.{u}}
-variable [Monad m] [WPMonad m ps]
-
-abbrev StringInvariant.withEarlyReturn {s : String}
-  (onContinue : s.Pos → β → Assertion ps)
-  (onReturn : γ → β → Assertion ps)
-  (onExcept : ExceptConds ps := ExceptConds.false) :
-    PostCond (s.Pos × MProd (Option γ) β) ps
-    :=
-  ⟨fun ⟨pos, x, b⟩ => spred(
-        (⌜x = none⌝ ∧ onContinue pos b)
-      ∨ (∃ r, ⌜x = some r⌝ ∧ ⌜pos = s.endPos⌝ ∧ onReturn r b)),
-   onExcept⟩
-
-@[spec]
-theorem Spec.forIn_string
-    {s : String} {init : β} {f : Char → β → m (ForInStep β)}
-    (inv : PostCond (s.Pos × β) ps)
-    (step : ∀ pos b (h : pos ≠ s.endPos),
-      Triple
-        (f (pos.get h) b)
-        (inv.1 (pos, b))
-        (fun r => match r with
-          | .yield b' => inv.1 (pos.next h, b')
-          | .done b' => inv.1 (s.endPos, b'), inv.2)) :
-    Triple (forIn s init f) (inv.1 (s.startPos, init)) (fun b => inv.1 (s.endPos, b), inv.2) := by
-  suffices h : ∀ (p : s.Pos) (t₁ t₂ : String) (h : p.Splits t₁ t₂),
-      Triple (forIn t₂.toList init f) (inv.1 (p, init)) (fun b => inv.1 (s.endPos, b), inv.2) by
-    simpa using h s.startPos _ _ s.splits_startPos
-  intro p
-  induction p using String.Pos.next_induction generalizing init with
-  | next p hp ih =>
-    intro t₁ t₂ hsp
-    obtain ⟨t₂, rfl⟩ := hsp.exists_eq_singleton_append hp
-    simp only [String.toList_append, String.toList_singleton, List.cons_append, List.nil_append,
-      List.forIn_cons]
-    apply Triple.bind
-    case hx => exact step _ _ hp
-    case hf =>
-      intro r
-      split
-      next => apply Triple.pure; simp
-      next b => simp [ih _ _ hsp.next]
-  | endPos => simpa using Triple.pure _ (by simp)
-
-@[spec]
-theorem Spec.forIn_stringSlice
-    {s : String.Slice} {init : β} {f : Char → β → m (ForInStep β)}
-    (inv : PostCond (s.Pos × β) ps)
-    (step : ∀ pos b (h : pos ≠ s.endPos),
-      Triple
-        (f (pos.get h) b)
-        (inv.1 (pos, b))
-        (fun r => match r with
-          | .yield b' => inv.1 (pos.next h, b')
-          | .done b' => inv.1 (s.endPos, b'), inv.2)) :
-    Triple (forIn s init f) (inv.1 (s.startPos, init)) (fun b => inv.1 (s.endPos, b), inv.2) := by
-  suffices h : ∀ (p : s.Pos) (t₁ t₂ : String) (h : p.Splits t₁ t₂),
-      Triple (forIn t₂.toList init f) (inv.1 (p, init)) (fun b => inv.1 (s.endPos, b), inv.2) by
-    simpa using h s.startPos _ _ s.splits_startPos
-  intro p
-  induction p using String.Slice.Pos.next_induction generalizing init with
-  | next p hp ih =>
-    intro t₁ t₂ hsp
-    obtain ⟨t₂, rfl⟩ := hsp.exists_eq_singleton_append hp
-    simp only [String.toList_append, String.toList_singleton, List.cons_append, List.nil_append,
-      List.forIn_cons]
-    apply Triple.bind
-    case hx => exact step _ _ hp
-    case hf =>
-      intro r
-      split
-      next => apply Triple.pure; simp
-      next b => simp [ih _ _ hsp.next]
-  | endPos => simpa using Triple.pure _ (by simp)
-
-end Std.Do
-
 open Std.Do
-
-theorem String.Pos.Splits.of_next {s : String} {p : s.Pos} {hp}
-    (h : (p.next hp).Splits (t₁ ++ singleton c) t₂) : p.Splits t₁ (singleton c ++ t₂) := by
-  obtain ⟨⟨rfl, rfl⟩, rfl⟩ := by simpa using h.eq (splits_next p hp)
-  exact splits_next_right p hp
-
-theorem String.Slice.Pos.Splits.of_next {s : String.Slice} {p : s.Pos} {hp}
-    (h : (p.next hp).Splits (t₁ ++ singleton c) t₂) : p.Splits t₁ (singleton c ++ t₂) := by
-  obtain ⟨⟨rfl, rfl⟩, rfl⟩ := by simpa using h.eq (splits_next p hp)
-  exact splits_next_right p hp
 
 set_option mvcgen.warning false
 theorem isBalanced_eq_true_iff {openBracket closeBracket : Char} {s : String} (h : openBracket ≠ closeBracket) :
