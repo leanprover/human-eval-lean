@@ -1,7 +1,26 @@
 module
 
-def correctBracketing (s : String) : Unit :=
-  ()
+import HumanEvalLean.Common.Brackets
+
+def correctBracketing (s : String) : Bool :=
+  isBalanced '<' '>' s
+
+example : correctBracketing "<>" = true := by native_decide
+example : correctBracketing "<<><>>" = true := by native_decide
+example : correctBracketing "<><><<><>><>" = true := by native_decide
+example : correctBracketing "<><><<<><><>><>><<><><<>>>" = true := by native_decide
+example : correctBracketing "<<<><>>>>" = false := by native_decide
+example : correctBracketing "><<>" = false := by native_decide
+example : correctBracketing "<" = false := by native_decide
+example : correctBracketing "<<<<" = false := by native_decide
+example : correctBracketing ">" = false := by native_decide
+example : correctBracketing "<<>" = false := by native_decide
+example : correctBracketing "<><><<><>><>>" = false := by native_decide
+example : correctBracketing "<><><<><>><>>><>" = false := by native_decide
+
+theorem correctBracketing_eq_true_iff {s : String} :
+    correctBracketing s = true ↔ IsBalanced (parens '<' '>' s) := by
+  rw [correctBracketing, isBalanced_eq_true_iff (by simp)]
 
 /-!
 ## Prompt

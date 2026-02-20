@@ -1,6 +1,7 @@
 module
 
-import Std.Tactic.Do
+public import Std.Tactic.Do
+public section
 
 inductive Paren where
   | open : Paren
@@ -10,8 +11,8 @@ def Paren.toInt : Paren → Int
   | .open => 1
   | .close => -1
 
-@[simp, grind =] theorem Paren.toInt_open : Paren.open.toInt = 1 := rfl
-@[simp, grind =] theorem Paren.toInt_close : Paren.close.toInt = -1 := rfl
+@[simp, grind =] theorem Paren.toInt_open : Paren.open.toInt = 1 := (rfl)
+@[simp, grind =] theorem Paren.toInt_close : Paren.close.toInt = -1 := (rfl)
 
 @[simp] theorem Paren.toInt_nonneg_iff {p : Paren} : 0 ≤ p.toInt ↔ p = .open := by cases p <;> simp
 @[simp] theorem Paren.toInt_pos_iff {p : Paren} : 0 < p.toInt ↔ p = .open := by cases p <;> simp
@@ -58,11 +59,18 @@ def minBalance (l : List Paren) : Int :=
 attribute [-simp] Nat.toList_rcc_eq_append
 attribute [simp] Std.Rcc.mem_toList_iff_mem Std.Rcc.mem_iff
 
-theorem minBalance_nonpos {l : List Paren} : minBalance l ≤ 0 := by
+@[grind! .]
+theorem minBalance_nonpos (l : List Paren) : minBalance l ≤ 0 := by
   rw [minBalance]
   apply List.min_le_of_mem
   simp only [List.mem_map, Std.Rcc.mem_toList_iff_mem, Std.Rcc.mem_iff, Nat.zero_le, true_and]
   exact ⟨0, by simp⟩
+
+theorem minBalance_le_balance (l : List Paren) : minBalance l ≤ balance l := by
+  rw [minBalance]
+  apply List.min_le_of_mem
+  simp only [List.mem_map, Std.Rcc.mem_toList_iff_mem, Std.Rcc.mem_iff, Nat.zero_le, true_and]
+  exact ⟨l.length, by simp⟩
 
 @[simp]
 theorem minBalance_nil : minBalance [] = 0 := by
@@ -127,10 +135,19 @@ theorem minBalance_cons {l : List Paren} {p : Paren} :
   simp only [Option.elim_some, minBalance, List.add_min, List.map_map]
   congr 1
 
+@[simp]
+theorem minBalance_append_singleton {l : List Paren} {p : Paren} :
+    minBalance (l ++ [p]) = min (minBalance l) (balance l + p.toInt) := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    simp only [List.cons_append, minBalance_cons, ih, balance_cons, Int.min_assoc]
+    grind
+
 theorem minBalance_append {l m : List Paren} :
     minBalance (l ++ m) = min (minBalance l) (balance l + minBalance m) := by
   induction l with
-  | nil => simpa using (Int.min_eq_right minBalance_nonpos).symm
+  | nil => simpa using (Int.min_eq_right (minBalance_nonpos _)).symm
   | cons p l ih => grind [minBalance_cons]
 
 theorem isBalanced_iff {l : List Paren} :
@@ -264,11 +281,47 @@ theorem Spec.forIn_string
       next b => simp [ih _ _ hsp.next]
   | endPos => simpa using Triple.pure _ (by simp)
 
+@[spec]
+theorem Spec.forIn_stringSlice
+    {s : String.Slice} {init : β} {f : Char → β → m (ForInStep β)}
+    (inv : PostCond (s.Pos × β) ps)
+    (step : ∀ pos b (h : pos ≠ s.endPos),
+      Triple
+        (f (pos.get h) b)
+        (inv.1 (pos, b))
+        (fun r => match r with
+          | .yield b' => inv.1 (pos.next h, b')
+          | .done b' => inv.1 (s.endPos, b'), inv.2)) :
+    Triple (forIn s init f) (inv.1 (s.startPos, init)) (fun b => inv.1 (s.endPos, b), inv.2) := by
+  suffices h : ∀ (p : s.Pos) (t₁ t₂ : String) (h : p.Splits t₁ t₂),
+      Triple (forIn t₂.toList init f) (inv.1 (p, init)) (fun b => inv.1 (s.endPos, b), inv.2) by
+    simpa using h s.startPos _ _ s.splits_startPos
+  intro p
+  induction p using String.Slice.Pos.next_induction generalizing init with
+  | next p hp ih =>
+    intro t₁ t₂ hsp
+    obtain ⟨t₂, rfl⟩ := hsp.exists_eq_singleton_append hp
+    simp only [String.toList_append, String.toList_singleton, List.cons_append, List.nil_append,
+      List.forIn_cons]
+    apply Triple.bind
+    case hx => exact step _ _ hp
+    case hf =>
+      intro r
+      split
+      next => apply Triple.pure; simp
+      next b => simp [ih _ _ hsp.next]
+  | endPos => simpa using Triple.pure _ (by simp)
+
 end Std.Do
 
 open Std.Do
 
 theorem String.Pos.Splits.of_next {s : String} {p : s.Pos} {hp}
+    (h : (p.next hp).Splits (t₁ ++ singleton c) t₂) : p.Splits t₁ (singleton c ++ t₂) := by
+  obtain ⟨⟨rfl, rfl⟩, rfl⟩ := by simpa using h.eq (splits_next p hp)
+  exact splits_next_right p hp
+
+theorem String.Slice.Pos.Splits.of_next {s : String.Slice} {p : s.Pos} {hp}
     (h : (p.next hp).Splits (t₁ ++ singleton c) t₂) : p.Splits t₁ (singleton c ++ t₂) := by
   obtain ⟨⟨rfl, rfl⟩, rfl⟩ := by simpa using h.eq (splits_next p hp)
   exact splits_next_right p hp
