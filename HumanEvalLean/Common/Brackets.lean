@@ -43,6 +43,17 @@ theorem balance_append : balance (l₁ ++ l₂) = balance l₁ + balance l₂ :=
 theorem balance_cons : balance (p :: l) = p.toInt + balance l := by
   simp [balance]
 
+@[simp]
+theorem balance_flatMap {l : List α} {f : α → List Paren} : balance (l.flatMap f) = (l.map (balance ∘ f)).sum := by
+  induction l with simp_all
+
+theorem List.sum_eq_zero {l : List α} [Add α] [Zero α] [Std.LawfulIdentity (α := α) (· + ·) 0] (hl : ∀ a ∈ l, a = 0) : l.sum = 0 := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    simp only [mem_cons, forall_eq_or_imp] at hl
+    simp [hl.1, ih hl.2, Std.LawfulLeftIdentity.left_id]
+
 theorem List.take_cons_eq_if {l : List α} {a : α} {n : Nat} :
     (a::l).take n = if 0 < n then a :: l.take (n - 1) else [] := by
   split
@@ -203,6 +214,14 @@ theorem isBalanced_iff {l : List Paren} :
 theorem not_isBalanced_append_of_balance_neg {l m : List Paren} (h : balance l < 0) :
     ¬ IsBalanced (l ++ m) := by
   simpa [isBalanced_iff, minBalance_eq_zero_iff] using fun _ => ⟨l.length, by simp [h]⟩
+
+theorem balance_nonneg_of_isBalanced_append {l m : List Paren} (h : IsBalanced (l ++ m)) :
+    0 ≤ balance l := by
+  simp only [isBalanced_iff, balance_append, minBalance_eq_zero_iff] at h
+  simpa using h.2 l.length
+
+theorem IsBalanced.balance_eq_zero {l : List Paren} (h : IsBalanced l) : balance l = 0 :=
+  (isBalanced_iff.1 h).1
 
 def parens (openBracket closeBracket : Char) (s : String) : List Paren :=
   s.toList.filterMap (fun c => if c = openBracket then some .open else if c = closeBracket then some .close else none)

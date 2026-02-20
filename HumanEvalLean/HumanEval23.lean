@@ -1,6 +1,5 @@
 module
 
-set_option trace.compiler.ir.result true in
 def strlen (s : String) : Nat :=
   s.chars.length
 
