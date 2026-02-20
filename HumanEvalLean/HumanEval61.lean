@@ -1,6 +1,7 @@
 module
 
 import HumanEvalLean.Common.Brackets
+meta import HumanEvalLean.Common.Brackets
 
 def correctBracketing (s : String) : Bool :=
   isBalanced '(' ')' s
