@@ -1,7 +1,10 @@
 module
 
-def strlen : Unit :=
-  ()
+def strlen (s : String) : Nat :=
+  s.chars.length
+
+theorem strlen_eq {s : String} : strlen s = s.toList.length := by
+  simp [strlen, ← Std.Iter.length_toList_eq_length]
 
 /-!
 ## Prompt

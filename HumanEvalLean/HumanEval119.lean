@@ -1,7 +1,88 @@
 module
 
-def match_parens : Unit :=
-  ()
+import HumanEvalLean.Common.Brackets
+import Std.Tactic.Do
+
+def computeBalance (s : String.Slice) : Int × Int := Id.run do
+  let mut balance := 0
+  let mut minBalance := 0
+  for c in s do
+    if c == '(' then
+      balance := balance + 1
+      minBalance := min minBalance balance
+    else if c == ')' then
+      balance := balance - 1
+      minBalance := min minBalance balance
+  return (balance, minBalance)
+
+def matchParens (s₁ s₂ : String.Slice) : Bool :=
+  let (bal₁, minBal₁) := computeBalance s₁
+  let (bal₂, minBal₂) := computeBalance s₂
+  bal₁ + bal₂ == 0 && ((minBal₁ == 0 && bal₁ + minBal₂ == 0) || (minBal₂ == 0 && bal₂ + minBal₁ == 0))
+
+example : matchParens "()(" ")" = true := by native_decide
+example : matchParens ")" ")" = false := by native_decide
+example : matchParens "(()(())" "())())" = false := by native_decide
+example : matchParens ")())" "(()()(" = true := by native_decide
+example : matchParens "(())))" "(()())((" = true := by native_decide
+example : matchParens "()" "())" = false := by native_decide
+example : matchParens "(()(" "()))()" = true := by native_decide
+example : matchParens "((((" "((())" = false := by native_decide
+example : matchParens ")(()" "(()(" = false := by native_decide
+example : matchParens ")(" ")(" = false := by native_decide
+example : matchParens "(" ")" = true := by native_decide
+example : matchParens ")" "(" = true := by native_decide
+
+open Std.Do
+
+set_option mvcgen.warning false
+theorem computeBalance_eq {s : String.Slice} :
+    computeBalance s = (balance (parens '(' ')' s.copy), minBalance (parens '(' ')' s.copy)) := by
+  generalize hwp : computeBalance s = w
+  apply Std.Do.Id.of_wp_run_eq hwp
+  mvcgen
+  case inv => exact (⇓(pos, ⟨bal, minBal⟩) => ⌜∀ (t₁ t₂ : String), pos.Splits t₁ t₂ →
+    bal = balance (parens '(' ')' t₁) ∧ minBal = minBalance (parens '(' ')' t₁)⌝)
+  next pos _ hp bal minBal h newBal newMinBal ih =>
+    simp only [↓Char.isValue, SPred.down_pure] at ⊢ ih
+    intro t₁ t₂ hsp
+    obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
+    simp only [↓Char.isValue, beq_iff_eq] at h
+    simp only [↓Char.isValue, h, String.append_singleton, parens_push, ↓reduceIte,
+      Option.toList_some, balance_append, balance_cons, Paren.toInt_open, balance_nil, Int.add_zero,
+      minBalance_append_singleton]
+    have := ih _ _ hsp.of_next
+    grind
+  next pos _ hp bal minBal h₁ h₂ newBal newMinBal ih =>
+    simp only [↓Char.isValue, SPred.down_pure] at ⊢ ih
+    intro t₁ t₂ hsp
+    obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
+    simp only [↓Char.isValue, beq_iff_eq] at h₂
+    simp only [↓Char.isValue, h₂, String.append_singleton, parens_push, Char.reduceEq, ↓reduceIte,
+      Option.toList_some, balance_append, balance_cons, Paren.toInt_close, Int.reduceNeg,
+      balance_nil, Int.add_zero, minBalance_append_singleton]
+    have := ih _ _ hsp.of_next
+    grind
+  next pos _ hp bal minBal h₁ h₂ ih =>
+    simp only [↓Char.isValue, SPred.down_pure] at ⊢ ih
+    intro t₁ t₂ hsp
+    obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
+    simp only [↓Char.isValue, beq_iff_eq] at h₁ h₂
+    simp only [↓Char.isValue, String.append_singleton, parens_push, h₁, ↓reduceIte, h₂,
+      Option.toList_none, List.append_nil]
+    have := ih _ _ hsp.of_next
+    grind
+  next => simp
+  next => simp_all
+
+theorem matchParens_eq_true_iff {s₁ s₂ : String.Slice} :
+    matchParens s₁ s₂ = true ↔ IsBalanced (parens '(' ')' (s₁.copy ++ s₂.copy)) ∨ IsBalanced (parens '(' ')' (s₂.copy ++ s₁.copy)) := by
+  simp [matchParens, computeBalance_eq, isBalanced_iff, minBalance_append]
+  have := minBalance_nonpos (parens '(' ')' s₁.copy)
+  have := minBalance_nonpos (parens '(' ')' s₂.copy)
+  have := minBalance_le_balance (parens '(' ')' s₁.copy)
+  have := minBalance_le_balance (parens '(' ')' s₂.copy)
+  grind
 
 /-!
 ## Prompt
@@ -60,11 +141,11 @@ def check(candidate):
     assert candidate(['((((', '((())']) == 'No'
     assert candidate([')(()', '(()(']) == 'No'
     assert candidate([')(', ')(']) == 'No'
-    
+
 
     # Check some edge cases that are easy to work out by hand.
     assert candidate(['(', ')']) == 'Yes'
-    assert candidate([')', '(']) == 'Yes' 
+    assert candidate([')', '(']) == 'Yes'
 
 ```
 -/
