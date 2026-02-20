@@ -32,55 +32,6 @@ example : addElements #[111,21,3,4000,5,6,7,8,9] 4 = 24 := by native_decide
 example : addElements #[1] 1 = 1 := by native_decide
 
 /-!
-## Missing API
--/
-
-theorem intToString_of_nonneg {x : Int} (h : 0 ≤ x) :
-    intToString x = String.ofList (Nat.toDigits 10 x.toNat) := by
-  grind [intToString]
-
-theorem intToString_of_neg {x : Int} (h : x < 0) :
-    intToString x = "-" ++ intToString (- x) := by
-  rw [intToString.eq_def]
-  split <;> grind [intToString_of_nonneg]
-
-theorem Nat.toDigitsCore_eq_append {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
-    Nat.toDigitsCore 10 fuel n acc = Nat.toDigitsCore 10 fuel n [] ++ acc := by
-  induction fuel generalizing n acc <;> grind [Nat.toDigitsCore]
-
-theorem Nat.toDigitsCore_eq_toDigitsCore {fuel fuel' : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) (hf' : n < fuel') :
-    Nat.toDigitsCore 10 fuel n acc = Nat.toDigitsCore 10 fuel' n [] ++ acc := by
-  induction fuel generalizing n acc fuel'
-  · grind [Nat.toDigitsCore]
-  · obtain ⟨fuel', rfl⟩ := Nat.exists_eq_succ_of_ne_zero (n := fuel') (by grind)
-    grind [Nat.toDigitsCore, Nat.toDigitsCore_eq_append]
-
-theorem Nat.toDigitsCore_eq_toDigits {fuel : Nat} {n : Nat} {acc : List Char} (hf : n < fuel) :
-    Nat.toDigitsCore 10 fuel n acc = Nat.toDigits 10 n ++ acc := by
-  grind [Nat.toDigits, Nat.toDigitsCore_eq_toDigitsCore]
-
-theorem Nat.toDigits_eq_if {n : Nat} :
-    Nat.toDigits 10 n = if n < 10 then [Nat.digitChar n] else Nat.toDigits 10 (n / 10) ++ [Nat.digitChar (n % 10)] := by
-  grind [Nat.toDigits, Nat.toDigitsCore, Nat.toDigitsCore_eq_toDigits]
-
-theorem Nat.toDigits_of_ten_le {n : Nat} (h : 10 ≤ n) :
-    Nat.toDigits 10 n = (Nat.toDigits 10 (n / 10)) ++ [Nat.digitChar (n % 10)] := by
-  grind [Nat.toDigits_eq_if]
-
-theorem Nat.length_toDigits_le_iff {n k : Nat} (h : 0 < k) :
-    (Nat.toDigits 10 n).length ≤ k ↔ n < 10 ^ k := by
-  match k with
-  | 0 => contradiction
-  | k + 1 => induction k generalizing n <;> grind [Nat.toDigits_eq_if]
-
-theorem List.sum_eq_foldl_int {xs : List Int} :
-    xs.sum = xs.foldl (init := 0) (· + ·) := by
-  simp only [List.foldl_eq_foldr_reverse, Int.add_comm]
-  rw [← List.sum, List.sum_reverse_int]
-
-attribute [simp] Iter.toArray_filter
-
-/-!
 ## Verification
 -/
 
