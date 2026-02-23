@@ -1,6 +1,7 @@
 module
 
 import Std.Tactic.Do
+import all Init.Data.List.MinMaxOn
 public section
 
 inductive Paren where
@@ -95,42 +96,14 @@ theorem minBalance_eq_zero_iff {l : List Paren} : minBalance l = 0 ↔ ∀ k, 0 
     Nat.zero_le, true_and, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   exact ⟨fun h n => List.take_eq_take_min ▸ h (min n l.length) (by simp), fun h n _ => h n⟩
 
-theorem add_min [Add α] [Min α] [LE α] [comm : Std.Commutative (α := α) (· + ·)] [Std.IsPartialOrder α] [Std.LawfulOrderMin α]
-    [Lean.Grind.OrderedAdd α] {a b c : α} : a + min b c = min (a + b) (a + c) := by
-  refine Std.le_antisymm ?_ ?_
-  · rw [Std.le_min_iff, comm.comm a, comm.comm a, ← Lean.Grind.OrderedAdd.add_le_left_iff,
-      comm.comm a, ← Lean.Grind.OrderedAdd.add_le_left_iff]
-    exact ⟨Std.min_le_left, Std.min_le_right⟩
-  · rw [Std.min_le, comm.comm a, comm.comm a, ← Lean.Grind.OrderedAdd.add_le_left_iff,
-      comm.comm a, ← Lean.Grind.OrderedAdd.add_le_left_iff]
-    obtain (h|h) := Std.min_eq_or (a := b) (b := c)
-    · rw (occs := [1]) [← h]
-      simp
-    · rw (occs := [2]) [← h]
-      simp
-
-theorem List.add_min [Add α] [Min α] [LE α] [comm : Std.Commutative (α := α) (· + ·)] [Std.IsPartialOrder α] [Std.LawfulOrderMin α]
-    [Lean.Grind.OrderedAdd α] {a : α} {l : List α} {h} :
-    a + l.min h = (l.map (a + ·)).min (by simpa) := by
-  generalize hlen : l.length = n
-  induction n generalizing l with
-  | zero => simp_all
-  | succ n ih =>
-    match n, l, hlen with
-    | 0, [b], _ => simp
-    | 1, [b, c], _ => simp [_root_.add_min]
-    | n + 2, b :: c :: tl, _ =>
-      simp only [min_cons_cons, map_cons]
-      rw [ih (by grind)]
-      simp [map_cons, _root_.add_min]
-
 @[simp]
 theorem minBalance_cons {l : List Paren} {p : Paren} :
     minBalance (p :: l) = min 0 (p.toInt + minBalance l) := by
   rw [minBalance]
   simp [Nat.toList_rcc_succ_right_eq_cons_map]
   rw [List.min_cons, List.min?_eq_some_min (by simp)]
-  simp only [Option.elim_some, minBalance, List.add_min, List.map_map]
+  simp only [Option.elim_some, minBalance, ← (List.min_map_eq_min (f := (p.toInt + ·)) (by simp)),
+    List.map_map]
   congr 1
 
 @[simp]
