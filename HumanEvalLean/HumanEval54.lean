@@ -13,7 +13,7 @@ theorem sameChars_iff {s₁ s₂ : String} :
   simp [sameChars, HashSet.beq_iff_equiv, HashSet.Equiv.congr_left Iter.toHashSet_equiv_ofList,
     HashSet.Equiv.congr_right Iter.toHashSet_equiv_ofList, HashSet.equiv_iff_forall_mem_iff]
 
-macro "sameChars_decide" : tactic => `(tactic| (simp [← Bool.not_eq_true, sameChars_iff, iff_def, forall_and]; decide))
+macro "sameChars_decide" : tactic => `(tactic| (simp [← Bool.not_eq_true, sameChars_iff, iff_def, forall_and]))
 
 example : sameChars "eabcdzzzz" "dddzzzzzzzddeddabc" = true := by sameChars_decide
 example : sameChars "abcd" "dddddddabc" = true := by sameChars_decide
