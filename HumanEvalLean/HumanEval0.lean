@@ -153,8 +153,8 @@ theorem Subarray.toList_mergeSort {xs : Subarray α} {le : α → α → Bool} :
     (xs.mergeSort le).toList = xs.toList.mergeSort le := by
   fun_induction xs.mergeSort le
   · rw [List.mergeSort_eq_merge_mkSlice]
-    simp +zetaDelta [Array.MergeSort.merge_eq_listMerge, Subarray.sliceSize_eq_size, *]
-  · simp [List.mergeSort_eq_merge_mkSlice, Subarray.sliceSize_eq_size, *]
+    simp +zetaDelta [Array.MergeSort.merge_eq_listMerge, *]
+  · simp [List.mergeSort_eq_merge_mkSlice, *]
 
 theorem Array.toList_mergeSort {xs : Array α} {le : α → α → Bool} :
     (xs.mergeSort le).toList = xs.toList.mergeSort le := by
