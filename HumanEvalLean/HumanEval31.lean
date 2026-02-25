@@ -1,7 +1,36 @@
 module
 
-def is_prime : Unit :=
-  ()
+public import HumanEvalLean.Common.IsPrime
+meta import HumanEvalLean.Common.IsPrime
+
+public section
+
+/-! ## Implementation -/
+
+/-- info: isPrime (n : Nat) : Bool -/
+#guard_msgs in
+#check isPrime
+
+/-! ## Tests -/
+
+example : isPrime 6 = false := by native_decide
+example : isPrime 101 = true := by native_decide
+example : isPrime 11 = true := by native_decide
+example : isPrime 13441 = true := by native_decide
+example : isPrime 61 = true := by native_decide
+example : isPrime 4 = false := by native_decide
+example : isPrime 1 = false := by native_decide
+example : isPrime 5 = true := by native_decide
+example : isPrime 17 = true := by native_decide
+example : isPrime (5 * 17) = false := by native_decide
+example : isPrime (11 * 7) = false := by native_decide
+example : isPrime (13441 * 19) = false := by native_decide
+
+/-! ## Verification -/
+
+theorem isPrime_spec :
+    isPrime n ↔ 2 ≤ n ∧ ∀ d, d ∣ n → d = 1 ∨ d = n := by
+  grind [isPrime_eq_true_iff_isPrime, isPrime_iff]
 
 /-!
 ## Prompt
