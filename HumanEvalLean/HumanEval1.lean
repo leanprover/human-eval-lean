@@ -69,9 +69,7 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
     have := ih _ _ hsp.of_next
     refine ⟨by grind, by grind, by grind, by grind, ?_⟩
     obtain (h|⟨curr', hc₁, hc₂⟩) := this.2.2.2.2
-    · refine ⟨"", ?_⟩
-      simp [← String.toList_inj, *]
-      rfl -- TODO: this is terrible
+    · exact ⟨"", by simp [*]⟩
     · refine ⟨curr'.push '(', ?_⟩
       simp [hc₂]
       have := minBalance_le_balance (parens '(' ')' curr')
