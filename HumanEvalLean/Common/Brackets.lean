@@ -95,19 +95,6 @@ theorem minBalance_eq_zero_iff {l : List Paren} : minBalance l = 0 ↔ ∀ k, 0 
     Nat.zero_le, true_and, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   exact ⟨fun h n => List.take_eq_take_min ▸ h (min n l.length) (by simp), fun h n _ => h n⟩
 
-theorem List.min_cons_cons {a b : α} {l : List α} [Min α] :
-    (a :: b :: l).min (by simp) = (min a b :: l).min (by simp) := by rfl
-
-theorem List.min_cons {a : α} {l : List α} [Min α] [Std.Associative (α := α) Min.min] {h} :
-    (a :: l).min h = l.min?.elim a (min a ·) :=
-  match l with
-  | nil => by simp
-  | cons hd tl => by simp [List.min?_cons, List.min_eq_get_min?]
-
-@[simp]
-theorem List.min_cons_cons_nil [Min α] {a b : α} : [a, b].min (by simp) = min a b := by
-  simp [List.min_cons_cons]
-
 theorem add_min [Add α] [Min α] [LE α] [comm : Std.Commutative (α := α) (· + ·)] [Std.IsPartialOrder α] [Std.LawfulOrderMin α]
     [Lean.Grind.OrderedAdd α] {a b c : α} : a + min b c = min (a + b) (a + c) := by
   refine Std.le_antisymm ?_ ?_
