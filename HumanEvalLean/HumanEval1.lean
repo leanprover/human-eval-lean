@@ -152,8 +152,10 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
       rw [List.sum_eq_zero] at this
       · have hhelp : "(" = "".push '(' := rfl -- TODO: this is terrible
         simp [hc₁, hhelp] at this
+        rw [hhelp] at this
+        simp only [parens_push] at this
         have := minBalance_le_balance (parens '(' ')' curr')
-        grind
+        grind [parens_empty]
       · simp only [↓Char.isValue, List.mem_map, Array.mem_toList_iff, Function.comp_apply,
           forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
         refine fun g hg => (ih.2.2.1 g hg).balance_eq_zero
