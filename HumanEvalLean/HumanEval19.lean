@@ -49,7 +49,7 @@ theorem String.toList_split_intercalate {c : Char} {l : List String} (hl : ∀ s
 theorem String.isEmpty_eq_false_iff {s : String} : s.isEmpty = false ↔ s ≠ "" := by
   simp [← String.isEmpty_iff]
 
-theorem correct (l : List Nat) (hl : ∀ a ∈ l, a ≤ 9) :
+theorem sortNumbers_intercalate (l : List Nat) (hl : ∀ a ∈ l, a ≤ 9) :
     sortNumbers (String.intercalate " " (l.map (numbers[·]!))) =
       String.intercalate " " (l.mergeSort.map (numbers[·]!)) := by
   simp [sortNumbers]
