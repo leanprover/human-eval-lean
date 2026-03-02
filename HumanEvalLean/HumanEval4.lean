@@ -104,8 +104,8 @@ theorem mean_spec {xs : Array Rat} :
 theorem meanAbsoluteDeviation_spec {xs : Array Rat} :
     meanAbsoluteDeviation xs =
       mean (xs.map (fun x => (x - mean xs).abs)) := by
-  -- TODO: get rid of `+instances`, which is not endorsed.
-  simp +instances [meanAbsoluteDeviation, mean, ← Iter.sum_toList, ← Array.sum_toList]
+  rw [meanAbsoluteDeviation, ← Iter.sum_toList, Iter.toList_map]
+  simp [mean, ← Array.sum_toList]
 
 /-!
 ## Prompt
