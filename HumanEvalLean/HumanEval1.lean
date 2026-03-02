@@ -65,21 +65,31 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
     intro t₁ t₂ hsp
     obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
     simp only [↓Char.isValue, beq_iff_eq] at h₁
-    simp [h₁]
+    simp only [↓Char.isValue, h₁, ↓reduceIte, Option.toList_some, String.append_singleton,
+      parens_push, String.toList_push, List.filter_append, decide_true, Char.reduceEq, decide_false,
+      Bool.or_false, List.filter_cons_of_pos, List.filter_nil, balance_cons, Paren.toInt_open,
+      balance_nil, Int.add_zero, Int.add_left_inj]
     have := ih _ _ hsp.of_next
     refine ⟨by grind, by grind, by grind, by grind, ?_⟩
     obtain (h|⟨curr', hc₁, hc₂⟩) := this.2.2.2.2
     · exact ⟨"", by simp [*]⟩
     · refine ⟨curr'.push '(', ?_⟩
-      simp [hc₂]
+      simp only [↓Char.isValue, String.append_push, String.push_inj, and_true, parens_push,
+        ↓reduceIte, Option.toList_some, minBalance_append_singleton, hc₂, Paren.toInt_open]
       have := minBalance_le_balance (parens '(' ')' curr')
       grind
   next pos b h curr _ depth result h₁ h₂ decreasedDepth newCurr hdec ih =>
-    simp [newCurr] at ⊢ ih
+    simp only [↓Char.isValue, Bool.decide_or, SPred.down_pure, Array.toList_push,
+      List.flatMap_append, List.flatMap_cons, parens_push, List.flatMap_nil, List.append_nil,
+      parens_empty, String.toList_push, String.toList_empty, Array.mem_push, balance_nil,
+      Int.natCast_eq_zero, String.empty_eq_iff, String.append_eq_empty_iff, String.reduceEq,
+      false_and, exists_const, or_false, and_true, newCurr] at ⊢ ih
     intro t₁ t₂ hsp
     obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
     simp only [↓Char.isValue, beq_iff_eq] at h₂
-    simp [h₂]
+    simp only [↓Char.isValue, h₂, Char.reduceEq, ↓reduceIte, Option.toList_some,
+      String.append_singleton, parens_push, String.toList_push, List.filter_append, decide_false,
+      decide_true, Bool.or_true, List.filter_cons_of_pos, List.filter_nil]
     have := ih _ _ hsp.of_next
     refine ⟨by grind, by grind, ?_, by grind⟩
     rintro g (hg|rfl)
@@ -87,10 +97,12 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
     · have hy : parens '(' ')' s = parens '(' ')' (t₁ ++ String.singleton (pos.get h)) ++ parens '(' ')' t₂ := by
         simp [hsp.eq_append]
       have hx := balance_nonneg_of_isBalanced_append (hy ▸ hbal)
-      simp [h₂, ← this.1] at hx
+      simp only [↓Char.isValue, h₂, String.append_singleton, parens_push, ← this.1, Char.reduceEq,
+        ↓reduceIte, Option.toList_some, List.append_assoc, balance_append, balance_flatMap,
+        balance_cons, Paren.toInt_close, Int.reduceNeg, balance_nil, Int.add_zero] at hx
       rw [List.sum_eq_zero] at hx
       · obtain (h₀|⟨curr', hc₁, hc₂⟩) := this.2.2.2.2
-        · simp [h₀] at hx
+        · simp [-String.reduceSingleton, h₀] at hx
         · subst curr
           rw [hc₁]
           apply isGroup_push_of_exists hc₂
@@ -105,17 +117,23 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
           forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
         exact fun g hg => (this.2.2.1 g hg).balance_eq_zero
   next pos b h curr _ depth result h₁ h₂ decreasedDepth newCurr hd ih =>
-    simp [newCurr] at ⊢ ih
+    simp only [↓Char.isValue, Bool.decide_or, SPred.down_pure, parens_push, String.toList_push,
+      balance_append, String.push_ne_empty, false_or, newCurr] at ⊢ ih
     intro t₁ t₂ hsp
     obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
     simp only [↓Char.isValue, beq_iff_eq] at h₂
-    simp [h₂]
+    simp only [↓Char.isValue, h₂, Char.reduceEq, ↓reduceIte, Option.toList_some,
+      String.append_singleton, parens_push, String.toList_push, List.filter_append, decide_false,
+      decide_true, Bool.or_true, List.filter_cons_of_pos, List.filter_nil, balance_cons,
+      Paren.toInt_close, Int.reduceNeg, balance_nil, Int.add_zero]
     have := ih _ _ hsp.of_next
     refine ⟨by grind, by grind, by grind, by grind, ?_⟩
     have hy : parens '(' ')' s = parens '(' ')' (t₁ ++ String.singleton (pos.get h)) ++ parens '(' ')' t₂ := by
       simp [hsp.eq_append]
     have hx := balance_nonneg_of_isBalanced_append (hy ▸ hbal)
-    simp [h₂, ← this.1] at hx
+    simp only [↓Char.isValue, h₂, String.append_singleton, parens_push, ← this.1, Char.reduceEq,
+      ↓reduceIte, Option.toList_some, List.append_assoc, balance_append, balance_flatMap,
+      balance_cons, Paren.toInt_close, Int.reduceNeg, balance_nil, Int.add_zero] at hx
     rw [List.sum_eq_zero] at hx
     · obtain (h|⟨curr', hc₁, hc₂⟩) := this.2.2.2.2
       · simp [h] at hx
@@ -136,7 +154,10 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
     intro t₁ t₂ hsp
     obtain ⟨t₁, rfl⟩ := hsp.exists_eq_append_singleton
     simp only [↓Char.isValue, beq_iff_eq] at h₁ h₂
-    simp [h₁, h₂]
+    simp only [↓Char.isValue, String.append_singleton, parens_push, h₁, ↓reduceIte, h₂,
+      Option.toList_none, List.append_nil, Bool.decide_or, String.toList_push, List.filter_append,
+      decide_false, Bool.or_self, Bool.false_eq_true, not_false_eq_true, List.filter_cons_of_neg,
+      List.filter_nil]
     have := ih _ _ hsp.of_next
     grind
   next => simp
@@ -144,14 +165,15 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
     simp only [String.splits_endPos_iff, ↓Char.isValue, and_imp, forall_eq_apply_imp_iff, forall_eq,
       SPred.down_pure, Bool.decide_or] at ih ⊢
     refine ⟨?_, ih.2.2.1⟩
-    simp [← ih.2.1]
+    simp only [↓Char.isValue, ← ih.2.1, List.self_eq_append_right, String.toList_eq_nil_iff]
     obtain (h|⟨curr', hc₁, hc₂⟩) := ih.2.2.2.2
     · simp [h]
     · have := ih.1 ▸ hbal.balance_eq_zero
       simp at this
       rw [List.sum_eq_zero] at this
       · have hhelp : "(" = "".push '(' := rfl -- TODO: this is terrible
-        simp [hc₁, hhelp] at this
+        simp only [↓Char.isValue, hc₁, hhelp, String.push_empty, String.reduceSingleton,
+          parens_append, balance_append, Int.zero_add] at this
         rw [hhelp] at this
         simp only [parens_push] at this
         have := minBalance_le_balance (parens '(' ')' curr')

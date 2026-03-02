@@ -175,11 +175,6 @@ theorem Array.mergeSort_perm {xs : Array α} :
     (xs.mergeSort le).Perm xs := by
   simpa only [perm_iff_toList_perm, Array.toList_mergeSort] using List.mergeSort_perm _ _
 
-theorem Array.Perm.pairwise_iff {R : α → α → Prop} (S : ∀ {x y}, R x y → R y x) :
-    ∀ {l₁ l₂ : Array α} (_p : l₁.Perm l₂), l₁.toList.Pairwise R ↔ l₂.toList.Pairwise R := by
-  intro xs ys
-  simpa only [perm_iff_toList_perm] using List.Perm.pairwise_iff S
-
 theorem Array.pairwise_mergeSort
     (trans : ∀ (a b c : α), le a b → le b c → le a c)
     (total : ∀ (a b : α), le a b || le b a) :
