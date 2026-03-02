@@ -35,24 +35,18 @@ theorem toList_rcc_eq : (0...=9).toList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] := by
 
 theorem numberToNumber_numbers (i : Nat) (hi : i ≤ 9) :
     numberToNumber[numbers[i]!]! = i := by
-  simp [numbers, numberToNumber, ← Std.Iter.foldl_toList, Std.TreeMap.getElem!_insert]
+  simp only [numberToNumber, numbers, List.getElem!_toArray, List.getElem!_eq_getElem?_getD,
+    String.default_eq, ← Std.Iter.foldl_toList, Std.Rcc.toList_iter, toList_rcc_eq, List.foldl_cons,
+    List.length_cons, List.length_nil, Nat.zero_add, Nat.reduceAdd, Nat.zero_lt_succ, getElem?_pos,
+    List.getElem_cons_zero, Option.getD_some, Nat.reduceLT, List.getElem_cons_succ, Nat.lt_add_one,
+    List.foldl_nil, Std.TreeMap.getElem!_insert, Std.LawfulEqCmp.compare_eq_iff_eq,
+    Std.TreeMap.not_mem_emptyc, not_false_eq_true, getElem!_neg, Nat.default_eq_zero, ite_self]
   rcases i with (_|_|_|_|_|_|_|_|_|_|_) <;> simp at ⊢ hi
-
-theorem String.toList_split_intercalate {c : Char} {l : List String} (hl : ∀ s ∈ l, c ∉ s.toList) :
-    ((String.intercalate (String.singleton c) l).split c).toList.map (·.copy) =
-      if l = [] then [""] else l := by
-  -- Proved in https://github.com/leanprover/lean4/pull/12723
-  sorry
-
--- OK
-@[simp]
-theorem String.isEmpty_eq_false_iff {s : String} : s.isEmpty = false ↔ s ≠ "" := by
-  simp [← String.isEmpty_iff]
 
 theorem sortNumbers_intercalate (l : List Nat) (hl : ∀ a ∈ l, a ≤ 9) :
     sortNumbers (String.intercalate " " (l.map (numbers[·]!))) =
       String.intercalate " " (l.mergeSort.map (numbers[·]!)) := by
-  simp [sortNumbers]
+  simp only [sortNumbers, ↓Char.isValue, Std.Iter.toList_map, Std.Iter.toList_filter]
   have : (numberToNumber[·.copy]!) = (fun (s : String) => numberToNumber[s]!) ∘ String.Slice.copy := rfl
   simp only [this]
   rw [← List.map_map]
@@ -70,23 +64,20 @@ theorem sortNumbers_intercalate (l : List Nat) (hl : ∀ a ∈ l, a ≤ 9) :
       induction l with
       | nil => simp
       | cons hd tl ih =>
-        simp
-        rw [List.filter_cons_of_pos]
-        simp at ⊢ hl
-        rw [ih]
-        · simp
-          rw [numberToNumber_numbers _ hl.1]
-        · grind
-        · simp at hl
-          simp [numbers]
+        rw [List.map_cons, List.filter_cons_of_pos]
+        · simp only [List.mem_cons, forall_eq_or_imp, List.map_cons, List.cons.injEq] at ⊢ hl
+          simpa [ih (by grind)] using numberToNumber_numbers _ hl.1
+        · simp only [List.mem_cons, forall_eq_or_imp, numbers, List.getElem!_toArray,
+            List.getElem!_eq_getElem?_getD, String.default_eq, Bool.not_eq_eq_eq_not, Bool.not_true,
+            String.isEmpty_eq_false_iff, ne_eq] at hl ⊢
           rw [getElem?_pos]
           · rcases hd with (_|_|_|_|_|_|_|_|_|_|_) <;> simp at ⊢ hl
           · simp; grind
-  · simp [numbers]
+  · simp only [numbers, List.getElem!_toArray, List.getElem!_eq_getElem?_getD, String.default_eq,
+      List.mem_map, ↓Char.isValue, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
     intro a ha
     have := hl a ha
     rcases a with (_|_|_|_|_|_|_|_|_|_|_) <;> simp at ⊢ hl
-
 
 /-!
 ## Prompt

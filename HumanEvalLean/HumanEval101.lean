@@ -18,24 +18,32 @@ theorem wordsString_eq (s : String) : wordsString s =
       |>.map String.Slice.copy
       |>.filter (!·.isEmpty)
       |>.toArray) := by
-  simp [← Array.toList_inj, wordsString, List.filter_map]
+  simp only [wordsString, ↓Char.isValue, Std.Iter.toArray_map,
+    String.Slice.toStringToString_eq, Std.Iter.toArray_filter, Std.Iter.size_toArray_eq_length,
+    List.filter_map, ← Array.toList_inj, Array.toList_map, Array.toList_filter',
+    Std.Iter.toList_toArray]
   congr
-  · sorry -- will be easy in next nightly
-  · ext; simp [String.Slice.isEmpty_copy]
-
+  ext
+  simp [String.Slice.isEmpty_copy]
 
 theorem wordsString_empty : wordsString "" = #[] := by
-  rw [wordsString_eq]
-  sorry
+  simp [wordsString_eq, String.toList_split_empty]
 
 theorem wordsString_singleton_append_of_or (s : String) (c : Char) (hc : c = ',' ∨ c = ' ') :
     wordsString (String.singleton c ++ s) = wordsString s := by
-  sorry
+  simp only [wordsString_eq, ↓Char.isValue, String.toList_split_prop, Bool.decide_or,
+    String.toList_append, String.toList_singleton, List.cons_append, List.nil_append,
+    Array.mk.injEq]
+  rw [List.splitOnP_cons_eq_if_modifyHead, if_pos (by grind)]
+  simp
 
 theorem wordsString_append_append (s t : String) (hs : ',' ∉ s.toList) (hs' : ' ' ∉ s.toList)
-    (c : Char) (hc : c = ',' ∨ c = ' ') :
-    wordsString (s ++ String.singleton c ++ t) = #[s] ++ wordsString t :=
-  sorry
+    (hs'' : s ≠ "") (c : Char) (hc : c = ',' ∨ c = ' ') :
+    wordsString (s ++ String.singleton c ++ t) = #[s] ++ wordsString t := by
+  simp [wordsString_eq, String.toList_split_prop]
+  rw [List.splitOnP_append_cons_of_forall_mem (by grind) _ (by grind)]
+  simp only [↓Char.isValue, List.map_cons, String.ofList_toList]
+  rw [List.filter_cons_of_pos (by simpa)]
 
 
 /-!
