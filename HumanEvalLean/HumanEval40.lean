@@ -21,6 +21,65 @@ public def triplesSumToZero (xs : Array Int) : Bool := Id.run do
     -- ensures: no triple with i₂ ≤ i
   return false
 
+public def triplesSumToZero' (xs : Array Int) : Bool :=
+  if h : 3 ≤ xs.size then
+    loop₁ 1 ((∅ : TreeSet Int).insert xs[0])
+  else
+    false
+where
+  loop₁ (j : Nat) (index : TreeSet Int compare) : Bool :=
+    if h : j < xs.size then
+      loop₂ j (j + 1) index || loop₁ (j + 1) (index.insert xs[j])
+    else
+      false
+  loop₂ (j : Nat) (k : Nat) (index : TreeSet Int compare) : Bool :=
+    if h : k < xs.size then
+      -(xs[j]! + xs[k]) ∈ index || loop₂ j (k + 1) index
+    else
+      false
+
+private theorem triplesSumToZero'.loop₂_iff
+    (h : ∀ x, x ∈ index ↔ x ∈ xs.take j)
+    (h' : j < k₀) :
+    triplesSumToZero'.loop₂ xs j k₀ index ↔
+      ∃ (i k : Nat) (hi : i < j) (hk : k₀ ≤ k ∧ k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
+  fun_induction triplesSumToZero'.loop₂ xs j k₀ index
+  · rename_i k₀ hk₀ ih
+    simp only [Bool.or_eq_true, decide_eq_true_eq]
+    rw [ih, h, Array.mem_extract_iff_getElem]
+    · constructor
+      · grind
+      · rintro ⟨i, k, hi, hk, h⟩
+        by_cases k₀ < k <;> grind
+    · grind
+  · grind
+
+private theorem triplesSumToZero'.loop₁_iff
+    (h : ∀ x, x ∈ index ↔ x ∈ xs.take j₀) :
+    triplesSumToZero'.loop₁ xs j₀ index ↔
+      ∃ (i j k : Nat) (hi : i < j) (hj : j₀ ≤ j ∧ j < k) (hk : k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
+  fun_induction triplesSumToZero'.loop₁ xs j₀ index
+  · rename_i j₀ index hj₀ ih
+    simp only [Bool.or_eq_true]
+    rw [loop₂_iff h (by grind), ih]
+    · grind
+    · simp only [TreeSet.mem_insert, LawfulEqCmp.compare_eq_iff_eq, h, Array.take_eq_extract,
+      Array.mem_extract_iff_getElem, Nat.zero_add]
+      grind
+  · grind
+
+theorem triplesSumToZero'_iff :
+    triplesSumToZero' xs ↔
+      ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
+  rw [triplesSumToZero']
+  split
+  · rw [triplesSumToZero'.loop₁_iff]
+    · grind
+    · simp only [TreeSet.mem_insert, LawfulEqCmp.compare_eq_iff_eq, TreeSet.not_mem_emptyc,
+      or_false, Array.take_eq_extract, Array.mem_extract_iff_getElem, Nat.zero_add]
+      grind
+  · grind
+
 def HasTriple (xs : List Int) : Prop :=
   ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.length), xs[i] + xs[j] + xs[k] = 0
 
@@ -90,13 +149,11 @@ theorem triplesSumToZero_iff {xs : Array Int} :
     grind [HasTriple, HasTriple₁, HasTriple₂]
   case vc4 pref cur suff heq _ _ h_mem_iff _ _ _ =>
     have := Nat.eq_add_of_toList_rco_eq_append_cons heq
-    simp only [Array.mem_extract_iff_getElem] at *
-    simp only [reduceCtorEq, false_and, and_false, exists_const, or_false] at h_mem_iff
-    simp +zetaDelta only [TreeSet.mem_insert, h_mem_iff,
-      Nat.zero_add, List.Cursor.pos_mk, List.length_append, List.length_cons, List.length_nil]
-    simp only [LawfulEqCmp.compare_eq_iff_eq, Nat.sub_zero, true_and,
-      reduceCtorEq, eq_iff_iff, false_and, exists_const, or_false]
-    grind [HasTriple, HasTriple₁, HasTriple₂, compare_eq_eq]
+    simp only [reduceCtorEq, eq_iff_iff, false_and, and_false, exists_const, or_false] at h_mem_iff
+    simp +zetaDelta only [h_mem_iff, TreeSet.mem_insert, reduceCtorEq, eq_iff_iff, false_and,
+      exists_const, or_false, true_and, Array.mem_extract_iff_getElem, Nat.zero_add]
+    have : cur ∈ 1...xs.size := by grind [=_ Rco.mem_toList_iff_mem]
+    grind [bla, Rco.mem_iff]
   case vc5 =>
     grind [HasTriple, HasTriple₁, HasTriple₂]
   case vc6 =>
