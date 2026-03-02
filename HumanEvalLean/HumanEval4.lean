@@ -5,46 +5,17 @@ open Std
 
 /-! ## Missing API -/
 
-theorem List.sum_eq_foldl [Zero α] [Add α]
-    [Associative (α := α) (· + ·)][Commutative (α := α) (· + ·)]
-    [LawfulLeftIdentity (· + ·) (0 : α)]
-    {xs : List α} :
-    xs.sum = xs.foldl (init := 0) (· + ·) := by
-  conv => lhs; rw [← List.reverse_reverse (as := xs)]
-  rw [List.sum_reverse, List.sum_eq_foldr, List.foldr_reverse]
-  simp only [Commutative.comm]
-
 def Std.Iter.sum [Add β] [Zero β] [Iterator α Id β] [IteratorLoop α Id Id]
     (it : Iter (α := α) β) : β :=
   it.fold (init := 0) (· + ·)
 
 theorem Std.Iter.sum_toList [Add β] [Zero β]
     [Associative (α := β) (· + ·)] [Commutative (α := β) (· + ·)]
-    [LawfulLeftIdentity (· + ·) (0 : β)]
+    [LawfulIdentity (· + ·) (0 : β)]
     [Iterator α Id β] [IteratorLoop α Id Id]
     [LawfulIteratorLoop α Id Id] [Iterators.Finite α Id] {it : Iter (α := α) β} :
     it.toList.sum = it.sum := by
   simp only [Iter.sum, ← Iter.foldl_toList, List.sum_eq_foldl]
-
-theorem Array.size_singleton {x : α} :
-    #[x].size = 1 := by
-  simp
-
-@[simp, grind =]
-theorem Array.sum_singleton [Add α] [Zero α] [LawfulRightIdentity (· + ·) (0 : α)] {x : α} :
-    #[x].sum = x := by
-  simp [Array.sum_eq_foldr, LawfulRightIdentity.right_id x]
-
--- Library defect: remove the `LeftIdentity` parameter from Array.sum_append
-
-@[simp, grind =]
-theorem Array.sum_push [Add α] [Zero α]
-    [Associative (α := α) (· + ·)]
-    [LawfulIdentity (· + ·) (0 : α)]
-    {xs : Array α} {x : α} :
-    (xs.push x).sum = xs.sum + x := by
-  simp [Array.sum_eq_foldr, LawfulRightIdentity.right_id, LawfulLeftIdentity.left_id,
-    ← Array.foldr_assoc]
 
 /-! ## Implementation -/
 

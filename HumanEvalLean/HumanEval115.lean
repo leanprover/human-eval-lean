@@ -53,23 +53,6 @@ theorem Vector.sum_eq_zero {xs : Vector Nat n} : xs.sum = 0 ↔ ∀ (i : Nat) (h
   rw [← Vector.sum_toList, List.sum_eq_zero]
   grind
 
-theorem List.sum_eq_foldl [Zero α] [Add α]
-    [Associative (α := α) (· + ·)][Commutative (α := α) (· + ·)]
-    [LawfulLeftIdentity (· + ·) (0 : α)]
-    {xs : List α} :
-    xs.sum = xs.foldl (init := 0) (· + ·) := by
-  conv => lhs; rw [← List.reverse_reverse (as := xs)]
-  rw [List.sum_reverse, List.sum_eq_foldr, List.foldr_reverse]
-  simp only [Commutative.comm]
-
-theorem Array.sum_eq_foldl [Zero α] [Add α]
-    [Associative (α := α) (· + ·)][Commutative (α := α) (· + ·)]
-    [LawfulLeftIdentity (· + ·) (0 : α)]
-    {xs : Array α} :
-    xs.sum = xs.foldl (init := 0) (· + ·) := by
-  rw [← Array.toArray_toList (xs := xs)]
-  grind [List.sum_eq_foldl]
-
 /-!
 ### The concrete model
 

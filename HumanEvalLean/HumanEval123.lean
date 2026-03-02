@@ -288,36 +288,6 @@ open Relation
 variable {α : Sort _} {β : α → Sort _} {γ : (a : α) → β a → Sort _}
   {C : α → Sort _} {C₂ : (a : α) → β a → Sort _} {C₃ : (a : α) → (b : β a) → γ a b → Sort _}
 
-@[inline]
-public def WellFounded.partialExtrinsicFix [∀ a, Nonempty (C a)] (R : α → α → Prop)
-    (F : ∀ a, (∀ a', R a' a → C a') → C a) (a : α) : C a :=
-  extrinsicFix (α := { a' : α // a' = a ∨ TransGen R a' a }) (C := (C ·.1))
-      (fun p q => R p.1 q.1)
-      (fun a recur => F a.1 fun a' hR => recur ⟨a', by
-        cases a.property
-        · grind [TransGen.single]
-        · apply Or.inr
-          apply TransGen.trans ?_ ‹_›
-          apply TransGen.single
-          assumption⟩ ‹_›) ⟨a, Or.inl rfl⟩
-
-public theorem WellFounded.extrinsicFix_invImage {α' : Sort _} [∀ a, Nonempty (C a)] (R : α → α → Prop) (f : α' → α)
-    (F : ∀ a, (∀ a', R a' a → C a') → C a) (F' : ∀ a, (∀ a', R (f a') (f a) → C (f a')) → C (f a))
-    (h : ∀ a r, F (f a) r = F' a fun a' hR => r (f a') hR) (a : α') (h : WellFounded R) :
-    extrinsicFix (C := (C <| f ·)) (InvImage R f) F' a = extrinsicFix (C := C) R F (f a) := by
-  have h' := h
-  rcases h with ⟨h⟩
-  specialize h (f a)
-  have : Acc (InvImage R f) a := InvImage.accessible _ h
-  clear h
-  induction this
-  rename_i ih
-  rw [extrinsicFix_eq_apply, extrinsicFix_eq_apply, h]
-  · congr; ext a x
-    rw [ih _ x]
-  · assumption
-  · exact InvImage.wf _ ‹_›
-
 public theorem WellFounded.partialExtrinsicFix_eq [∀ a, Nonempty (C a)] (R : α → α → Prop)
     (F : ∀ a, (∀ a', R a' a → C a') → C a) (a : α) (h : Acc R a) :
     partialExtrinsicFix R F a = F a (fun a' _ => partialExtrinsicFix R F a') := by
@@ -351,53 +321,6 @@ public theorem WellFounded.partialExtrinsicFix_eq [∀ a, Nonempty (C a)] (R : �
     cases x.2 <;> rename_i hx
     · rwa [hx]
     · exact h.inv_of_transGen hx
-
-@[inline]
-public def WellFounded.partialExtrinsicFix₂ [∀ a b, Nonempty (C₂ a b)]
-    (R : (a : α) ×' β a → (a : α) ×' β a → Prop)
-    (F : (a : α) → (b : β a) → ((a' : α) → (b' : β a') → R ⟨a', b'⟩ ⟨a, b⟩ → C₂ a' b') → C₂ a b)
-    (a : α) (b : β a) :
-    C₂ a b :=
-  extrinsicFix₂ (α := α) (β := fun a' => { b' : β a' // (PSigma.mk a' b') = (PSigma.mk a b) ∨ TransGen R ⟨a', b'⟩ ⟨a, b⟩ })
-      (C₂ := (C₂ · ·.1))
-      (fun p q => R ⟨p.1, p.2.1⟩ ⟨q.1, q.2.1⟩)
-      (fun a b recur => F a b.1 fun a' b' hR => recur a' ⟨b', Or.inr (by
-        cases b.property
-        · grind [TransGen.single]
-        · apply TransGen.trans ?_ ‹_›
-          apply TransGen.single
-          assumption)⟩ ‹_›) a ⟨b, Or.inl rfl⟩
-
-public theorem WellFounded.partialExtrinsicFix₂_eq_partialExtrinsicFix [∀ a b, Nonempty (C₂ a b)]
-    (R : (a : α) ×' β a → (a : α) ×' β a → Prop)
-    (F : (a : α) → (b : β a) → ((a' : α) → (b' : β a') → R ⟨a', b'⟩ ⟨a, b⟩ → C₂ a' b') → C₂ a b)
-    (a : α) (b : β a) (h : Acc R ⟨a, b⟩) :
-    partialExtrinsicFix₂ R F a b = partialExtrinsicFix (α := PSigma β) (C := fun a => C₂ a.1 a.2) R (fun p r => F p.1 p.2 fun a' b' hR => r ⟨a', b'⟩ hR) ⟨a, b⟩ := by
-  simp only [partialExtrinsicFix, partialExtrinsicFix₂, extrinsicFix₂]
-  let f (x : ((a' : α) ×' { b' // PSigma.mk a' b' = ⟨a, b⟩ ∨ TransGen R ⟨a', b'⟩ ⟨a, b⟩ })) : { a' // a' = ⟨a, b⟩ ∨ TransGen R a' ⟨a, b⟩ } :=
-    ⟨⟨x.1, x.2.1⟩, x.2.2⟩
-  have := extrinsicFix_invImage (C := fun a => C₂ a.1.1 a.1.2) (f := f) (R := (R ·.1 ·.1))
-    (F := fun a r => F a.1.1 a.1.2 fun a' b' hR => r ⟨⟨a', b'⟩, ?refine_a⟩ hR)
-    (F' := fun a r => F a.1 a.2.1 fun a' b' hR => r ⟨a', b', ?refine_b⟩ hR)
-    (a := ⟨a, b, ?refine_c⟩); rotate_left
-  · cases a.2 <;> rename_i heq
-    · rw [heq] at hR
-      exact .inr (.single hR)
-    · exact .inr (.trans (.single hR) heq)
-  · cases a.2.2 <;> rename_i heq
-    · rw [heq] at hR
-      exact .inr (.single hR)
-    · exact .inr (.trans (.single hR) heq)
-  · exact .inl rfl
-  unfold InvImage f at this
-  simp at this
-  rw [this]
-  constructor
-  intro x
-  apply InvImage.accessible
-  cases x.2 <;> rename_i heq
-  · rwa [heq]
-  · exact h.inv_of_transGen heq
 
 public def WellFounded.partialExtrinsicFix₂_eq [∀ a b, Nonempty (C₂ a b)]
     {R : (a : α) ×' β a → (a : α) ×' β a → Prop}
