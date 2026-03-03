@@ -1,7 +1,11 @@
 module
 
-def triangle_area : Unit :=
-  ()
+def triangle_area (a h : Rat) : Rat :=
+  a * h / 2.0
+
+/-!
+We don't provide a formal verification here since it is not clear what to even verify.
+-/
 
 /-!
 ## Prompt
