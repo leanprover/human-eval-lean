@@ -4,6 +4,10 @@ public import Std
 import all Init.Data.Range.Polymorphic.UpwardEnumerable
 open Std Std.Do
 
+set_option mvcgen.warning false
+
+/-! ## Implementation 1: imperative -/
+
 public def triplesSumToZero (xs : Array Int) : Bool := Id.run do
   let mut index : Std.TreeSet Int := ∅
   for h : i in 1...xs.size do
@@ -13,56 +17,32 @@ public def triplesSumToZero (xs : Array Int) : Bool := Id.run do
         return true
   return false
 
-public def triplesSumToZero' (xs : Array Int) : Bool :=
-  if h : 3 ≤ xs.size then
-    loop₁ 1 ((∅ : TreeSet Int).insert xs[0])
-  else
-    false
-where
-  loop₁ (j : Nat) (index : TreeSet Int compare) : Bool :=
-    if h : j < xs.size then
-      loop₂ j (j + 1) index || loop₁ (j + 1) (index.insert xs[j])
-    else
-      false
-  loop₂ (j : Nat) (k : Nat) (index : TreeSet Int compare) : Bool :=
-    if h : k < xs.size then
-      -(xs[j]! + xs[k]) ∈ index || loop₂ j (k + 1) index
-    else
-      false
+/-! ## Tests 1 -/
+
+example : triplesSumToZero #[1, 3, 5, 0] = false := by native_decide
+example : triplesSumToZero #[1, 3, 5, -1] = false := by native_decide
+example : triplesSumToZero #[1, 3, -2, 1] = true := by native_decide
+example : triplesSumToZero #[1, 2, 3, 7] = false := by native_decide
+example : triplesSumToZero #[1, 2, 5, 7] = false := by native_decide
+example : triplesSumToZero #[2, 4, -5, 3, 9, 7] = true := by native_decide
+example : triplesSumToZero #[1] = false := by native_decide
+example : triplesSumToZero #[1, 3, 5, -100] = false := by native_decide
+example : triplesSumToZero #[100, 3, 5, -100] = false := by native_decide
+
+/-! ## Missing API -/
 
 theorem Array.take_add_one {xs : Array α} {i : Nat} : xs.take (i + 1) = xs.take i ++ xs[i]?.toArray := by
   grind
 
-private theorem triplesSumToZero'.loop₂_iff
-    (h : ∀ x, x ∈ index ↔ x ∈ xs.take j)
-    (h' : j < k₀) :
-    triplesSumToZero'.loop₂ xs j k₀ index ↔
-      ∃ (i k : Nat) (hi : i < j) (hk : k₀ ≤ k ∧ k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
-  fun_induction triplesSumToZero'.loop₂ xs j k₀ index
-  · rename_i k₀ hk₀ ih
-    simp only [Bool.or_eq_true, decide_eq_true_eq]
-    rw [ih, h, Array.mem_extract_iff_getElem]
-    · constructor
-      · grind
-      · rintro ⟨i, k, hi, hk, h⟩
-        by_cases k₀ < k <;> grind
-    · grind
-  · grind
+theorem eq_getElem_append_cons {pref suff : List α} {cur : α} :
+    (pref ++ cur :: suff)[pref.length]? = cur := by
+  simp
 
-private theorem triplesSumToZero'.loop₁_iff
-    (h : ∀ x, x ∈ index ↔ x ∈ xs.take j₀) :
-    triplesSumToZero'.loop₁ xs j₀ index ↔
-      ∃ (i j k : Nat) (hi : i < j) (hj : j₀ ≤ j ∧ j < k) (hk : k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
-  fun_induction triplesSumToZero'.loop₁ xs j₀ index
-  · grind [loop₂_iff h, Array.take_add_one]
-  · grind
+grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
+attribute [grind =] Nat.getElem_toList_rco Nat.getElem_toList_roo
+attribute [grind =] Nat.length_toList_rco Nat.length_toList_roo
 
-theorem triplesSumToZero'_iff :
-    triplesSumToZero' xs ↔
-      ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
-  fun_cases triplesSumToZero' xs
-  · grind [triplesSumToZero'.loop₁_iff, Array.take_add_one]
-  · grind
+/-! ## Verification 1 -/
 
 def HasTriple (xs : List Int) : Prop :=
   ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.length), xs[i] + xs[j] + xs[k] = 0
@@ -74,14 +54,6 @@ def HasTriple₁ (xs : List Int) (m : Nat) : Prop :=
 def HasTriple₂ (xs : List Int) (m n : Nat) : Prop :=
   ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.length)
     (h : j < m ∨ j = m ∧ k < n), xs[i] + xs[j] + xs[k] = 0
-
-theorem eq_getElem_append_cons {pref suff : List α} {cur : α} :
-    (pref ++ cur :: suff)[pref.length]? = cur := by
-  simp
-
-grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
-attribute [grind =] Nat.getElem_toList_rco Nat.getElem_toList_roo
-attribute [grind =] Nat.length_toList_rco Nat.length_toList_roo
 
 theorem hasTriple₁_add_one_iff :
     HasTriple₁ xs (i + 1) ↔ HasTriple₂ xs i xs.length := by
@@ -119,6 +91,71 @@ theorem triplesSumToZero_iff {xs : Array Int} :
   case vc6 => grind [HasTriple, HasTriple₁, HasTriple₂]
   case vc7 => grind [HasTriple, HasTriple₁, HasTriple₂]
   case vc8 => grind
+
+/-! ## Implementation 2: purely functional -/
+
+public def triplesSumToZero' (xs : Array Int) : Bool :=
+  if h : 3 ≤ xs.size then
+    loop₁ 1 ((∅ : TreeSet Int).insert xs[0])
+  else
+    false
+where
+  loop₁ (j : Nat) (index : TreeSet Int compare) : Bool :=
+    if h : j < xs.size then
+      loop₂ j (j + 1) index || loop₁ (j + 1) (index.insert xs[j])
+    else
+      false
+  loop₂ (j : Nat) (k : Nat) (index : TreeSet Int compare) : Bool :=
+    if h : j < k ∧ k < xs.size then
+      -(xs[j] + xs[k]) ∈ index || loop₂ j (k + 1) index
+    else
+      false
+  termination_by xs.size - k
+
+/-! ## Tests 2 -/
+
+example : triplesSumToZero' #[1, 3, 5, 0] = false := by native_decide
+example : triplesSumToZero' #[1, 3, 5, -1] = false := by native_decide
+example : triplesSumToZero' #[1, 3, -2, 1] = true := by native_decide
+example : triplesSumToZero' #[1, 2, 3, 7] = false := by native_decide
+example : triplesSumToZero' #[1, 2, 5, 7] = false := by native_decide
+example : triplesSumToZero' #[2, 4, -5, 3, 9, 7] = true := by native_decide
+example : triplesSumToZero' #[1] = false := by native_decide
+example : triplesSumToZero' #[1, 3, 5, -100] = false := by native_decide
+example : triplesSumToZero' #[100, 3, 5, -100] = false := by native_decide
+
+/-! ## Verification 2 -/
+
+private theorem triplesSumToZero'.loop₂_iff
+    (h : ∀ x, x ∈ index ↔ x ∈ xs.take j)
+    (h' : j < k₀) :
+    triplesSumToZero'.loop₂ xs j k₀ index ↔
+      ∃ (i k : Nat) (hi : i < j) (hk : k₀ ≤ k ∧ k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
+  fun_induction triplesSumToZero'.loop₂ xs j k₀ index
+  · rename_i k₀ hk₀ ih
+    simp only [Bool.or_eq_true, decide_eq_true_eq]
+    rw [ih, h, Array.mem_extract_iff_getElem]
+    · constructor
+      · grind
+      · rintro ⟨i, k, hi, hk, h⟩
+        by_cases k₀ < k <;> grind
+    · grind
+  · grind
+
+private theorem triplesSumToZero'.loop₁_iff
+    (h : ∀ x, x ∈ index ↔ x ∈ xs.take j₀) :
+    triplesSumToZero'.loop₁ xs j₀ index ↔
+      ∃ (i j k : Nat) (hi : i < j) (hj : j₀ ≤ j ∧ j < k) (hk : k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
+  fun_induction triplesSumToZero'.loop₁ xs j₀ index
+  · grind [loop₂_iff h, Array.take_add_one]
+  · grind
+
+theorem triplesSumToZero'_iff :
+    triplesSumToZero' xs ↔
+      ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.size), xs[i] + xs[j] + xs[k] = 0 := by
+  fun_cases triplesSumToZero' xs
+  · grind [triplesSumToZero'.loop₁_iff, Array.take_add_one]
+  · grind
 
 /-!
 ## Prompt
