@@ -179,16 +179,3 @@ For exampe, to run `HumanEval100.lean`, run this bash command from the project r
 ```bash
 lake lean HumanEvalLean/HumanEval100.lean
 ```
-
-This project uses Lake (Lean's build tool). The Lean toolchain version is specified in `lean-toolchain`.
-Do **not** change it unless explicitly stated. Also, do not try to run `lake build` and other
-build commands. If something seems wrong, ask the user.
-
-## Your notes
-
-Whenever you get an insight about Lean's code base or learn something important, take notes for yourself.
-Your notes live in the subdirectory `claude-notes` and you can freely write inside it.
-
-`claude-notes/README.md` should contain an overview of the structure so that it is unnecessary to
-scan all files when looking for a note. Split your notes into different
-files by topic and make sure the `README.md` makes them easily discoverable.
