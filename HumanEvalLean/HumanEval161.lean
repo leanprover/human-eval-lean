@@ -1,7 +1,48 @@
 module
 
-def solve : Unit :=
-  ()
+def reverseString (s : String) : String :=
+  s.revChars.fold (init := "") fun sofar c => sofar.push c
+
+def swapCase (c : Char) : Char :=
+  if c.isUpper then
+    c.toLower
+  else if c.isLower then
+    c.toUpper
+  else
+    c
+
+def solve (s : String) : String :=
+  if s.contains Char.isAlpha then
+    s.map swapCase
+  else
+    reverseString s
+
+example : solve "AsDf" = "aSdF" := by native_decide
+example : solve "1234" = "4321" := by native_decide
+example : solve "ab" = "AB" := by native_decide
+example : solve "#a@C" = "#A@c" := by native_decide
+example : solve "#AsdfW^45" = "#aSDFw^45" := by native_decide
+example : solve "#6@2" = "2@6#" := by native_decide
+example : solve "#$a^D" = "#$A^d" := by native_decide
+example : solve "#ccc" = "#CCC" := by native_decide
+
+@[simp]
+theorem toList_reverseString {s : String} : (reverseString s).toList = s.toList.reverse := by
+  simp only [reverseString, ne_eq, ← Std.Iter.foldl_toList, String.toList_revChars,
+    List.foldl_reverse]
+  induction s.toList <;> simp_all
+
+@[simp]
+theorem String.contains_bool {s : String} {p : Char → Bool} :
+    s.contains p = s.toList.any p := sorry
+
+theorem toList_solve {s : String} : (solve s).toList =
+    if s.toList.any Char.isAlpha then
+      s.toList.map swapCase
+    else
+      s.toList.reverse := by
+  simp only [solve, String.contains_bool, List.any_eq_true]
+  rw [apply_ite String.toList, toList_reverseString, String.toList_map]
 
 /-!
 ## Prompt
@@ -10,7 +51,7 @@ def solve : Unit :=
 
 def solve(s):
     """You are given a string s.
-    if s[i] is a letter, reverse its case from lower to upper or vise versa, 
+    if s[i] is a letter, reverse its case from lower to upper or vise versa,
     otherwise keep it as it is.
     If the string contains no letters, reverse the string.
     The function should return the resulted string.
