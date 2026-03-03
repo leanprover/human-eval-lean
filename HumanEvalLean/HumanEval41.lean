@@ -28,7 +28,16 @@ grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
 attribute [grind =] Nat.getElem_toList_rco Nat.getElem_toList_roo Nat.getElem?_toList_rio
 attribute [grind =] Nat.length_toList_rco Nat.length_toList_roo Nat.length_toList_rio
 
-/-! ## Verification -/
+/-!
+## Verification
+
+We verify the solution by proving that it equals a slower reference implementation that is closer to
+the problem description, even though there still remains a gap between the informal problem
+statement and the formal reference implementation.
+
+The verification merely ensures that the optimization, just squaring instead of actually counting,
+is valid.
+-/
 
 /-- Reference implementation: count collisions by iterating over all pairs. -/
 def carRaceCollisionSlow (n : Nat) : Nat := Id.run do
