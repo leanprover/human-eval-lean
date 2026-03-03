@@ -1,9 +1,27 @@
 module
 
+/-! ## Implementation -/
+
+public section
+
 def incrList (xs : List Nat) : List Nat :=
   xs.map (· + 1)
 
-variable {xs : List Nat}
+end
+
+/-! ## Tests -/
+
+example : incrList [] = [] := by decide
+example : incrList [1, 2, 3] = [2, 3, 4] := by decide
+example : incrList [3, 2, 1] = [4, 3, 2] := by decide
+example : incrList [5, 3, 5, 2, 3, 3, 9, 0, 123] = [6, 4, 6, 3, 4, 4, 10, 1, 124] := by decide
+example : incrList [5, 2, 5, 2, 3, 3, 9, 0, 123] = [6, 3, 6, 3, 4, 4, 10, 1, 124] := by decide
+
+/-! ## Verification -/
+
+section
+
+variable {x : Nat} {xs : List Nat}
 
 @[simp, grind =]
 theorem length_incrList :
@@ -28,6 +46,8 @@ theorem incrList_nil :
 theorem incrList_cons :
     incrList (x :: xs) = (x + 1) :: incrList xs := by
   grind [incrList]
+
+end
 
 /-!
 ## Prompt
