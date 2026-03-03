@@ -102,8 +102,10 @@ example : solution'' ... := ...
 
 ## Notes
 
-- Use `native_decide` for tests involving iterators or complex computations that don't reduce well
-- Use `decide` for tests involving simple recursive functions or monadic code
+- Use the `cbv` tactic for tests when possible. It might fail to reduce some special constructs.
+- If `cbv` fails, use `decide` (for simple recursive functions or monadic code) or `native_decide`
+  (for tests involving iterators or complex computations that don't reduce well).
+- If you use `cbv`, use `set_option cbv.warning false`.
 - Preserve all comments, attributes, and proof code exactly as they are
 - Helper lemmas that are used across multiple solutions should stay in the first Verification section where they appear
 - Problem number X can be found in `HumanEvalLean/HumanEvalX.lean`
