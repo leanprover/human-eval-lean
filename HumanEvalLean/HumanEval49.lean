@@ -1,7 +1,33 @@
 module
 
-def modp : Unit :=
-  ()
+public section
+
+/-! ## Implementation -/
+
+def modp (n p : Nat) : Nat :=
+  Nat.repeat (fun x => (2 * x) % p) n 1
+
+/-! ## Tests -/
+
+example : modp 3 5 = 3 := by native_decide
+example : modp 1101 101 = 2 := by native_decide
+example : modp 0 101 = 1 := by native_decide
+example : modp 3 11 = 8 := by native_decide
+example : modp 100 101 = 1 := by native_decide
+example : modp 30 5 = 4 := by native_decide
+example : modp 31 5 = 3 := by native_decide
+
+/-! ## Verification -/
+
+theorem modp_eq (h : 1 < p) :
+    modp n p = (2 ^ n) % p := by
+  induction n
+  · obtain ⟨q, rfl⟩ := Nat.exists_eq_add_of_lt h
+    simp [modp, Nat.repeat, Nat.add_comm 1]
+  · simp only [modp] at *
+    simp only [Nat.repeat, Nat.pow_add_one, *]
+    rw [Nat.mul_mod, Nat.mul_mod]
+    simp [Nat.mul_comm]
 
 /-!
 ## Prompt
