@@ -1,7 +1,33 @@
 module
 
-def incr_list : Unit :=
-  ()
+def incrList (xs : List Nat) : List Nat :=
+  xs.map (· + 1)
+
+variable {xs : List Nat}
+
+@[simp, grind =]
+theorem length_incrList :
+    (incrList xs).length = xs.length := by
+  grind [incrList]
+
+@[simp, grind =]
+theorem getElem_incrList {i : Nat} {h : i < (incrList xs).length} :
+    (incrList xs)[i] = xs[i]'(by grind) + 1 := by
+  grind [incrList]
+
+/-!
+The previous lemmas fully characterize the solution. Some additional useful lemmas:
+-/
+
+@[simp, grind =]
+theorem incrList_nil :
+    incrList [] = [] := by
+  grind [incrList]
+
+@[simp, grind =]
+theorem incrList_cons :
+    incrList (x :: xs) = (x + 1) :: incrList xs := by
+  grind [incrList]
 
 /-!
 ## Prompt
