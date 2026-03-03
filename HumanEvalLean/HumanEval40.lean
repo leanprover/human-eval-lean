@@ -1,10 +1,19 @@
 module
 
 public import Std
-import all Init.Data.Range.Polymorphic.UpwardEnumerable
 open Std Std.Do
 
 set_option mvcgen.warning false
+
+/-!
+This file provides two implementations determining whether an array of integers contains a triple
+summing to zero.
+
+* The first implementation uses `do` notation, making it more imperative-flavored.
+* The second implementation uses recursion instead.
+
+Both implementations are `O(n^2)` and thus more efficient than the reference Python solution.
+-/
 
 /-! ## Implementation 1: imperative -/
 
@@ -44,13 +53,24 @@ attribute [grind =] Nat.length_toList_rco Nat.length_toList_roo
 
 /-! ## Verification 1 -/
 
+/--
+States that there are three elements in `xs` summing to zero.
+-/
 def HasTriple (xs : List Int) : Prop :=
   ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.length), xs[i] + xs[j] + xs[k] = 0
 
+/--
+States that there are three elements in `xs` summing to zero where the middle element has an
+index `< m`.
+-/
 def HasTriple₁ (xs : List Int) (m : Nat) : Prop :=
   ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.length)
     (h : j < m), xs[i] + xs[j] + xs[k] = 0
 
+/--
+States that there are three elements in `xs` summing to zero where the middle element has an index
+`< m` and the last element has an index `< n`.
+-/
 def HasTriple₂ (xs : List Int) (m n : Nat) : Prop :=
   ∃ (i j k : Nat) (hi : i < j) (hj : j < k) (hk : k < xs.length)
     (h : j < m ∨ j = m ∧ k < n), xs[i] + xs[j] + xs[k] = 0
@@ -80,7 +100,7 @@ theorem triplesSumToZero_iff {xs : Array Int} :
   case vc1 pref cur suff heq _ _ h_mem_iff pref' cur' suff' heq' _ h_mem _ =>
     have h₁ : -(xs[cur]'(by grind) + xs[cur']'(by grind)) ∈ xs.take cur := by grind [Array.take_add_one]
     have h₂ : cur < cur' := by grind
-    -- can't really simplify this right now, see #12772
+    -- can't really simplify this right now, see leanprover/lean4#12772
     grind [HasTriple, Array.mem_extract_iff_getElem]
   case vc2 =>
     simp only [List.Cursor.pos_mk, List.length_append, List.length_cons, List.length_nil]
