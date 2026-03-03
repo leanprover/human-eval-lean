@@ -1,7 +1,43 @@
 module
 
-def add : Unit :=
-  ()
+set_option cbv.warning false
+
+/-!
+## Implementation
+
+Lean supports addition out of the box, so we just reference to it and to the lemmas verifying its
+behavior.
+-/
+
+/-- info: Nat.add : Nat → Nat → Nat -/
+#guard_msgs in
+#check Nat.add
+
+/-! ## Tests -/
+
+example : Nat.add 0 1 = 1 := by cbv
+example : Nat.add 1 0 = 1 := by cbv
+example : Nat.add 2 3 = 5 := by cbv
+example : Nat.add 5 7 = 12 := by cbv
+example : Nat.add 7 5 = 12 := by cbv
+
+/-! ## Verification -/
+
+/-- info: Nat.add_zero (n : Nat) : n + 0 = n -/
+#guard_msgs in
+#check Nat.add_zero
+
+/-- info: Nat.zero_add (n : Nat) : 0 + n = n -/
+#guard_msgs in
+#check Nat.zero_add
+
+/-- info: Nat.add_assoc (n m k : Nat) : n + m + k = n + (m + k) -/
+#guard_msgs in
+#check Nat.add_assoc
+
+/-- info: Nat.add_comm (n m : Nat) : n + m = m + n -/
+#guard_msgs in
+#check Nat.add_comm
 
 /-!
 ## Prompt
