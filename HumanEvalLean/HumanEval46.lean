@@ -37,8 +37,8 @@ def fib4Reference : Nat → Nat
   | 1 => 0
   | 2 => 2
   | 3 => 0
-  | (k + 4) =>
-    fib4Reference (k + 4 - 1) + fib4Reference (k + 4 - 2) + fib4Reference (k + 4 - 3) + fib4Reference (k + 4 - 4)
+  | k + 4 =>
+    fib4Reference (k + 3) + fib4Reference (k + 2) + fib4Reference (k + 1) + fib4Reference k
 
 theorem sum_mod_eq_sum {vec : Vector Nat 4} :
     ∀ i, vec[i % 4] + vec[(i + 1) % 4] + vec[(i + 2) % 4] + vec[(i + 3) % 4] =
