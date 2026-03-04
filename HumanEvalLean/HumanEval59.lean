@@ -9,15 +9,22 @@ set_option mvcgen.warning false
 
 public section
 
-def divideUntilCoprime (n : { n : Nat // 0 < n }) (d : Nat) (hd : 1 < d) : { n : Nat // 0 < n} :=
+/--
+Given natural numbers `n ≥ 1` and a `d ≥ 2`, returns `n / d ^ i` with the largest possible `i`
+for which `d ^ i ∣ n`.
+-/
+def dividePower (n : { n : Nat // 0 < n }) (d : Nat) (hd : 1 < d) : { n : Nat // 0 < n} :=
   if hd' : d ∣ n.val then
-    divideUntilCoprime ⟨n.val / d, by grind [Nat.eq_zero_of_dvd_of_div_eq_zero]⟩ d hd
+    dividePower ⟨n.val / d, by grind [Nat.eq_zero_of_dvd_of_div_eq_zero]⟩ d hd
   else
     n
 termination_by n.val
 decreasing_by
   rwa [Nat.div_lt_iff_lt_mul (by grind), Nat.lt_mul_iff_one_lt_right (by grind)]
 
+/--
+Returns the largest prime factor of a given number by iteratively dividing away the smallest factor.
+-/
 def largestPrimeFactor (n : Nat) : Nat := Id.run do
   if hn : 0 < n then
     let mut m : { m : Nat // 0 < m } := ⟨n, hn⟩
@@ -25,7 +32,7 @@ def largestPrimeFactor (n : Nat) : Nat := Id.run do
     for hd : d in 2...=n do
       if d ∣ m.val then
         mostRecentFactor := d
-        m := divideUntilCoprime m d (by grind [Rcc.mem_iff])
+        m := dividePower m d (by grind [Rcc.mem_iff])
     return mostRecentFactor
   else
     return 1
@@ -38,27 +45,27 @@ grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
 attribute [grind =] Nat.getElem?_toList_rcc
 attribute [grind =] Nat.length_toList_rcc
 
-theorem divideUntilCoprime_dvd :
-    (divideUntilCoprime n d hd).val ∣ n.val := by
-  fun_induction divideUntilCoprime n d hd
+theorem dividePower_dvd :
+    (dividePower n d hd).val ∣ n.val := by
+  fun_induction dividePower n d hd
   · rename_i n h_dvd ih
     have : n.val / d ∣ n.val := Nat.div_dvd_of_dvd h_dvd
     grind [Nat.dvd_trans]
   · apply Nat.dvd_refl
 
-theorem divideUntilCoprime_le :
-    (divideUntilCoprime n d hd).val ≤ n.val :=
-  Nat.le_of_dvd (by grind) divideUntilCoprime_dvd
+theorem dividePower_le :
+    (dividePower n d hd).val ≤ n.val :=
+  Nat.le_of_dvd (by grind) dividePower_dvd
 
-theorem divideUntilCoprime_lt (h : d ∣ n.val) :
-    (divideUntilCoprime n d hd).val < n.val := by
-  fun_cases divideUntilCoprime n d hd
-  · exact Nat.lt_of_le_of_lt divideUntilCoprime_le (Nat.div_lt_self (by grind) (by grind))
+theorem dividePower_lt (h : d ∣ n.val) :
+    (dividePower n d hd).val < n.val := by
+  fun_cases dividePower n d hd
+  · exact Nat.lt_of_le_of_lt dividePower_le (Nat.div_lt_self (by grind) (by grind))
   · grind
 
-theorem not_dvd_divideUntilCoprime_dvd :
-    ¬ d ∣ (divideUntilCoprime n d hd).val := by
-  fun_induction divideUntilCoprime n d hd <;> assumption
+theorem not_dvd_dividePower_dvd :
+    ¬ d ∣ (dividePower n d hd).val := by
+  fun_induction dividePower n d hd <;> assumption
 
 theorem largestPrimeFactor_dvd :
     largestPrimeFactor n ∣ n := by
@@ -67,7 +74,7 @@ theorem largestPrimeFactor_dvd :
   mvcgen
   invariants
   · ⇓⟨cur, m, factor⟩ => ⌜factor ∣ n ∧ m.val ∣ n⌝
-  with grind [divideUntilCoprime_dvd, Nat.dvd_trans, Nat.dvd_refl]
+  with grind [dividePower_dvd, Nat.dvd_trans, Nat.dvd_refl]
 
 theorem IsPrime.dvd_mul_iff (h : IsPrime d) :
     d ∣ a * b ↔ d ∣ a ∨ d ∣ b := by
@@ -78,10 +85,10 @@ theorem IsPrime.dvd_mul_iff (h : IsPrime d) :
       exact Or.inr ∘ this.dvd_of_dvd_mul_left
   · grind
 
-theorem or_of_dvd_self_div_divideUntilCoprime {e : Nat} (h : m.val ∣ n)
-    (h : e ∣ n / (divideUntilCoprime m d hd)) (hp : IsPrime e) :
+theorem or_of_dvd_self_div_dividePower {e : Nat} (h : m.val ∣ n)
+    (h : e ∣ n / (dividePower m d hd)) (hp : IsPrime e) :
     e ∣ n / m ∨ e ∣ d := by
-  fun_induction divideUntilCoprime m d hd
+  fun_induction dividePower m d hd
   · rename_i ih _
     simp only at ih
     specialize ih (by grind [Nat.dvd_trans, Nat.div_dvd_of_dvd]) h
@@ -106,7 +113,7 @@ theorem or_of_dvd_self_div_divideUntilCoprime {e : Nat} (h : m.val ∣ n)
   · grind
 
 theorem isPrime_largestPrimeFactor (h : 1 < n) :
-    IsPrime (largestPrimeFactor n) := by
+    IsPrime (largestPrimeFactor n) ∧ ∀ d : Nat, d ∣ n → IsPrime d → d ≤ (largestPrimeFactor n) := by
   generalize hwp : largestPrimeFactor n = wp
   apply Id.of_wp_run_eq hwp
   mvcgen
@@ -120,9 +127,9 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
   case vc1 pref cur suf _ _ m _ _ ih =>
     refine ⟨?_, ?_, ?_, ?_⟩
     · grind
-    · grind [divideUntilCoprime_dvd, Nat.dvd_trans]
+    · grind [dividePower_dvd, Nat.dvd_trans]
     · simp at *
-      have : (divideUntilCoprime m cur (by grind)).val < m.val := divideUntilCoprime_lt (by grind)
+      have : (dividePower m cur (by grind)).val < m.val := dividePower_lt (by grind)
       have : m.val ≤ n := Nat.le_of_dvd ‹0 < n› ih.2.1
       rw [if_neg (by grind)]
       constructor
@@ -135,7 +142,7 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
           grind
       · intro e he hep
         have := ih.2.2.1
-        replace he := or_of_dvd_self_div_divideUntilCoprime (by grind) he hep
+        replace he := or_of_dvd_self_div_dividePower (by grind) he hep
         split at this
         · have : m = ⟨n, ‹_›⟩ := by grind
           rw [this] at he
@@ -148,9 +155,9 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
           · grind
           · exact Nat.le_of_dvd (by grind) ‹_›
     · intro e he
-      have : e ≠ cur := by grind [not_dvd_divideUntilCoprime_dvd]
+      have : e ≠ cur := by grind [not_dvd_dividePower_dvd]
       replace ih := ih.2.2.2 e
-      grind [divideUntilCoprime_dvd, Nat.dvd_trans]
+      grind [dividePower_dvd, Nat.dvd_trans]
   case vc2 pref cur suf _ _ _ _ _ ih =>
     refine ⟨?_, ?_, ?_, ?_⟩
     · grind
@@ -176,7 +183,7 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
     have : r.fst.val = 1 := by grind
     have := ih.2.2.1
     rw [if_neg (by grind)] at this
-    exact this.1
+    simpa [*] using this
   case vc5 => grind
 
 /-!
