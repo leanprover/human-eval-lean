@@ -26,6 +26,8 @@ decreasing_by
 
 /--
 Returns the largest prime factor of a given number by iteratively dividing away the smallest factor.
+
+Other than the Python reference implementation, this one runs in `O(sqrt(n) + log(n))`.
 -/
 def largestPrimeFactor (n : Nat) : Nat := Id.run do
   if hn : 0 < n then
@@ -93,6 +95,21 @@ theorem largestPrimeFactor_dvd :
   · .withEarlyReturn (fun cur ⟨m, factor⟩ => ⌜factor ∣ n ∧ m.val ∣ n⌝) (fun ret ⟨m, factor⟩ => ⌜ret ∣ n⌝)
   with grind [dividePower_dvd, Nat.dvd_trans, Nat.dvd_refl]
 
+theorem Nat.div_div_eq_div_mul' {a b c : Nat} (h : b ∣ a) (h' : c ∣ b) : a / (b / c) = a / b * c := by
+  by_cases a = 0
+  · simp [*]
+  · have : 0 < b := Nat.pos_of_dvd_of_pos h (by grind)
+    have : 0 < c := Nat.pos_of_dvd_of_pos h' (by grind)
+    rw [Nat.div_eq_iff_eq_mul_left]
+    · rw [Nat.mul_assoc, ← Nat.mul_div_assoc, Nat.mul_div_cancel_left, Nat.div_mul_cancel]
+      all_goals assumption
+    · have : c ≤ b := Nat.le_of_dvd ‹_› ‹_›
+      simp only [Nat.div_pos_iff]
+      grind
+    · refine Nat.dvd_trans ?_ h
+      apply Nat.div_dvd_of_dvd
+      assumption
+
 theorem dvd_or_dvd_of_dvd_self_div_dividePower {e : Nat} (h : m.val ∣ n)
     (h : e ∣ n / (dividePower m d hd)) (hp : IsPrime e) :
     e ∣ n / m ∨ e ∣ d := by
@@ -102,24 +119,18 @@ theorem dvd_or_dvd_of_dvd_self_div_dividePower {e : Nat} (h : m.val ∣ n)
     specialize ih (by grind [Nat.dvd_trans, Nat.div_dvd_of_dvd]) h
     cases ih
     · rename_i h'
-      have (a b c : Nat) (h : b ∣ a) (h' : c ∣ b) : a / (b / c) = a / b * c := by
-        by_cases a = 0
-        · simp [*]
-        · have : 0 < b := Nat.pos_of_dvd_of_pos h (by grind)
-          have : 0 < c := Nat.pos_of_dvd_of_pos h' (by grind)
-          rw [Nat.div_eq_iff_eq_mul_left]
-          · rw [Nat.mul_assoc, ← Nat.mul_div_assoc, Nat.mul_div_cancel_left, Nat.div_mul_cancel]
-            all_goals assumption
-          · have : c ≤ b := Nat.le_of_dvd ‹_› ‹_›
-            simp only [Nat.div_pos_iff]
-            grind
-          · refine Nat.dvd_trans ?_ h
-            apply Nat.div_dvd_of_dvd
-            assumption
-      grind [hp.dvd_mul_iff]
+      grind [hp.dvd_mul_iff, Nat.div_div_eq_div_mul']
     · grind
   · grind
 
+/--
+Main theorem: `largestPrimeFactor n` is prime and maximal.
+Even though the problem description does not require it, we also prove this statement for
+`n` prime.
+
+The loop invariant tracks that `factor` divides `n`, all prime divisors of `m` are ≥ the current
+trial divisor, and `factor` is the largest prime factor found so far among those already divided
+out. -/
 theorem isPrime_largestPrimeFactor (h : 1 < n) :
     IsPrime (largestPrimeFactor n) ∧ ∀ d : Nat, d ∣ n → IsPrime d → d ≤ (largestPrimeFactor n) := by
   generalize hwp : largestPrimeFactor n = wp
@@ -127,12 +138,19 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
   mvcgen
   invariants
   · .withEarlyReturn
-    (fun cur ⟨m, factor⟩ =>
-      ⌜let i := cur.pos + 2;
-        factor < i ∧
-          m.val ∣ n ∧
-          (if m.val = n then factor = 1 else IsPrime factor ∧ ∀ e : Nat, e ∣ n / m → IsPrime e → e ≤ factor) ∧
-          ∀ e : Nat, e ∣ m → e = 1 ∨ i ≤ e⌝)
+    (fun cur ⟨m, mostRecentFactor⟩ =>
+      ⌜let i := cur.pos + 2; -- loop variable
+        -- At the beginning of the loop, the `mostRecentFactor` variable is less than the loop variable.
+        mostRecentFactor < i ∧
+        -- The `m` variable is a divisor of `n`.
+        m.val ∣ n ∧
+        -- Except if `m = n`, `mostRecentFactor` is the largest prime factor of `n / m`.
+        (if m.val = n then
+            mostRecentFactor = 1
+          else
+            IsPrime mostRecentFactor ∧ ∀ e : Nat, e ∣ n / m → IsPrime e → e ≤ mostRecentFactor) ∧
+        -- Every nontrivial divisor of `m` is at least as large as the loop variable.
+        ∀ e : Nat, e ∣ m → e = 1 ∨ i ≤ e⌝)
     (fun ret ⟨m, factor⟩ => ⌜IsPrime ret ∧ ∀ d : Nat, d ∣ n → IsPrime d → d ≤ ret⌝)
   case vc1 pref cur suf _ _ _ m _ _ _ ih =>
     simp only [reduceCtorEq, false_and, exists_false, or_false]
@@ -166,7 +184,7 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
           cases he
           · grind
           · exact Nat.le_of_dvd (by grind) ‹_›
-    · simp at *
+    · simp only [List.Cursor.pos_mk, reduceCtorEq, false_and, and_false, exists_const, or_false] at *
       intro e he
       have : e ≠ cur := by grind [not_dvd_dividePower]
       replace ih := ih.2.2.2.2 e
@@ -193,8 +211,9 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
       have : 0 < e := Nat.pos_of_dvd_of_pos he ‹0 < n›
       grind
   case vc5 r _ ih =>
-    simp at *
-    simp_all
+    simp only [List.Cursor.pos_mk, Rcc.length_toList, Nat.size_rcc, Nat.reduceSubDiff,
+      true_and] at *
+    simp_all only [true_and, reduceCtorEq, false_and, exists_const, or_false]
     have := ih.2.2.2 _ (Nat.dvd_refl _)
     have : r.2.1.val ≤ n := Nat.le_of_dvd ‹0 < n› ih.2.1
     have : r.2.1.val = 1 := by grind
@@ -204,7 +223,8 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
   case vc7 => grind
   -- Early return verification conditions:
   case vc3 pref cur suff _ _ _ m _ hlt ih =>
-    simp_all
+    simp_all only [Nat.not_le, List.Cursor.pos_mk, reduceCtorEq, false_and, and_false, exists_const,
+      or_false, Option.some.injEq, true_and, exists_eq_left', false_or]
     rw [max_eq_if]
     split
     · constructor
