@@ -62,7 +62,15 @@ grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
 attribute [grind =] Nat.getElem?_toList_rcc
 attribute [grind =] Nat.length_toList_rcc
 
-/-! ## Verification -/
+/-!
+## Verification
+
+We prove two statements:
+
+* `largestPrimeFactor n` divides `n`.
+* `largestPrimeFactor n` a prime and greater than or equal to every prime factor of `n`, given that
+  `n > 1`.
+-/
 
 theorem dividePower_dvd :
     (dividePower n d hd).val ∣ n.val := by
