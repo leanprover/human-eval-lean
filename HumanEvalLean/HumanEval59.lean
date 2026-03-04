@@ -37,6 +37,7 @@ def largestPrimeFactor (n : Nat) : Nat := Id.run do
   else
     return 1
 
+-- API...
 theorem eq_getElem_append_cons {pref suff : List α} {cur : α} :
     (pref ++ cur :: suff)[pref.length]? = cur := by
   simp
@@ -44,6 +45,8 @@ theorem eq_getElem_append_cons {pref suff : List α} {cur : α} :
 grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
 attribute [grind =] Nat.getElem?_toList_rcc
 attribute [grind =] Nat.length_toList_rcc
+
+-- verification
 
 theorem dividePower_dvd :
     (dividePower n d hd).val ∣ n.val := by
@@ -63,7 +66,7 @@ theorem dividePower_lt (h : d ∣ n.val) :
   · exact Nat.lt_of_le_of_lt dividePower_le (Nat.div_lt_self (by grind) (by grind))
   · grind
 
-theorem not_dvd_dividePower_dvd :
+theorem not_dvd_dividePower :
     ¬ d ∣ (dividePower n d hd).val := by
   fun_induction dividePower n d hd <;> assumption
 
@@ -76,16 +79,7 @@ theorem largestPrimeFactor_dvd :
   · ⇓⟨cur, m, factor⟩ => ⌜factor ∣ n ∧ m.val ∣ n⌝
   with grind [dividePower_dvd, Nat.dvd_trans, Nat.dvd_refl]
 
-theorem IsPrime.dvd_mul_iff (h : IsPrime d) :
-    d ∣ a * b ↔ d ∣ a ∨ d ∣ b := by
-  constructor
-  · by_cases d ∣ a
-    · grind
-    · have : Nat.Coprime d a := by grind [IsPrime, Nat.gcd_dvd_left, Nat.gcd_dvd_right]
-      exact Or.inr ∘ this.dvd_of_dvd_mul_left
-  · grind
-
-theorem or_of_dvd_self_div_dividePower {e : Nat} (h : m.val ∣ n)
+theorem dvd_or_dvd_of_dvd_self_div_dividePower {e : Nat} (h : m.val ∣ n)
     (h : e ∣ n / (dividePower m d hd)) (hp : IsPrime e) :
     e ∣ n / m ∨ e ∣ d := by
   fun_induction dividePower m d hd
@@ -142,7 +136,7 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
           grind
       · intro e he hep
         have := ih.2.2.1
-        replace he := or_of_dvd_self_div_dividePower (by grind) he hep
+        replace he := dvd_or_dvd_of_dvd_self_div_dividePower (by grind) he hep
         split at this
         · have : m = ⟨n, ‹_›⟩ := by grind
           rw [this] at he
@@ -155,7 +149,7 @@ theorem isPrime_largestPrimeFactor (h : 1 < n) :
           · grind
           · exact Nat.le_of_dvd (by grind) ‹_›
     · intro e he
-      have : e ≠ cur := by grind [not_dvd_dividePower_dvd]
+      have : e ≠ cur := by grind [not_dvd_dividePower]
       replace ih := ih.2.2.2 e
       grind [dividePower_dvd, Nat.dvd_trans]
   case vc2 pref cur suf _ _ _ _ _ ih =>
