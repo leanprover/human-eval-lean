@@ -9,6 +9,8 @@ set_option mvcgen.warning false
 
 public section
 
+/-! ## Implementation -/
+
 /--
 Given natural numbers `n ≥ 1` and a `d ≥ 2`, returns `n / d ^ i` with the largest possible `i`
 for which `d ^ i ∣ n`.
@@ -37,7 +39,16 @@ def largestPrimeFactor (n : Nat) : Nat := Id.run do
   else
     return 1
 
--- API...
+/-! ## Tests -/
+
+example : largestPrimeFactor 15 = 5 := by native_decide
+example : largestPrimeFactor 27 = 3 := by native_decide
+example : largestPrimeFactor 63 = 7 := by native_decide
+example : largestPrimeFactor 330 = 11 := by native_decide
+example : largestPrimeFactor 13195 = 29 := by native_decide
+
+/-! ## Missing API -/
+
 theorem eq_getElem_append_cons {pref suff : List α} {cur : α} :
     (pref ++ cur :: suff)[pref.length]? = cur := by
   simp
@@ -46,7 +57,7 @@ grind_pattern eq_getElem_append_cons => pref ++ cur :: suff
 attribute [grind =] Nat.getElem?_toList_rcc
 attribute [grind =] Nat.length_toList_rcc
 
--- verification
+/-! ## Verification -/
 
 theorem dividePower_dvd :
     (dividePower n d hd).val ∣ n.val := by
