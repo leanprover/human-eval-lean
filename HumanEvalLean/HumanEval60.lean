@@ -1,7 +1,59 @@
 module
 
-def sum_to_n : Unit :=
-  ()
+public import Std
+open Std
+
+set_option cbv.warning false
+
+/-! ## Implementation 1 -/
+
+def sumToN (n : Nat) : Nat :=
+  (n + 1) * n / 2
+
+/-! ## Tests 1 -/
+
+example : sumToN 1 = 1 := by cbv
+example : sumToN 6 = 21 := by cbv
+example : sumToN 11 = 66 := by cbv
+example : sumToN 30 = 465 := by cbv
+example : sumToN 100 = 5050 := by cbv
+
+/-! ## Verification 1 -/
+
+theorem sumToN_zero :
+    sumToN 0 = 0 := by
+  cbv
+
+theorem sumToN_add_one :
+    sumToN (n + 1) = sumToN n + n + 1 := by
+  grind [sumToN]
+
+/-! ## Implementation 2 -/
+
+def sumToN' (n : Nat) : Nat :=
+    (1...=n).iter.fold (init := 0) (· + ·)
+
+/-! ## Tests 2 -/
+
+example : sumToN' 1 = 1 := by native_decide
+example : sumToN' 6 = 21 := by native_decide
+example : sumToN' 11 = 66 := by native_decide
+example : sumToN' 30 = 465 := by native_decide
+example : sumToN' 100 = 5050 := by native_decide
+
+/-! ## Verification 2 -/
+
+theorem sumToN'_zero :
+    sumToN' 0 = 0 := by
+  simp [sumToN', ← Iter.foldl_toList]
+
+theorem sumToN'_add_one :
+    sumToN' (n + 1) = sumToN' n + n + 1 := by
+  simp [sumToN', ← Iter.foldl_toList, Nat.toList_rcc_eq_toList_rco, Nat.add_assoc]
+
+theorem sumToN_eq_sumToN' :
+    sumToN n = sumToN' n := by
+  induction n <;> grind [sumToN_zero, sumToN'_zero, sumToN_add_one, sumToN'_add_one]
 
 /-!
 ## Prompt
