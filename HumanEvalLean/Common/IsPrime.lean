@@ -78,3 +78,12 @@ public theorem isPrime_eq_true_iff_isPrime {n : Nat} :
     grind
   -- `mem_toList_iff_mem` and `mem_iff` should be simp lemmas
   simp [hn, isPrime_iff_mul_self, Std.Rco.mem_toList_iff_mem, Std.Rco.mem_iff]
+
+public theorem IsPrime.dvd_mul_iff (h : IsPrime d) :
+    d ∣ a * b ↔ d ∣ a ∨ d ∣ b := by
+  constructor
+  · by_cases d ∣ a
+    · grind
+    · have : Nat.Coprime d a := by grind [IsPrime, Nat.gcd_dvd_left, Nat.gcd_dvd_right]
+      exact Or.inr ∘ this.dvd_of_dvd_mul_left
+  · grind
