@@ -1,7 +1,6 @@
 module
 
 import Std.Tactic.Do
-import all Init.Data.List.MinMaxOn
 public section
 
 inductive Paren where
