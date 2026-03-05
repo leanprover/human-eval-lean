@@ -1,7 +1,21 @@
 module
 
-def filter_by_substring : Unit :=
-  ()
+def filterBySubstring (strings : Array String) (substring : String) : Array String :=
+  -- Uses KMP string search!
+  strings.filter (·.contains substring)
+
+example : filterBySubstring #[] "john" = #[] := by native_decide
+example : filterBySubstring #["xxx", "asd", "xxy", "john doe", "xxxAAA", "xxx"] "xxx" = #["xxx", "xxxAAA", "xxx"] := by native_decide
+example : filterBySubstring #["xxx", "asd", "aaaxxy", "john doe", "xxxAAA", "xxx"] "xx" = #["xxx", "aaaxxy", "xxxAAA", "xxx"] := by native_decide
+example : filterBySubstring #["grunt", "trumpet", "prune", "gruesome"] "run" = #["grunt", "prune"] := by native_decide
+
+open Classical in
+theorem filterBySubstring_eq {strings : Array String} {substring : String} :
+    filterBySubstring strings substring = strings.filter (decide <| substring.toList <:+: ·.toList) := by
+  rw [filterBySubstring]
+  congr
+  ext
+  exact Bool.eq_iff_iff.2 (by simp)
 
 /-!
 ## Prompt
