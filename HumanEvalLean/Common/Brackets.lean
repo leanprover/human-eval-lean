@@ -64,11 +64,52 @@ theorem List.take_cons_eq_if {l : List α} {a : α} {n : Nat} :
 theorem List.take_singleton {a : α} {n : Nat} : [a].take n = if 0 < n then [a] else [] := by
   rw [List.take_cons_eq_if, List.take_nil]
 
-def minBalance (l : List Paren) : Int :=
-  (0...=l.length).toList.map (fun k => balance (l.take k)) |>.min (by simp)
+def maxBalance (l : List Paren) : Int :=
+  (0...=l.length).toList.map (fun k => balance (l.take k)) |>.max (by simp)
 
 attribute [-simp] Nat.toList_rcc_eq_append
 attribute [simp] Std.Rcc.mem_toList_iff_mem Std.Rcc.mem_iff
+
+@[grind! .]
+theorem maxBalance_nonneg (l : List Paren) : 0 ≤ maxBalance l := by
+  rw [maxBalance]
+  apply List.le_max_of_mem
+  simp only [List.mem_map, Std.Rcc.mem_toList_iff_mem, Std.Rcc.mem_iff, Nat.zero_le, true_and]
+  exact ⟨0, by simp⟩
+
+@[simp]
+theorem maxBalance_nil : maxBalance [] = 0 := by
+  simp [maxBalance]
+
+attribute [simp] Nat.le_max_left Nat.le_max_right
+
+@[simp]
+theorem maxBalance_cons {l : List Paren} {p : Paren} :
+    maxBalance (p :: l) = max 0 (p.toInt + maxBalance l) := by
+  rw [maxBalance]
+  simp [Nat.toList_rcc_succ_right_eq_cons_map]
+  rw [List.max_cons, List.max?_eq_some_max (by simp)]
+  simp only [Option.elim_some, maxBalance, ← (List.max_map_eq_max (f := (p.toInt + ·)) (by simp)),
+    List.map_map]
+  congr 1
+
+@[simp]
+theorem maxBalance_append_singleton {l : List Paren} {p : Paren} :
+    maxBalance (l ++ [p]) = max (maxBalance l) (balance l + p.toInt) := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    simp only [List.cons_append, maxBalance_cons, ih, balance_cons, Int.max_assoc]
+    grind
+
+theorem maxBalance_append {l m : List Paren} :
+    maxBalance (l ++ m) = max (maxBalance l) (balance l + maxBalance m) := by
+  induction l with
+  | nil => simpa using (Int.max_eq_right (maxBalance_nonneg _)).symm
+  | cons p l ih => grind [maxBalance_cons]
+
+def minBalance (l : List Paren) : Int :=
+  (0...=l.length).toList.map (fun k => balance (l.take k)) |>.min (by simp)
 
 @[grind! .]
 theorem minBalance_nonpos (l : List Paren) : minBalance l ≤ 0 := by
