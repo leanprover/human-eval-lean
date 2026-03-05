@@ -111,8 +111,6 @@ theorem maxBalance_append {l m : List Paren} :
 def minBalance (l : List Paren) : Int :=
   (0...=l.length).toList.map (fun k => balance (l.take k)) |>.min (by simp)
 
-attribute [simp] Std.Rcc.mem_toList_iff_mem Std.Rcc.mem_iff
-
 @[grind! .]
 theorem minBalance_nonpos (l : List Paren) : minBalance l ≤ 0 := by
   rw [minBalance]
