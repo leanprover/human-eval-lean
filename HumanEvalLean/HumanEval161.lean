@@ -1,4 +1,5 @@
 module
+import all Init.Data.String.Lemmas.Pattern.Find.Pred -- TODO: remove when `nightly-2026-03-06` is out
 
 def reverseString (s : String) : String :=
   s.revChars.fold (init := "") fun sofar c => sofar.push c
@@ -32,16 +33,12 @@ theorem toList_reverseString {s : String} : (reverseString s).toList = s.toList.
     List.foldl_reverse]
   induction s.toList <;> simp_all
 
-@[simp]
-theorem String.contains_bool {s : String} {p : Char → Bool} :
-    s.contains p = s.toList.any p := sorry
-
 theorem toList_solve {s : String} : (solve s).toList =
     if s.toList.any Char.isAlpha then
       s.toList.map swapCase
     else
       s.toList.reverse := by
-  simp only [solve, String.contains_bool, List.any_eq_true]
+  simp only [solve, String.contains_bool_eq, List.any_eq_true]
   rw [apply_ite String.toList, toList_reverseString, String.toList_map]
 
 /-!

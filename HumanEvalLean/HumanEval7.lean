@@ -1,15 +1,13 @@
 module
 
 def filterBySubstring (strings : Array String) (substring : String) : Array String :=
+  -- Uses KMP string search!
   strings.filter (·.contains substring)
 
 example : filterBySubstring #[] "john" = #[] := by native_decide
 example : filterBySubstring #["xxx", "asd", "xxy", "john doe", "xxxAAA", "xxx"] "xxx" = #["xxx", "xxxAAA", "xxx"] := by native_decide
 example : filterBySubstring #["xxx", "asd", "aaaxxy", "john doe", "xxxAAA", "xxx"] "xx" = #["xxx", "aaaxxy", "xxxAAA", "xxx"] := by native_decide
 example : filterBySubstring #["grunt", "trumpet", "prune", "gruesome"] "run" = #["grunt", "prune"] := by native_decide
-
-@[simp]
-theorem String.contains_string_iff_infix {s t : String} : s.contains t ↔ t.toList <:+: s.toList := sorry
 
 open Classical in
 theorem filterBySubstring_eq {strings : Array String} {substring : String} :
