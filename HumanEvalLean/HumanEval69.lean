@@ -17,6 +17,8 @@ def search (xs : List Nat) : Int :=
     |>.first?
   kv.getD (-1)
 
+-- missing api
+
 @[simp, grind =]
 theorem Std.Iter.first?_toList {α β : Type w} [Iterator α Id β] [IteratorLoop α Id Id]
     [Iterators.Finite α Id] [LawfulIteratorLoop α Id Id] {it : Iter (α := α) β} :
@@ -24,38 +26,6 @@ theorem Std.Iter.first?_toList {α β : Type w} [Iterator α Id β] [IteratorLoo
   induction it using Iter.inductSteps with | step it ihy ihs
   rw [first?_eq_match_step, toList_eq_match_step]
   cases it.step using PlausibleIterStep.casesOn <;> simp [*]
-
-theorem getElem?_frequencies {k : Nat} :
-    (frequencies xs)[k]? = (some (xs.count k)).filter (0 < ·) := by
-  -- We express the statement in terms of `List.foldr`, which makes the induction over `xs`
-  -- easier because the initial tree map of the fold never changes. If the statement is expressed in
-  -- terms of `List.foldl`, we would need to generalize the statement for general initial tree maps.
-  rw [← List.reverse_reverse (as := xs), frequencies, List.foldl_reverse]
-  generalize xs.reverse = xs
-  induction xs <;> grind
-
-theorem getElem_frequencies {k : Nat} {h} :
-    (frequencies xs)[k]'h = xs.count k := by
-  grind [getElem?_frequencies]
-
-theorem mem_frequencies :
-    x ∈ frequencies xs ↔ x ∈ xs := by
-  rw [← TreeMap.isSome_getElem?_iff_mem, getElem?_frequencies]
-  simp
-
-theorem search_eq_neg_one (h : ∀ x, x = 0 ∨ xs.count x < x) :
-    search xs = -1 := by
-  simp only [search, ← Iter.first?_toList, Option.getD_eq_iff, Iter.toList_map, Iter.toList_filter,
-    TreeMap.toList_iter]
-  grind [List.length_filter_pos_iff, getElem?_frequencies]
-
-theorem search_eq_neg_one_iff :
-    search xs = -1 ↔ ∀ x, x = 0 ∨ xs.count x < x := by
-  simp [search, ← Iter.first?_toList, Option.getD_eq_iff, Iter.toList_map, Iter.toList_filter,
-    TreeMap.toList_iter, getElem?_frequencies]
-  grind [List.length_filter_pos_iff]
-
-def IsCandidate (xs : List Nat) (x : Nat) : Prop := 0 < x ∧ x ≤ xs.count x
 
 theorem List.find?_eq_some_iff_of_pairwise_eq_lt {xs : List α} {cmp : α → α → Ordering}
     [OrientedCmp cmp] (h : xs.Pairwise (cmp · · = .lt)) :
@@ -82,49 +52,56 @@ theorem List.find?_eq_some_iff_of_pairwise_eq_lt {xs : List α} {cmp : α → α
       grind
     grind [Ordering.ne_gt_iff_isLE]
 
-theorem search_eq (h : IsCandidate xs x ∧ ∀ y, IsCandidate xs y → y ≤ x) :
-    search xs = x := by
+theorem List.find?_eq_find? {xs : List α} {p q : α → Bool} (h : ∀ x ∈ xs, p x = q x) :
+    xs.find? p = xs.find? q := by
+  ext
+  grind [List.find?_eq_some_iff_append]
+
+theorem Option.getD_map_eq_elim {o : Option α} {f : α → β} {fallback : β} :
+    (o.map f).getD fallback = o.elim fallback f := by
+  cases o <;> simp
+
+-- verification
+
+theorem getElem?_frequencies {k : Nat} :
+    (frequencies xs)[k]? = (some (xs.count k)).filter (0 < ·) := by
+  -- We express the statement in terms of `List.foldr`, which makes the induction over `xs`
+  -- easier because the initial tree map of the fold never changes. If the statement is expressed in
+  -- terms of `List.foldl`, we would need to generalize the statement for general initial tree maps.
+  rw [← List.reverse_reverse (as := xs), frequencies, List.foldl_reverse]
+  generalize xs.reverse = xs
+  induction xs <;> grind
+
+theorem mem_frequencies :
+    x ∈ frequencies xs ↔ x ∈ xs := by
+  rw [← TreeMap.isSome_getElem?_iff_mem, getElem?_frequencies]
+  simp
+
+theorem search_eq_getD_find? :
+    search xs = (frequencies xs |>.toList.find? (fun x => 0 < x.1 ∧ x.1 ≤ xs.count x.1) |>.map (↑·.fst) |>.getD (-1 : Int)) := by
+  simp only [search, ← Iter.first?_toList, Iter.toList_map, Iter.toList_filter,
+    TreeMap.toList_iter, List.head?_map]
+  grind [List.find?_eq_find?, getElem?_frequencies]
+
+theorem search_eq_neg_one_iff :
+    search xs = -1 ↔ ∀ x, x = 0 ∨ xs.count x < x := by
+  simp [search_eq_getD_find?, Option.getD_eq_iff, getElem?_frequencies]
+  grind [List.length_filter_pos_iff]
+
+theorem search_eq_iff_of_ne_neg_one (h : y ≠ -1) :
+    search xs = y ↔ 0 < y ∧ y ≤ xs.count y.toNat ∧ ∀ z, 0 < z → z ≤ xs.count z → z ≤ y := by
+  -- Prepare `OrientedCmp` instance to be used by `List.find?_eq_some_iff_of_pairwise_eq_lt`
   have : OrientedCmp (fun x y : Nat × Nat => compare y.1 x.1) := by
     constructor
     grind [Nat.compare_swap]
-  simp [search, ← Iter.first?_toList, Option.getD_eq_iff, List.find?_eq_some_iff_of_pairwise_eq_lt (frequencies xs).ordered_keys_toList, Int.natCast_inj]
-  have : x ∈ xs := by grind [IsCandidate, List.count_pos_iff]
-  refine ⟨(frequencies xs)[x]'(by simpa [mem_frequencies]), ?_⟩
-  grind [getElem?_frequencies, IsCandidate, Nat.isLE_compare]
-
-/-
-Memo:
-
-* grind runs into deep recursion
-* hard to debug and minimize
-
-[grind] Diagnostics ▼
-  [thm] E-Matching instances ▼
-    [] getElem?_neg ↦ 1
-    [] getElem?_pos ↦ 1
-    [] List.getElem?_map ↦ 1
-    [] List.getElem_of_getElem? ↦ 1
-    [] List.length_filter_pos_iff ↦ 1
-
-
-    [thm] getElem?_neg: [@getElem? #8 #7 #6 #5 #4 #2 #1]
-    [thm] getElem?_pos: [@getElem? #8 #7 #6 #5 #4 #2 #1]
-    [thm] List.getElem?_map: [@getElem? (List #3) `[Nat] _ _ _ (@List.map #4 _ #2 #1) #0]
-    [thm] List.map_map: [@List.map #5 #4 #2 (@List.map #3 _ #1 #0)]
-    [thm] List.filter_map: [@List.filter #3 #1 (@List.map #4 _ #2 #0)]
-    [thm] List.getElem?_filter: [@getElem? (List #6) `[Nat] _ _ _ (@List.filter _ #3 #4) #2, @some _ #5]
-    [thm] List.getElem_of_getElem?: [@getElem? (List #4) `[Nat] _ _ _ #1 #3, @some _ #2]
-    [thm] TreeMap.length_toList: [@List.length (Prod #3 #2) (@TreeMap.toList _ _ #1 #0)]
-    [thm] List.length_filter_le: [@List.length #2 (@List.filter _ #1 #0)]
-    [thm] List.length_map: [@List.length #2 (@List.map #3 _ #0 #1)]
-    [thm] List.eq_nil_of_length_eq_zero: [@List.length #2 #1]
-    [thm] List.getElem?_eq_none: [@List.length #3 #2, @getElem? (List _) `[Nat] _ _ _ #2 #1]
-    [thm] Option.some_le_some: [@LE.le (Option #3) _ (@some _ #1) (@some _ #0)]
-    [thm] Option.not_some_le_none: [@LE.le (Option #2) _ (@some _ #0) (@none _)]
-    [thm] Option.none_le: [@LE.le (Option #2) _ (@none _) #0]
-    [thm] Option.map_some: [@Option.map #3 #2 #0 (@some _ #1)]
-    [thm] Option.map_none: [@Option.map #2 #1 #0 (@none _)]
--/
+  simp only [search_eq_getD_find?, Option.getD_map_eq_elim, Option.elim]
+  split <;> rename_i heq
+  · simp only [List.find?_eq_some_iff_of_pairwise_eq_lt (frequencies xs).ordered_keys_toList,
+      Prod.forall, TreeMap.mem_toList_iff_getElem?_eq_some, getElem?_frequencies] at heq
+    grind [List.count_pos_iff, isLE_compare]
+  · simp only [List.find?_eq_none, Prod.forall, TreeMap.mem_toList_iff_getElem?_eq_some,
+      getElem?_frequencies, Option.filter_eq_some_iff, and_imp] at heq
+    grind [mem_frequencies]
 
 /-!
 ## Prompt
