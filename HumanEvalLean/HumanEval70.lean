@@ -1,18 +1,33 @@
 module
 
+/-! ## Implementation -/
+
 def strangeSortArray (xs : Array Int) : Array Int :=
   let sorted := xs.mergeSort
   Array.ofFn (n := sorted.size)
     (fun i => if i.val % 2 = 0 then sorted[i.val / 2] else sorted[sorted.size - 1 - i.val / 2])
 
-theorem t {xs : List Int} :
+/-! ## Tests -/
+
+example : strangeSortArray #[1, 2, 3, 4] = #[1, 4, 2, 3] := by native_decide
+example : strangeSortArray #[5, 6, 7, 8, 9] = #[5, 9, 6, 8, 7] := by native_decide
+example : strangeSortArray #[1, 2, 3, 4, 5] = #[1, 5, 2, 4, 3] := by native_decide
+example : strangeSortArray #[5, 6, 7, 8, 9, 1] = #[1, 9, 5, 8, 6, 7] := by native_decide
+example : strangeSortArray #[5, 5, 5, 5] = #[5, 5, 5, 5] := by native_decide
+example : strangeSortArray #[] = #[] := by native_decide
+example : strangeSortArray #[1, 2, 3, 4, 5, 6, 7, 8] = #[1, 8, 2, 7, 3, 6, 4, 5] := by native_decide
+example : strangeSortArray #[0, 2, 2, 2, 5, 5, -5, -5] = #[-5, 5, -5, 5, 0, 2, 2, 2] := by native_decide
+example : strangeSortArray #[111111] = #[111111] := by native_decide
+
+/-! ## Missing API -/
+
+theorem List.all_min?_mem {xs : List Int} :
     xs.min?.all (· ∈ xs) := by
   simp only [Option.all_eq_true_iff_get]
   grind
 
-grind_pattern t => xs.min?
-
--- missing api
+-- Helps grind to derive `b ∈ xs` from `xs.min? = some b`
+grind_pattern List.all_min?_mem => xs.min?
 
 theorem List.Perm.min_eq [LE α] [Min α] [Std.LawfulOrderMin α] [Std.IsLinearOrder α]
     {xs ys : List α} (h_perm : xs.Perm ys) (h : xs ≠ []) :
@@ -56,24 +71,6 @@ theorem Array.Perm.min?_eq [LE α] [Min α] [Std.LawfulOrderMin α] [Std.IsLinea
     xs.min? = ys.min? := by
   simp [← min?_toList, h_perm.toList.min?_eq]
 
-theorem List.foldl_concat [Max α] {xs : List α} :
-    (xs.concat x).foldl f init = f (xs.foldl f init) x := by
-  simp
-
--- theorem List.max?_concat [Max α] {xs : List α} :
---     (xs.concat x).max? = xs.max?.elim x (fun maximum => max maximum x) := by
---   induction xs
---   sorry
-
--- theorem List.max?_eq_getLast? [Max α] {xs : List α} (hp : xs.Pairwise (fun a b => max a b = b)) :
---     xs.max? = xs.getLast? := by
---   rw [← List.reverse_reverse (as := xs)]
---   generalize xs.reverse = xs
---   induction xs
---   · simp
---   · rename_i x xs ih
---     simp [List.max?_push, List.getLast?_cons]
-
 theorem List.max_eq_getLast [Max α] {xs : List α} (h) (hp : xs.Pairwise (fun a b => max a b = b)) :
     xs.max h = xs.getLast h := by
   rw [List.max.eq_def]
@@ -89,8 +86,8 @@ theorem List.max_eq_getLast [Max α] {xs : List α} (h) (hp : xs.Pairwise (fun a
   · simp
     rename_i ih
     rw [ih]
-    rw [List.reverse_cons, ← List.cons_append, pairwise_append] at hp <;> grind
-    grind -- what's going on?
+    · rw [List.reverse_cons, ← List.cons_append, pairwise_append] at hp <;> grind
+    · grind
 
 theorem List.max?_eq_getLast? [Max α] {xs : List α} (hp : xs.Pairwise (fun a b => max a b = b)) :
     xs.max? = xs.getLast? := by
@@ -216,15 +213,15 @@ theorem Array.head?_toList {xs : Array α} :
 
 @[grind =]
 theorem Array.count_drop_one [BEq α] {xs : Array α} {a : α} :
-      (xs.drop 1).count a = xs.count a - if xs[0]? == some a then 1 else 0 := by
-    have := List.count_tail (l := xs.toList) (a := a)
-    simp [← count_toList, List.take_of_length_le, this, head?_toList]
+    (xs.drop 1).count a = xs.count a - if xs[0]? == some a then 1 else 0 := by
+  have := List.count_tail (l := xs.toList) (a := a)
+  simp [← count_toList, List.take_of_length_le, this, head?_toList]
 
 theorem Array.min?_eq_getElem?_zero {α : Type u} [Min α] {xs : Array α}
     (h : xs.toList.Pairwise (fun a b => min a b = a)) : xs.min? = xs[0]? := by
   simp [← min?_toList, List.min?_eq_head? h, List.head?_eq_getElem?]
 
--- verification
+/-! ## Verification -/
 
 theorem strangeSortArray_empty :
     strangeSortArray #[] = #[] := by
