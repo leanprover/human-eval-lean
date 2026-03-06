@@ -1,7 +1,7 @@
 module
 
 def strangeSortArray (xs : Array Int) : Array Int :=
-  let sorted := xs.toList.mergeSort.toArray
+  let sorted := xs.mergeSort
   Array.ofFn (n := sorted.size)
     (fun i => if i.val % 2 = 0 then sorted[i.val / 2] else sorted[sorted.size - 1 - i.val / 2])
 
@@ -11,15 +11,6 @@ theorem t {xs : List Int} :
   grind
 
 grind_pattern t => xs.min?
-
-def strangeSortListSlow (xs : List Int) : List Int :=
-    match _ : xs.min? with
-    | some minimum =>
-      let xs' := xs.erase minimum
-      minimum :: (strangeSortListSlow xs'.reverse).reverse
-    | none => []
-termination_by xs.length
-decreasing_by grind
 
 -- missing api
 
@@ -54,6 +45,16 @@ theorem List.Perm.max?_eq [LE α] [Max α] [Std.LawfulOrderMax α] [Std.IsLinear
     rw [max?_eq_some_max, max?_eq_some_max, h_perm.max_eq]
     simp
   | x :: xs, [] | [], y :: ys => grind [Perm.nil_eq, Perm.eq_nil]
+
+theorem Array.Perm.max?_eq [LE α] [Max α] [Std.LawfulOrderMax α] [Std.IsLinearOrder α]
+    {xs ys : Array α} (h_perm : xs.Perm ys) :
+    xs.max? = ys.max? := by
+  simp [← max?_toList, h_perm.toList.max?_eq]
+
+theorem Array.Perm.min?_eq [LE α] [Min α] [Std.LawfulOrderMin α] [Std.IsLinearOrder α]
+    {xs ys : Array α} (h_perm : xs.Perm ys) :
+    xs.min? = ys.min? := by
+  simp [← min?_toList, h_perm.toList.min?_eq]
 
 theorem List.foldl_concat [Max α] {xs : List α} :
     (xs.concat x).foldl f init = f (xs.foldl f init) x := by
@@ -91,12 +92,6 @@ theorem List.max_eq_getLast [Max α] {xs : List α} (h) (hp : xs.Pairwise (fun a
     rw [List.reverse_cons, ← List.cons_append, pairwise_append] at hp <;> grind
     grind -- what's going on?
 
-theorem Array.max_eq_back [Max α] {xs : Array α} (h) (hp : xs.toList.Pairwise (fun a b => max a b = b)) :
-    xs.max h = xs.back (by grind) := by
-  rw [← max_toList, List.max_eq_getLast, getLast_toList]
-  · exact hp
-  · simp [h]
-
 theorem List.max?_eq_getLast? [Max α] {xs : List α} (hp : xs.Pairwise (fun a b => max a b = b)) :
     xs.max? = xs.getLast? := by
   cases xs
@@ -104,6 +99,16 @@ theorem List.max?_eq_getLast? [Max α] {xs : List α} (hp : xs.Pairwise (fun a b
   · rw [max?_eq_some_max, max_eq_getLast, getLast?_eq_some_getLast]
     · simp
     · exact hp
+
+theorem Array.max_eq_back [Max α] {xs : Array α} (h) (hp : xs.toList.Pairwise (fun a b => max a b = b)) :
+    xs.max h = xs.back (by grind) := by
+  rw [← max_toList, List.max_eq_getLast, getLast_toList]
+  · exact hp
+  · simp [h]
+
+theorem Array.max?_eq_back? [Max α] {xs : Array α} (hp : xs.toList.Pairwise (fun a b => max a b = b)) :
+    xs.max? = xs.back? := by
+  simp [← max?_toList, List.max?_eq_getLast? hp]
 
 theorem Std.min_eq_left_iff [LE α] [Min α] [Std.Refl (α := α) (· ≤ ·)]
     [Std.LawfulOrderLeftLeaningMin α] {a b : α} :
@@ -126,12 +131,23 @@ theorem List.getElem_zero_mergeSort {xs : List Int} (h) :
   simp only [Std.min_eq_left_iff]
   simpa using xs.pairwise_mergeSort (by grind) (by grind) (le := (· ≤ ·))
 
+theorem Array.getElem_zero_mergeSort {xs : Array Int} (h) :
+    xs.mergeSort[0]'h = xs.min (by grind [size_mergeSort]) := by
+  simp only [mergeSort_eq_toArray_mergeSort_toList, List.getElem_toArray,
+    List.getElem_zero_mergeSort, min_toList]
+
 theorem List.getElem_length_sub_one_mergeSort {xs : List Int} (h) :
     xs.mergeSort[xs.length - 1]'h = xs.max (by grind [length_mergeSort]) := by
   rw [(xs.mergeSort_perm (· ≤ ·)).symm.max_eq, List.max_eq_getLast, List.getLast_eq_getElem]
   · simp [List.length_mergeSort]
   · simp only [Std.max_eq_right_iff]
     simpa using xs.pairwise_mergeSort (by grind) (by grind) (le := (· ≤ ·))
+
+theorem Array.getElem_size_sub_one_mergeSort {xs : Array Int} (h) :
+    xs.mergeSort[xs.size - 1]'h = xs.max (by grind [size_mergeSort]) := by
+  simp only [mergeSort_eq_toArray_mergeSort_toList]
+  simp only [← length_toList, List.getElem_toArray]
+  rw [List.getElem_length_sub_one_mergeSort, max_toList]
 
 theorem List.max_erase_le_max {xs : List Int} (h) :
     (xs.erase x).max h ≤ xs.max (by grind) := by
@@ -157,60 +173,107 @@ theorem Array.count_pop [BEq α] {xs : Array α} {a : α} :
     xs.pop.count a = xs.count a - if xs.back? == some a then 1 else 0 := by
   rw [← count_toList, toList_pop, List.count_dropLast, getLast?_toList, count_toList]
 
+/--
+If two lists are sorted by an antisymmetric relation, and permutations of each other,
+they must be equal.
+-/
+theorem Array.Perm.eq_of_pairwise {xs ys : Array α}
+    (h : ∀ a b, a ∈ xs → b ∈ ys → le a b → le b a → a = b)
+    (hpx : xs.toList.Pairwise le) (hpy : ys.toList.Pairwise le) (hp : xs.Perm ys) :
+    xs = ys := by
+  rw [← toList_inj]
+  apply List.Perm.eq_of_pairwise (by simpa) hpx hpy (by simpa [perm_iff_toList_perm] using hp)
+
+theorem Array.pop_eq_take {xs : Array α} :
+    xs.pop = xs.take (xs.size - 1) := by
+  rw [take_eq_extract, extract_eq_pop rfl]
+
+theorem List.Pairwise.toList_arrayTake {xs : Array α} (h : xs.toList.Pairwise R) :
+    (xs.take i).toList.Pairwise R := by
+  simp only [Array.take_eq_extract, Array.toList_extract, extract_eq_take_drop, Nat.sub_zero,
+    drop_zero]
+  apply List.Pairwise.take
+  exact h
+
+theorem List.Pairwise.toList_arrayDrop {xs : Array α} (h : xs.toList.Pairwise R) :
+    (xs.drop i).toList.Pairwise R := by
+  simp only [Array.drop_eq_extract, Array.toList_extract, extract_eq_drop_take']
+  apply List.Pairwise.drop
+  apply List.Pairwise.take
+  exact h
+
+theorem Array.Perm.countP_eq [BEq α] {xs ys : Array α} (hp : xs.Perm ys) :
+    xs.countP P = ys.countP P := by
+  simp [← countP_toList, hp.toList.countP_eq]
+
+theorem Array.Perm.count_eq [BEq α] {xs ys : Array α} (hp : xs.Perm ys) :
+    xs.count a = ys.count a :=
+  hp.countP_eq
+
+theorem Array.head?_toList {xs : Array α} :
+    xs.toList.head? = xs[0]? := by
+  simp [List.head?_eq_getElem?]
+
+@[grind =]
+theorem Array.count_drop_one [BEq α] {xs : Array α} {a : α} :
+      (xs.drop 1).count a = xs.count a - if xs[0]? == some a then 1 else 0 := by
+    have := List.count_tail (l := xs.toList) (a := a)
+    simp [← count_toList, List.take_of_length_le, this, head?_toList]
+
+theorem Array.min?_eq_getElem?_zero {α : Type u} [Min α] {xs : Array α}
+    (h : xs.toList.Pairwise (fun a b => min a b = a)) : xs.min? = xs[0]? := by
+  simp [← min?_toList, List.min?_eq_head? h, List.head?_eq_getElem?]
+
 -- verification
 
 theorem strangeSortArray_empty :
     strangeSortArray #[] = #[] := by
-  grind [strangeSortArray, List.mergeSort_nil]
+  grind [strangeSortArray, Array.mergeSort_empty]
 
 theorem strangeSortArray_singleton :
     strangeSortArray #[x] = #[x] := by
-  ext <;> grind [strangeSortArray, List.mergeSort_singleton, Array.size_ofFn, Array.getElem_ofFn]
+  ext <;> grind [strangeSortArray, Array.mergeSort_singleton, Array.size_ofFn, Array.getElem_ofFn]
 
-theorem bla' {xs : Array Int} {h} :
-    (xs.erase (xs.max h)).toList.mergeSort = xs.toList.mergeSort.dropLast := by
-  apply List.Perm.eq_of_pairwise (le := (· ≤ ·))
+theorem mergeSort_erase_max {xs : Array Int} {h} :
+    (xs.erase (xs.max h)).mergeSort = xs.mergeSort.pop := by
+  apply Array.Perm.eq_of_pairwise (le := (· ≤ ·))
   · grind
-  · simpa using List.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind) _
-  · simp only [List.dropLast_eq_take]
-    apply List.Pairwise.take
-    simpa using List.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind) _
-  · refine List.Perm.trans (List.mergeSort_perm _ _) ?_
-    rw [List.perm_iff_toArray_perm, Array.toArray_toList]
-    simp only [Array.perm_iff_toList_perm]
-    simp only [List.perm_iff_count, Array.count_toList]
+  · simpa using Array.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind)
+  · simp only [Array.pop_eq_take]
+    apply List.Pairwise.toList_arrayTake
+    simpa using Array.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind)
+  · refine Array.Perm.trans Array.mergeSort_perm ?_
+    simp only [Array.perm_iff_toList_perm, List.perm_iff_count, Array.count_toList]
     intro a
     rw [Array.count_erase]
     have h_mem : xs.max h ∈ xs := by grind
-    rw [List.count_dropLast, List.count_toArray, (List.mergeSort_perm _ _).count_eq,
-      ← List.max?_eq_getLast?, (List.mergeSort_perm _ _).max?_eq, Array.max?_toList,
+    rw [Array.count_pop, Array.mergeSort_perm.count_eq,
+      ← Array.max?_eq_back?, Array.mergeSort_perm.max?_eq,
       Array.max?_eq_some_max]
     · simp
     · grind
     · simp only [Std.max_eq_right_iff]
-      simpa using List.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind) _
+      simpa using Array.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind)
 
-theorem blub' {xs : Array Int} {h} :
-    (xs.erase (xs.min h)).toList.mergeSort = xs.toList.mergeSort.drop 1 := by
-  apply List.Perm.eq_of_pairwise (le := (· ≤ ·))
+theorem mergeSort_erase_min {xs : Array Int} {h} :
+    (xs.erase (xs.min h)).mergeSort = xs.mergeSort.drop 1 := by
+  apply Array.Perm.eq_of_pairwise (le := (· ≤ ·))
   · grind
-  · simpa using List.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind) _
-  · apply List.Pairwise.drop
-    simpa using List.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind) _
-  · refine List.Perm.trans (List.mergeSort_perm _ _) ?_
-    rw [← Array.perm_iff_toList_perm]
-    simp only [Array.perm_iff_toList_perm]
-    simp [List.perm_iff_count, Array.count_toList, - List.pop_toArray, - Array.toList_pop]
+  · simpa using Array.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind)
+  · apply List.Pairwise.toList_arrayDrop
+    simpa using Array.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind)
+  · refine Array.Perm.trans Array.mergeSort_perm ?_
+    simp only [Array.perm_iff_toList_perm, List.perm_iff_count, Array.count_toList]
     intro a
     rw [Array.count_erase]
     have h_mem : xs.max h ∈ xs := by grind
-    rw [List.count_tail, List.count_toArray, (List.mergeSort_perm _ _).count_eq,
-      ← List.min?_eq_head?, (List.mergeSort_perm _ _).min?_eq, Array.min?_toList,
+    rw [Array.count_drop_one, Array.mergeSort_perm.count_eq,
+      ← Array.min?_eq_getElem?_zero, Array.mergeSort_perm.min?_eq,
       Array.min?_eq_some_min]
     · simp
     · grind
     · simp only [Std.min_eq_left_iff]
-      simpa using List.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind) _
+      simpa using Array.pairwise_mergeSort (α := Int) (le := (· ≤ ·)) (by grind) (by grind)
 
 theorem size_strangeSortArray {xs : Array Int} :
     (strangeSortArray xs).size = xs.size := by
@@ -229,9 +292,9 @@ theorem strangeSortArray_of_two_le_size (h : 2 ≤ xs.size) :
   · rename_i i h₁ h₂
     simp [strangeSortArray]
     match i with
-    | 0 => grind [List.getElem_zero_mergeSort]
+    | 0 => grind [Array.getElem_zero_mergeSort]
     | 1 =>
-      simp [← Array.length_toList, List.getElem_length_sub_one_mergeSort, maximum, withoutMin]
+      simp [Array.getElem_size_sub_one_mergeSort, maximum, withoutMin]
       rw [Array.max_eq_iff]
       constructor
       · grind [Array.mem_of_mem_erase]
@@ -245,10 +308,13 @@ theorem strangeSortArray_of_two_le_size (h : 2 ≤ xs.size) :
           rwa [Array.mem_erase_of_ne]
           assumption
     | j + 2 =>
-      have : withoutMinMax.toList.mergeSort = xs.toList.mergeSort.extract 1 (xs.toList.mergeSort.length - 1) := by
-        simp only [withoutMinMax, maximum, bla']
-        simp only [withoutMin, minimum, blub']
-        simp only [List.extract_eq_take_drop, List.dropLast_eq_take]
+      have : withoutMinMax.mergeSort = xs.mergeSort.extract 1 (xs.toList.mergeSort.length - 1) := by
+        simp only [withoutMinMax, maximum, mergeSort_erase_max]
+        simp only [withoutMin, minimum, mergeSort_erase_min]
+        -- TODO: simplify the following as soon as the `Array.take/drop` API is merged
+        simp only [← Array.extract_eq_pop, Array.drop_eq_extract, Array.extract_extract]
+        simp only [Nat.add_zero, Array.size_mergeSort, Array.size_extract, Std.le_refl,
+          Nat.min_eq_left, List.length_mergeSort, Array.length_toList]
         grind
       simp [this]
       grind [size_strangeSortArray]
