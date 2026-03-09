@@ -15,8 +15,8 @@ public section
 increasing order.
 -/
 def findClosestElements (xs : Array Rat) (h : 2 ≤ xs.size := by grind) : Rat × Rat := Id.run do
-  let sorted := xs.toList.mergeSort.toArray
-  have : 2 ≤ sorted.size := by grind [List.length_mergeSort]
+  let sorted := xs.mergeSort
+  have : 2 ≤ sorted.size := by grind [Array.size_mergeSort]
   let mut closest := (sorted[0], sorted[1])
   for hi : i in 1...(sorted.size - 1) do
     if (sorted[i + 1] - sorted[i]).abs < (closest.2 - closest.1).abs then
@@ -32,8 +32,6 @@ example : findClosestElements #[(1.0 : Rat), 2.0, 3.0, 4.0, 5.0, 2.0] = (2.0, 2.
 example : findClosestElements #[(1.1 : Rat), 2.2, 3.1, 4.1, 5.1] = (2.2, 3.1) := by native_decide
 
 /-! ## Missing API -/
-
--- TODO: As soon as `Array.mergeSort` is merged, use that one.
 
 theorem Nat.eq_add_of_toList_rco_eq_append_cons {a b : Nat} {pref cur suff}
     (h : (a...b).toList = pref ++ cur :: suff) :
@@ -54,11 +52,11 @@ theorem sorted_findClosestElements {xs : Array Rat} {h : 2 ≤ xs.size} :
   invariants
   · ⇓⟨cur, closest⟩ => ⌜closest.1 ≤ closest.2⌝
   case vc1 sorted _ _ _ _ _ _ _ _ _ =>
-    have : sorted.toList.Pairwise (· ≤ ·) := by grind [List.pairwise_mergeSort]
+    have : sorted.toList.Pairwise (· ≤ ·) := by grind [Array.pairwise_mergeSort]
     simp only [List.pairwise_iff_getElem] at this
     grind
   case vc3 sorted _ _ =>
-    have : sorted.toList.Pairwise (· ≤ ·) := by grind [List.pairwise_mergeSort]
+    have : sorted.toList.Pairwise (· ≤ ·) := by grind [Array.pairwise_mergeSort]
     simp only [List.pairwise_iff_getElem] at this
     grind
 
@@ -69,8 +67,8 @@ The elements of the pair `findClosestElements xs` are located in two distinct po
 theorem exists_mem_findClosestElements {xs : Array Rat} {h : 2 ≤ xs.size} :
     ∃ (i j : Nat) (hi : i < xs.size) (hj : j < xs.size) (_hij : i ≠ j),
       findClosestElements xs = (xs[i], xs[j]) := by
-  suffices h' : ¬ xs.toList.mergeSort.Pairwise (fun x y => ¬ (findClosestElements xs = (x, y) ∨  findClosestElements xs = (y, x))) by
-    have := xs.toList.mergeSort_perm (· ≤ ·)
+  suffices h' : ¬ xs.mergeSort.toList.Pairwise (fun x y => ¬ (findClosestElements xs = (x, y) ∨  findClosestElements xs = (y, x))) by
+    have := xs.mergeSort_perm (le := (· ≤ ·))
     rw [this.pairwise_iff (by grind)] at h'
     grind [List.pairwise_iff_getElem]
   generalize hwp : findClosestElements xs = wp
@@ -79,9 +77,9 @@ theorem exists_mem_findClosestElements {xs : Array Rat} {h : 2 ≤ xs.size} :
   invariants
   | inv1 sorted _ _ => ⇓⟨cur, closest⟩ => ⌜∃ (i j : Nat) (hi : i < sorted.size) (hj : j < sorted.size) (hij : i ≠ j),
         closest = (sorted[i], sorted[j])⌝
-  case vc1 => grind [List.length_mergeSort, List.pairwise_iff_getElem]
+  case vc1 => grind [List.pairwise_iff_getElem]
   case vc3 => exact ⟨0, 1, by grind⟩
-  case vc4 => grind [List.length_mergeSort, List.pairwise_iff_getElem]
+  case vc4 => grind [List.pairwise_iff_getElem]
 
 /--
 This lemma is an intermediate step towards `pairwise_abs_findClosestElements_le`.
@@ -91,7 +89,7 @@ distance of any two consecutive elements in the *sorted* array.
 -/
 private theorem abs_findClosestElements_le_mergeSort {xs : Array Rat} {h : 2 ≤ xs.size} :
     letI closest := findClosestElements xs
-    letI sorted := xs.toList.mergeSort.toArray
+    letI sorted := xs.mergeSort
     ∀ (i : Nat) (hi : i + 1 < sorted.size),
       (closest.2 - closest.1).abs ≤ (sorted[i + 1] - sorted[i]).abs := by
   generalize hwp : findClosestElements xs = wp
@@ -109,7 +107,7 @@ private theorem abs_findClosestElements_le_mergeSort {xs : Array Rat} {h : 2 ≤
     by_cases i < cur <;> grind
   case vc3 => grind
   case vc4 h =>
-    simp +zetaDelta only [List.getElem!_toArray, List.getElem!_eq_getElem?_getD] at h
+    simp +zetaDelta only [Array.getElem!_eq_getD, Array.getD_eq_getD_getElem?] at h
     grind [Nat.length_toList_rco]
 
 /--
@@ -121,11 +119,11 @@ is at least as large as the distance between the components of `findClosestEleme
 theorem pairwise_abs_findClosestElements_le {xs : Array Rat} {h : 2 ≤ xs.size} :
     letI closest := findClosestElements xs
     xs.toList.Pairwise (fun x y => (closest.2 - closest.1).abs ≤ (y - x).abs) := by
-  have := xs.toList.mergeSort_perm (· ≤ ·)
+  have := xs.mergeSort_perm (le := (· ≤ ·))
   rw [← this.pairwise_iff (by grind [Rat.abs_sub_comm]), List.pairwise_iff_getElem]
   intro i j hi hj hij
   have := abs_findClosestElements_le_mergeSort (xs := xs) (h := h) i (by grind)
-  have h_sorted := xs.toList.pairwise_mergeSort (le := (· ≤ ·)) (by grind) (by grind)
+  have h_sorted := xs.pairwise_mergeSort (le := (· ≤ ·)) (by grind) (by grind)
   grind [List.pairwise_iff_getElem, Rat.abs_of_nonneg]
 
 /-!
