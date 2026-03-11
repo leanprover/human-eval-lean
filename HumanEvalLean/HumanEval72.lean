@@ -43,6 +43,10 @@ instance decidableBallLTImpl (n : Nat) (P : ∀ k, k < n → Prop) [∀ n h, Dec
 
 attribute [- instance] Nat.decidableBallLT
 
+theorem Array.ext_getElem_iff {l₁ l₂ : Array α} :
+    l₁ = l₂ ↔ l₁.size = l₂.size ∧ ∀ (i : Nat) (h₁ : i < l₁.size) (h₂ : i < l₂.size), l₁[i]'h₁ = l₂[i]'h₂ := by
+  simp [← Array.toList_inj, List.ext_getElem_iff]
+
 /-!
 ## Implementation
 -/
@@ -50,8 +54,8 @@ attribute [- instance] Nat.decidableBallLT
 /--
 Efficient, short-circuiting
 -/
-def willItFly (q : List Nat) (w : Nat) : Bool :=
-  q.sum ≤ w ∧ ∀ (i : Nat) (hi : i < q.length / 2), q[i] = q[q.length - 1 - i]
+def willItFly (q : Array Nat) (w : Nat) : Bool :=
+  q.sum ≤ w ∧ ∀ (i : Nat) (hi : i < q.size / 2), q[i] = q[q.size - 1 - i]
 
 /-!
 ## Tests
@@ -59,24 +63,24 @@ def willItFly (q : List Nat) (w : Nat) : Bool :=
 
 set_option cbv.warning false
 
-example : willItFly [3, 2, 3] 9 = true := by cbv
-example : willItFly [1, 2] 5 = false := by cbv
-example : willItFly [3] 5 = true := by cbv
-example : willItFly [3, 2, 3] 1 = false := by cbv
-example : willItFly [1, 2, 3] 6 = false := by cbv
-example : willItFly [5] 5 = true := by cbv
+example : willItFly #[3, 2, 3] 9 = true := by cbv
+example : willItFly #[1, 2] 5 = false := by cbv
+example : willItFly #[3] 5 = true := by cbv
+example : willItFly #[3, 2, 3] 1 = false := by cbv
+example : willItFly #[1, 2, 3] 6 = false := by cbv
+example : willItFly #[5] 5 = true := by cbv
 
 /-!
 ## Verification
 -/
 
 theorem willItFly_iff_le_and_forall :
-    willItFly q w ↔ q.sum ≤ w ∧ ∀ (i : Nat) (hi : i < q.length), q[i] = q[q.length - 1 - i] := by
+    willItFly q w ↔ q.sum ≤ w ∧ ∀ (i : Nat) (hi : i < q.size), q[i] = q[q.size - 1 - i] := by
   grind [willItFly]
 
 theorem willItFly_iff_le_and_reverse_eq_self :
     willItFly q w ↔ q.sum ≤ w ∧ q.reverse = q := by
-  rw [List.ext_getElem_iff]
+  rw [Array.ext_getElem_iff]
   grind [willItFly]
 
 /-!
