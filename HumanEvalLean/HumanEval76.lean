@@ -1,7 +1,95 @@
 module
 
-def is_simple_power : Unit :=
-  ()
+public section
+
+/-!
+## Implementation
+-/
+
+private def isSimplePowerHelper (x n : Nat) (hx : 0 < x) (hn : 1 < n) : Bool :=
+  if _ : x = 1 then
+    true
+  else if hdvd : n ∣ x then
+    isSimplePowerHelper (x / n) n (Nat.pos_of_dvd_of_pos (Nat.div_dvd_of_dvd hdvd) hx) hn
+  else
+    false
+termination_by x
+decreasing_by
+  rw [Nat.div_lt_iff_lt_mul (by grind), Nat.lt_mul_iff_one_lt_right hx]
+  grind
+
+def isSimplePower (x n : Nat) : Bool :=
+  if _ : n = 0 then
+    x ≤ 1
+  else if _ : n = 1 then
+    x = 1
+  else if _ : x = 0 then
+    false
+  else
+    isSimplePowerHelper x n (by grind) (by grind)
+
+/-!
+## Tests
+-/
+
+example : isSimplePower 16 2 = true := by native_decide
+example : isSimplePower 143214 16 = false := by native_decide
+example : isSimplePower 4 2 = true := by native_decide
+example : isSimplePower 9 3 = true := by native_decide
+example : isSimplePower 16 4 = true := by native_decide
+example : isSimplePower 24 2 = false := by native_decide
+example : isSimplePower 128 4 = false := by native_decide
+example : isSimplePower 12 6 = false := by native_decide
+example : isSimplePower 1 1 = true := by native_decide
+example : isSimplePower 1 12 = true := by native_decide
+
+/-!
+## Verification
+-/
+
+private theorem isSimplePowerHelper_iff :
+    isSimplePowerHelper x n hx hn ↔ ∃ i, n ^ i = x := by
+  fun_induction isSimplePowerHelper x n hx hn
+  · simp
+  · rename_i ih
+    rw [ih]
+    constructor
+    · rintro ⟨i, hi⟩
+      refine ⟨i + 1, ?_⟩
+      simp only [Nat.pow_add, Nat.pow_one]
+      rw [hi, Nat.div_mul_cancel ‹_›]
+    · rintro ⟨i, hi⟩
+      match i with
+      | 0 => grind
+      | i + 1 =>
+        refine ⟨i, ?_⟩
+        rw [Nat.eq_div_iff_mul_eq_left (by grind) ‹_›]
+        grind
+  · simp only [Bool.false_eq_true, false_iff, not_exists]
+    intro i
+    match i with
+    | 0 => grind
+    | i' + 1 =>
+      have := Nat.dvd_mul_left n (n ^ i')
+      grind
+
+theorem isSimplePower_iff :
+    isSimplePower x n ↔ ∃ i, n ^ i = x := by
+  fun_cases isSimplePower
+  · rename_i hn
+    cases hn
+    constructor
+    · intro h
+      match x with
+      | 0 => exact ⟨1, by grind⟩
+      | 1 => exact ⟨0, by grind⟩
+      | _ + 2 => grind
+    · rintro ⟨i, hi⟩
+      match i with
+      | 0 | _ + 1 => grind
+  · simp_all [eq_comm]
+  · simp_all
+  · apply isSimplePowerHelper_iff
 
 /-!
 ## Prompt
@@ -25,12 +113,12 @@ def is_simple_power(x, n):
 ## Canonical solution
 
 ```python3
-    if (n == 1): 
-        return (x == 1) 
+    if (n == 1):
+        return (x == 1)
     power = 1
-    while (power < x): 
-        power = power * n 
-    return (power == x) 
+    while (power < x):
+        power = power * n
+    return (power == x)
 ```
 
 ## Tests
