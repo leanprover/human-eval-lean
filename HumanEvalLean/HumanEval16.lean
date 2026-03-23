@@ -8,6 +8,12 @@ open Std
 def countDistinctCharacters (s : String) : Nat :=
   (s.chars.map Char.toLower).toHashSet.size
 
+example : countDistinctCharacters "" = 0 := by native_decide
+example : countDistinctCharacters "abcde" = 5 := by native_decide
+example : countDistinctCharacters ("abcde" ++ "cade" ++ "CADE") = 5 := by native_decide
+example : countDistinctCharacters "aaaaAAAAaaaa" = 1 := by native_decide
+example : countDistinctCharacters "Jerry jERRY JeRRRY" = 5 := by native_decide
+
 theorem countDistinctCharacters_eq {s : String} :
     countDistinctCharacters s = (HashSet.ofList (s.toList.map Char.toLower)).size := by
   simp [countDistinctCharacters, Iter.toHashSet_equiv_ofList.size_eq]
