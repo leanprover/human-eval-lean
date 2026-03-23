@@ -1,7 +1,78 @@
 module
+import Std.Data.Iterators.Producers.Range
+import Std
 
-def string_sequence : Unit :=
-  ()
+@[inline]
+def intercalateIter {α : Type} [Std.Iterator α Id String.Slice] [Std.IteratorLoop α Id Id]
+    (s : String.Slice) (it : Std.Iter (α := α) String.Slice) : String :=
+  (it.fold (init := none) (fun | none, sl => some sl.copy | some str, sl => str ++ s ++ sl)).getD ""
+
+def stringSequence (n : Nat) : String :=
+  intercalateIter " " ((0...=n).iter.map (String.toSlice ∘ Nat.repr))
+
+example : stringSequence 0 = "0" := by native_decide
+example : stringSequence 3 = "0 1 2 3" := by native_decide
+example : stringSequence 10 = "0 1 2 3 4 5 6 7 8 9 10" := by native_decide
+
+theorem String.intercalate_append_of_ne_nil {l m : List String} {s : String} (hl : l ≠ []) (hm : m ≠ []) :
+    s.intercalate (l ++ m) = s.intercalate l ++ s ++ s.intercalate m := by
+  induction l with
+  | nil => simp_all
+  | cons hd tl ih =>
+    rw [List.cons_append, String.intercalate_cons_of_ne_nil (by simp_all)]
+    by_cases ht : tl = []
+    · simp_all
+    · simp [ih ht, String.intercalate_cons_of_ne_nil ht, String.append_assoc]
+
+@[simp]
+theorem intercalateIter_eq {α : Type} [Std.Iterator α Id String.Slice] [Std.Iterators.Finite α Id]
+    [Std.IteratorLoop α Id Id] [Std.LawfulIteratorLoop α Id Id] {s : String.Slice} {it : Std.Iter (α := α) String.Slice} :
+    intercalateIter s it = s.intercalate it.toList := by
+  simp only [intercalateIter, String.appendSlice_eq, ← Std.Iter.foldl_toList,
+    String.Slice.intercalate_eq]
+  generalize s.copy = s
+  have := congrArg (·.getD "") (List.foldl_map (init := none) (l := it.toList) (f := String.Slice.copy)
+    (g := (fun | none, t => some t | some str, t => str ++ s ++ t)))
+  refine Eq.trans ?_ (Eq.trans this.symm ?_)
+  · congr
+    grind
+  · suffices ∀ (l m : List String),
+        (l.foldl (init := if m = [] then none else some (s.intercalate m)) (fun | none, sl => some sl | some str, sl => str ++ s ++ sl)).getD ""
+          = s.intercalate (m ++ l) by
+      simpa using this (it.toList.map String.Slice.copy) []
+    clear this
+    intro l m
+    induction l generalizing m with
+    | nil => cases m <;> simp
+    | cons hd tl ih =>
+      rw [List.append_cons, ← ih, List.foldl_cons]
+      congr
+      simp only [List.append_eq_nil_iff, List.cons_ne_self, and_false, ↓reduceIte]
+      match m with
+      | [] => simp
+      | x::xs =>
+        simp only [reduceCtorEq, ↓reduceIte, List.cons_append, Option.some.injEq]
+        rw [← List.cons_append, String.intercalate_append_of_ne_nil (by simp) (by simp),
+          String.intercalate_singleton]
+
+@[simp]
+theorem String.Slice.toNat?_comp_copy : String.toNat? ∘ String.Slice.copy = String.Slice.toNat? := by
+  ext; simp
+
+/-- Calling `stringSequence` and then splitting the result at space characters and attempting to
+parse the components into natural numbers yields the sequence `[some 0, some 1, ..., some n]`. -/
+theorem map_ofNat?_stringSequence {n : Nat} :
+    ((stringSequence n).split ' ').toList.map String.Slice.toNat? =
+      (0...=n).toList.map Option.some := by
+  rw [stringSequence, ← String.Slice.toNat?_comp_copy, ← List.map_map, intercalateIter_eq]
+  erw [String.Slice.toList_split_intercalate]
+  · rw [Std.Iter.toList_map]
+    simp
+  · rw [Std.Iter.toList_map]
+    simp only [Std.Rcc.toList_iter, List.mem_map, Function.comp_apply, ↓Char.isValue,
+      forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, String.copy_toSlice, Nat.toList_repr]
+    intro a ha h
+    simpa using Nat.isDigit_of_mem_toDigits (by decide) (by decide) h
 
 /-!
 ## Prompt
