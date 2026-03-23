@@ -1,7 +1,37 @@
 module
+import Std.Data.Iterators.Consumers.Set
+import Std.Data.Iterators.Lemmas.Consumers.Set
+import Std.Data.HashSet.Lemmas
 
-def count_distinct_characters : Unit :=
-  ()
+open Std
+
+def countDistinctCharacters (s : String) : Nat :=
+  (s.chars.map Char.toLower).toHashSet.size
+
+example : countDistinctCharacters "" = 0 := by native_decide
+example : countDistinctCharacters "abcde" = 5 := by native_decide
+example : countDistinctCharacters ("abcde" ++ "cade" ++ "CADE") = 5 := by native_decide
+example : countDistinctCharacters "aaaaAAAAaaaa" = 1 := by native_decide
+example : countDistinctCharacters "Jerry jERRY JeRRRY" = 5 := by native_decide
+
+theorem countDistinctCharacters_eq {s : String} :
+    countDistinctCharacters s = (HashSet.ofList (s.toList.map Char.toLower)).size := by
+  simp [countDistinctCharacters, Iter.toHashSet_equiv_ofList.size_eq]
+
+theorem countDistinctCharacters_empty : countDistinctCharacters "" = 0 := by
+  simp [countDistinctCharacters_eq]
+
+theorem countDistinctCharacters_push {s : String} {c : Char} :
+    countDistinctCharacters (s.push c) =
+      if c.toLower ∈ s.toList.map Char.toLower then
+        countDistinctCharacters s
+      else
+        countDistinctCharacters s + 1 := by
+  simp only [countDistinctCharacters_eq, String.toList_push, List.map_append, List.map_cons,
+    List.map_nil, List.mem_map]
+  rw [HashSet.ofList_equiv_foldl.size_eq, List.foldl_append, List.foldl_cons, List.foldl_nil,
+    HashSet.size_insert]
+  simp [← HashSet.ofList_equiv_foldl.mem_iff, ← HashSet.ofList_equiv_foldl.size_eq]
 
 /-!
 ## Prompt
