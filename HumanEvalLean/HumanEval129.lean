@@ -2,6 +2,7 @@ module
 
 import Std
 import all Init.Data.Range.Polymorphic.RangeIterator
+public meta import Std.Tactic.Do.Syntax
 open Std Std.Do
 
 set_option mvcgen.warning false
