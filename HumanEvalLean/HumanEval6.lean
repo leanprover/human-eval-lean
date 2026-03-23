@@ -127,3 +127,4 @@ def check(candidate):
     assert candidate('(()(())((())))') == [4]
 ```
 -/
+)
