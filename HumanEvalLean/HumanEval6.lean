@@ -30,7 +30,7 @@ theorem computeMaxDepth_eq {s : String.Slice} :
   generalize hwp : computeMaxDepth s = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  case inv => exact (⇓(pos, ⟨bal, maxBal⟩) => ⌜∀ (t₁ t₂ : String), pos.Splits t₁ t₂ →
+  case inv1 => exact (⇓(pos, ⟨bal, maxBal⟩) => ⌜∀ (t₁ t₂ : String), pos.Splits t₁ t₂ →
     bal = balance (parens '(' ')' t₁) ∧ maxBal = maxBalance (parens '(' ')' t₁)⌝)
   next pos _ hp bal minBal h newBal newMinBal ih =>
     simp only [↓Char.isValue, SPred.down_pure] at ⊢ ih

@@ -53,7 +53,7 @@ theorem goal {s : String} {hbal : IsBalanced (parens '(' ')' s)} :
   generalize hwp : separateParenGroups s = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  case vc1.inv => exact ⇓⟨pos, ⟨curr, depth, result⟩⟩ =>
+  case inv1 => exact ⇓⟨pos, ⟨curr, depth, result⟩⟩ =>
     ⌜∀ t₁ t₂, pos.Splits t₁ t₂ →
       result.toList.flatMap (parens '(' ')') ++ (parens '(' ')' curr) = parens '(' ')' t₁ ∧
       result.toList.flatMap String.toList ++ curr.toList = t₁.toList.filter (fun c => c = '(' ∨ c = ')') ∧

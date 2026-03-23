@@ -262,7 +262,7 @@ theorem isBalanced_eq_true_iff {openBracket closeBracket : Char} {s : String} (h
   generalize hwp : isBalanced openBracket closeBracket s = w
   apply Std.Do.Id.of_wp_run_eq hwp
   mvcgen
-  case inv =>
+  case inv1 =>
     exact Std.Do.StringInvariant.withEarlyReturn
       (fun pos depth => ⌜∀ t₁ t₂, pos.Splits t₁ t₂ → minBalance (parens openBracket closeBracket t₁) = 0 ∧ depth = balance (parens openBracket closeBracket t₁)⌝)
       (fun res depth => ⌜res = false ∧ ¬ IsBalanced (parens openBracket closeBracket s)⌝)
