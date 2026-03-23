@@ -1,5 +1,6 @@
 module
 import Std.Data.Iterators.Producers.Range
+import Std
 
 @[inline]
 def intercalateIter {α : Type} [Std.Iterator α Id String.Slice] [Std.IteratorLoop α Id Id]
@@ -18,8 +19,7 @@ theorem String.intercalate_append_of_ne_nil {l m : List String} {s : String} (hl
   induction l with
   | nil => simp_all
   | cons hd tl ih =>
-    simp
-    rw [String.intercalate_cons_of_ne_nil (by simp_all)]
+    rw [List.cons_append, String.intercalate_cons_of_ne_nil (by simp_all)]
     by_cases ht : tl = []
     · simp_all
     · simp [ih ht, String.intercalate_cons_of_ne_nil ht, String.append_assoc]
@@ -55,12 +55,24 @@ theorem intercalateIter_eq {α : Type} [Std.Iterator α Id String.Slice] [Std.It
         rw [← List.cons_append, String.intercalate_append_of_ne_nil (by simp) (by simp),
           String.intercalate_singleton]
 
-theorem map_ofNat?_stringSequence {n : Nat} :
-    ((stringSequence n).split ' ').toList.map (String.toNat? ∘ String.Slice.copy) =
-      (0...=n).toList.map Option.some := by
-  simp [stringSequence]
-  rw [intercalateIter_eq]q
+@[simp]
+theorem String.Slice.toNat?_comp_copy : String.toNat? ∘ String.Slice.copy = String.Slice.toNat? := by
+  ext; simp
 
+/-- Calling `stringSequence` and then splitting the result at space characters and attempting to
+parse the components into natural numbers yields the sequence `[some 0, some 1, ..., some n]`. -/
+theorem map_ofNat?_stringSequence {n : Nat} :
+    ((stringSequence n).split ' ').toList.map String.Slice.toNat? =
+      (0...=n).toList.map Option.some := by
+  rw [stringSequence, ← String.Slice.toNat?_comp_copy, ← List.map_map, intercalateIter_eq]
+  erw [String.Slice.toList_split_intercalate]
+  · rw [Std.Iter.toList_map]
+    simp
+  · rw [Std.Iter.toList_map]
+    simp only [Std.Rcc.toList_iter, List.mem_map, Function.comp_apply, ↓Char.isValue,
+      forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, String.copy_toSlice, Nat.toList_repr]
+    intro a ha h
+    simpa using Nat.isDigit_of_mem_toDigits (by decide) (by decide) h
 
 /-!
 ## Prompt
