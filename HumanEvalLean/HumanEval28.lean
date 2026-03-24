@@ -1,7 +1,12 @@
 module
 
-def concatenate : Unit :=
-  ()
+def concatenate (strings : List String) : String :=
+  String.join strings
+
+theorem toList_concatenate {strings : List String} :
+    (concatenate strings).toList = strings.flatMap String.toList := by
+  -- https://github.com/leanprover/lean4/pull/13091
+  simp [concatenate]
 
 /-!
 ## Prompt
