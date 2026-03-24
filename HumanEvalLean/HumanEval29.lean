@@ -1,7 +1,12 @@
 module
 
-def filter_by_prefix : Unit :=
-  ()
+def filterByPrefix (l : List String) (pref : String) : List String :=
+  l.filter (·.startsWith pref)
+
+open Classical in
+theorem filterByPrefix_eq {l : List String} {pref : String} :
+    filterByPrefix l pref = l.filter (fun s => pref.toList <+: s.toList) := by
+  simp [filterByPrefix, ← String.startsWith_string_iff]
 
 /-!
 ## Prompt
