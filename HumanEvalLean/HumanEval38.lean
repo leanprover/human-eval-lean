@@ -45,8 +45,7 @@ theorem getElem_encodeVector {arr : Vector α n} {i : Nat} {hi} :
         else
           arr[i + 1]
       else
-        arr[i]'(by simp_all)
-        := by
+        arr[i]'(by simp_all) := by
   generalize hwp : encodeVector arr = wp
   apply Id.of_wp_run_eq hwp
   mvcgen invariants
