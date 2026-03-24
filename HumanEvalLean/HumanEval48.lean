@@ -1,7 +1,22 @@
 module
+import Std
 
-def is_palindrome : Unit :=
-  ()
+open Std
+
+def isPalindrome (s : String) : Bool :=
+  s.chars.zip s.revChars |>.all (fun p => p.1 == p.2)
+
+example : isPalindrome "" = true := by native_decide
+example : isPalindrome "aba" = true := by native_decide
+example : isPalindrome "aaaaa" = true := by native_decide
+example : isPalindrome "zbcd" = false := by native_decide
+example : isPalindrome "xywyx" = true := by native_decide
+example : isPalindrome "xywyz" = false := by native_decide
+example : isPalindrome "xywxz" = false := by native_decide
+
+theorem isPalindome_iff {s : String} : isPalindrome s ↔ s.toList = s.toList.reverse := by
+  simp [isPalindrome, ← Iter.all_toList, List.mem_iff_getElem, List.ext_getElem_iff]
+  grind
 
 /-!
 ## Prompt
