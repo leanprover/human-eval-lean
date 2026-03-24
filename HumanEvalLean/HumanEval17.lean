@@ -4,9 +4,6 @@ import Std.Data.HashMap.Lemmas
 
 open Std
 
-instance : LawfulHashable String.Slice := sorry -- will be in the next nightly
-instance : EquivBEq String.Slice := sorry
-
 def parseMusic (musicString : String) : List Nat :=
   let noteMap : HashMap String.Slice Nat := .ofList [("o", 4), ("o|", 2), (".|", 1)]
   (musicString.split ' ').filterMap (noteMap[·]?) |>.toList
@@ -29,21 +26,6 @@ def noteForValue (value : Nat) (h : value = 1 ∨ value = 2 ∨ value = 4) : Str
 def formatMusic (l : List Nat) (hl : ∀ value ∈ l, value = 1 ∨ value = 2 ∨ value = 4) : String :=
   " ".intercalate ((l.attachWith _ hl).map (fun p => noteForValue p.1 p.2))
 
-@[simp]
-theorem String.copy_comp_toSlice : String.Slice.copy ∘ String.toSlice = id := by
-  ext; simp
-
-@[simp]
-theorem String.Slice.beq_list_iff {l l' : List String.Slice} : l == l' ↔ l.map String.Slice.copy = l'.map String.Slice.copy := by
-  induction l generalizing l' with
-  | nil => simp_all
-  | cons => cases l' <;> simp_all
-
-theorem String.toList_split_intercalate_beq {l : List String} (h : ∀ s ∈ l, ¬c ∈ s.toList) :
-    (((String.singleton c).intercalate l).split c).toList ==
-      if l = [] then ["".toSlice] else l.map String.toSlice := by
-  split <;> simp_all [String.toList_split_intercalate h]
-
 theorem List.filterMap_beq_congr [BEq α] {l l' : List α} {f : α → Option β}
     (hf : ∀ a a', a == a' → f a = f a') (hl : l == l') : l.filterMap f = l'.filterMap f := by
   induction l generalizing l' with
@@ -57,9 +39,10 @@ theorem List.filterMap_beq_congr [BEq α] {l l' : List α} {f : α → Option β
 
 theorem parseMusic_formatMusic {l : List Nat} {hl} : parseMusic (formatMusic l hl) = l := by
   rw [parseMusic, formatMusic, Iter.toList_filterMap]
-  -- TODO: use simproc from next nightly to avoid `erw`
-  erw [List.filterMap_beq_congr (fun _ _ => HashMap.getElem?_congr) (String.toList_split_intercalate_beq _)]
-  · simp
+  simp +instances only [String.reduceToSingleton]
+  rw [List.filterMap_beq_congr (fun _ _ => HashMap.getElem?_congr) (String.toList_split_intercalate_beq _)]
+  · simp only [↓Char.isValue, String.reduceSingleton, List.map_attachWith, List.map_eq_nil_iff,
+      List.attach_eq_nil_iff, List.map_map]
     by_cases hl : l = []
     · simp [hl]
     · simp [hl]
@@ -67,7 +50,7 @@ theorem parseMusic_formatMusic {l : List Nat} {hl} : parseMusic (formatMusic l h
       induction l with
       | nil => simp
       | cons ht tl ih =>
-        simp
+        simp only [List.attach_cons]
         rw [List.filterMap_cons_some (b := ht)]
         · simp only [List.filterMap_map, List.cons.injEq, true_and]
           apply ih
@@ -75,7 +58,8 @@ theorem parseMusic_formatMusic {l : List Nat} {hl} : parseMusic (formatMusic l h
         · simp
           obtain (rfl|rfl|rfl) := hl ht (by simp) <;>
             simp [noteForValue, HashMap.ofList_equiv_foldl.getElem_eq, HashMap.getElem_insert]
-  · simp
+  · simp only [List.map_attachWith, List.mem_map, List.mem_attach, true_and, Subtype.exists,
+      ↓Char.isValue, forall_exists_index]
     rintro _ val hval rfl
     obtain (rfl|rfl|rfl) := hl _ hval <;> simp [noteForValue]
 
