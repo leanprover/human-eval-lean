@@ -1,7 +1,37 @@
 module
 
-def decode_shift : Unit :=
-  ()
+def Char.shiftByFive (c : Char) : Char :=
+  Char.ofNat ((c.toNat - 'a'.toNat + 5) % 26 + 'a'.toNat)
+
+def Char.unshiftByFive (c : Char) : Char :=
+  Char.ofNat ((c.toNat - 'a'.toNat + 21) % 26 + 'a'.toNat)
+
+def encodeShift (s : String) : String :=
+  s.map Char.shiftByFive
+
+def decodeShift (s : String) : String :=
+  s.map Char.unshiftByFive
+
+@[simp]
+theorem Char.toNat_mk {val : UInt32} {h} : (Char.mk val h).toNat = val.toNat := by
+  simp [← toNat_val]
+
+theorem Char.toNat_ofNat_of_isValidChar {n : Nat} (h : n.isValidChar) : (Char.ofNat n).toNat = n := by
+  simp [ofNat, h, ofNatAux]
+
+@[simp]
+theorem Char.unshiftByFive_shiftByFive {c : Char} (hc : c.isLower) : c.shiftByFive.unshiftByFive = c := by
+  simp [Char.isLower, Char.shiftByFive, Char.unshiftByFive, UInt32.le_iff_toNat_le,
+    ← Char.toNat_inj] at *
+  grind [toNat_ofNat_of_isValidChar]
+
+theorem List.map_eq_self {f : α → α} {l : List α} (hf : ∀ a ∈ l, f a = a) : l.map f = l := by
+  induction l <;> grind
+
+theorem decodeShift_encodeShift (s : String) (hs : ∀ c ∈ s.toList, c.isLower) :
+    decodeShift (encodeShift s) = s := by
+  simpa [← String.toList_inj, decodeShift, encodeShift] using
+    List.map_eq_self (by grind [Char.unshiftByFive_shiftByFive])
 
 /-!
 ## Prompt
