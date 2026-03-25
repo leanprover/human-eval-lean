@@ -1,7 +1,30 @@
 module
 
-def digitSum : Unit :=
-  ()
+def digitSum (s : String) : Nat :=
+  s.chars.filter Char.isUpper
+    |>.map Char.toNat
+    |>.fold (init := 0) (· + ·)
+
+example : digitSum "" = 0 := by cbv
+example : digitSum "abAB" = 131 := by cbv
+example : digitSum "abcCd" = 67 := by cbv
+example : digitSum "helloE" = 69 := by cbv
+example : digitSum "woArBld" = 131 := by cbv
+example : digitSum "aAaaaXa" = 153 := by cbv
+
+theorem digitSum_eq {s : String} :
+    digitSum s = ((s.toList.filter Char.isUpper).map Char.toNat).sum := by
+  simp [digitSum, ← Std.Iter.foldl_toList, List.sum_eq_foldl]
+
+theorem digitSum_empty : digitSum "" = 0 := by simp [digitSum_eq]
+
+theorem digitSum_push_of_isUpper {s : String} {c : Char} (h : c.isUpper = true) :
+    digitSum (s.push c) = digitSum s + c.toNat := by
+  simp [digitSum_eq, List.filter_cons_of_pos h]
+
+theorem digitSum_push_of_isUpper_eq_false {s : String} {c : Char} (h : c.isUpper = false) :
+    digitSum (s.push c) = digitSum s := by
+  simp [digitSum_eq, List.filter_cons_of_neg (Bool.not_eq_true _ ▸ h)]
 
 /-!
 ## Prompt
