@@ -54,9 +54,8 @@ theorem fruitDistribution_intercalate_toString (l : List Word) (n : Nat) :
     fruitDistribution (" ".intercalate (l.map Word.toString)) n = n - (l.filterMap Word.toNat?).sum := by
   rw [fruitDistribution]
   simp +instances only [String.reduceToSingleton]
-  rw [← Std.Iter.foldl_toList, Std.Iter.toList_filterMap]
-  rw [← String.Slice.toNat?_comp_copy, ← List.filterMap_map,
-    String.toList_split_intercalate (by simp), ← List.sum_eq_foldl]
+  rw [← Std.Iter.foldl_toList, Std.Iter.toList_filterMap, ← String.Slice.toNat?_comp_copy,
+    ← List.filterMap_map, String.toList_split_intercalate (by simp), ← List.sum_eq_foldl]
   simp only [List.map_eq_nil_iff]
   split <;> simp_all
 
