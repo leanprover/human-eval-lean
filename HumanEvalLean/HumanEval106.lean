@@ -38,10 +38,10 @@ def f (n : Nat) : List Nat := Id.run do
 ### Tests
 -/
 
-example : f 5 = [1, 2, 6, 24, 15] := by native_decide
-example : f 7 = [1, 2, 6, 24, 15, 720, 28] := by native_decide
-example : f 1 = [1] := by native_decide
-example : f 3 = [1, 2, 6] := by native_decide
+example : f 5 = [1, 2, 6, 24, 15] := by cbv
+example : f 7 = [1, 2, 6, 24, 15, 720, 28] := by cbv
+example : f 1 = [1] := by cbv
+example : f 3 = [1, 2, 6] := by cbv
 
 /-!
 ### Verification
@@ -134,10 +134,10 @@ def f' (n : Nat) : Array Nat := Id.run do
 ### Tests
 -/
 
-example : f' 5 = #[1, 2, 6, 24, 15] := by native_decide
-example : f' 7 = #[1, 2, 6, 24, 15, 720, 28] := by native_decide
-example : f' 1 = #[1] := by native_decide
-example : f' 3 = #[1, 2, 6] := by native_decide
+example : f' 5 = #[1, 2, 6, 24, 15] := by cbv
+example : f' 7 = #[1, 2, 6, 24, 15, 720, 28] := by cbv
+example : f' 1 = #[1] := by cbv
+example : f' 3 = #[1, 2, 6] := by cbv
 
 /-!
 ### Verification
@@ -204,10 +204,10 @@ def f'' (n : Nat) : Array Nat := Id.run do
 ### Tests
 -/
 
-example : f'' 5 = #[1, 2, 6, 24, 15] := by native_decide
-example : f'' 7 = #[1, 2, 6, 24, 15, 720, 28] := by native_decide
-example : f'' 1 = #[1] := by native_decide
-example : f'' 3 = #[1, 2, 6] := by native_decide
+example : f'' 5 = #[1, 2, 6, 24, 15] := by cbv
+example : f'' 7 = #[1, 2, 6, 24, 15, 720, 28] := by cbv
+example : f'' 1 = #[1] := by cbv
+example : f'' 3 = #[1, 2, 6] := by cbv
 
 /-!
 ### Verification

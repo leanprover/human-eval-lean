@@ -9,13 +9,13 @@ def modp (n p : Nat) : Nat :=
 
 /-! ## Tests -/
 
-example : modp 3 5 = 3 := by native_decide
-example : modp 1101 101 = 2 := by native_decide
-example : modp 0 101 = 1 := by native_decide
-example : modp 3 11 = 8 := by native_decide
-example : modp 100 101 = 1 := by native_decide
-example : modp 30 5 = 4 := by native_decide
-example : modp 31 5 = 3 := by native_decide
+example : modp 3 5 = 3 := by cbv
+example : modp 1101 101 = 2 := by native_decide -- `cbv` reaches resource limits
+example : modp 0 101 = 1 := by cbv
+example : modp 3 11 = 8 := by cbv
+example : modp 100 101 = 1 := by cbv
+example : modp 30 5 = 4 := by cbv
+example : modp 31 5 = 3 := by cbv
 
 /-! ## Verification -/
 

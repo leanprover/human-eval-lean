@@ -30,9 +30,9 @@ def meanAbsoluteDeviation (xs : Array Rat) : Rat :=
 
 /-! ## Tests -/
 
-example : meanAbsoluteDeviation #[(1 : Rat), 2, 3] = (2 : Rat) / 3 := by native_decide
-example : meanAbsoluteDeviation #[(1 : Rat), 2, 3, 4] = 1 := by native_decide
-example : meanAbsoluteDeviation #[(1 : Rat), 2, 3, 4, 5] = (6 : Rat) / 5 := by native_decide
+example : meanAbsoluteDeviation #[(1 : Rat), 2, 3] = (2 : Rat) / 3 := by cbv
+example : meanAbsoluteDeviation #[(1 : Rat), 2, 3, 4] = 1 := by cbv
+example : meanAbsoluteDeviation #[(1 : Rat), 2, 3, 4, 5] = (6 : Rat) / 5 := by cbv
 
 /-!
 ## Verification

@@ -30,9 +30,9 @@ def filterIntegers (xs : Array Any): Array Int :=
 
 /-! ## Tests -/
 
-example : filterIntegers #[] = #[] := by native_decide
-example : filterIntegers #[.int 4, .float 23.2, .int 9, .string "adasd"] = #[4, 9] := by native_decide
-example : filterIntegers #[.int 3, .string "c", .int 3, .int 3, .string "a", .string "b"] = #[3, 3, 3] := by native_decide
+example : filterIntegers #[] = #[] := by cbv
+example : filterIntegers #[.int 4, .float 23.2, .int 9, .string "adasd"] = #[4, 9] := by cbv
+example : filterIntegers #[.int 3, .string "c", .int 3, .int 3, .string "a", .string "b"] = #[3, 3, 3] := by cbv
 
 /-! ## Verification -/
 

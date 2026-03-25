@@ -4,10 +4,10 @@ def filterBySubstring (strings : Array String) (substring : String) : Array Stri
   -- Uses KMP string search!
   strings.filter (·.contains substring)
 
-example : filterBySubstring #[] "john" = #[] := by native_decide
-example : filterBySubstring #["xxx", "asd", "xxy", "john doe", "xxxAAA", "xxx"] "xxx" = #["xxx", "xxxAAA", "xxx"] := by native_decide
-example : filterBySubstring #["xxx", "asd", "aaaxxy", "john doe", "xxxAAA", "xxx"] "xx" = #["xxx", "aaaxxy", "xxxAAA", "xxx"] := by native_decide
-example : filterBySubstring #["grunt", "trumpet", "prune", "gruesome"] "run" = #["grunt", "prune"] := by native_decide
+example : filterBySubstring #[] "john" = #[] := by cbv
+example : filterBySubstring #["xxx", "asd", "xxy", "john doe", "xxxAAA", "xxx"] "xxx" = #["xxx", "xxxAAA", "xxx"] := by cbv
+example : filterBySubstring #["xxx", "asd", "aaaxxy", "john doe", "xxxAAA", "xxx"] "xx" = #["xxx", "aaaxxy", "xxxAAA", "xxx"] := by cbv
+example : filterBySubstring #["grunt", "trumpet", "prune", "gruesome"] "run" = #["grunt", "prune"] := by cbv
 
 open Classical in
 theorem filterBySubstring_eq {strings : Array String} {substring : String} :

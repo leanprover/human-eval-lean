@@ -46,11 +46,11 @@ def largestPrimeFactor (n : Nat) : Nat := Id.run do
 
 /-! ## Tests -/
 
-example : largestPrimeFactor 15 = 5 := by native_decide
-example : largestPrimeFactor 27 = 3 := by native_decide
-example : largestPrimeFactor 63 = 7 := by native_decide
-example : largestPrimeFactor 330 = 11 := by native_decide
-example : largestPrimeFactor 13195 = 29 := by native_decide
+example : largestPrimeFactor 15 = 5 := by cbv
+example : largestPrimeFactor 27 = 3 := by cbv
+example : largestPrimeFactor 63 = 7 := by cbv
+example : largestPrimeFactor 330 = 11 := by native_decide -- `cbv` reaches resource limits
+example : largestPrimeFactor 13195 = 29 := by native_decide -- `cbv` reaches resource limits
 
 /-! ## Missing API -/
 

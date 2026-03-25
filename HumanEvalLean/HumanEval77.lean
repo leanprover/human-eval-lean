@@ -19,14 +19,14 @@ def isCube (x : Int) : Bool :=
 
 /-! ## Tests -/
 
-example : isCube 1 = true := by native_decide
-example : isCube 2 = false := by native_decide
-example : isCube (-1) = true := by native_decide
-example : isCube 64 = true := by native_decide
-example : isCube 180 = false := by native_decide
-example : isCube 1000 = true := by native_decide
-example : isCube 0 = true := by native_decide
-example : isCube 1729 = false := by native_decide
+example : isCube 1 = true := by cbv
+example : isCube 2 = false := by cbv
+example : isCube (-1) = true := by cbv
+example : isCube 64 = true := by cbv
+example : isCube 180 = false := by cbv
+example : isCube 1000 = true := by native_decide -- `cbv` reaches resource limits
+example : isCube 0 = true := by cbv
+example : isCube 1729 = false := by native_decide -- `cbv` reaches resource limits
 
 /-! ## Missing API -/
 

@@ -35,11 +35,11 @@ def sumToN' (n : Nat) : Nat :=
 
 /-! ## Tests 2 -/
 
-example : sumToN' 1 = 1 := by native_decide
-example : sumToN' 6 = 21 := by native_decide
-example : sumToN' 11 = 66 := by native_decide
-example : sumToN' 30 = 465 := by native_decide
-example : sumToN' 100 = 5050 := by native_decide
+example : sumToN' 1 = 1 := by cbv
+example : sumToN' 6 = 21 := by cbv
+example : sumToN' 11 = 66 := by cbv
+example : sumToN' 30 = 465 := by cbv
+example : sumToN' 100 = 5050 := by cbv
 
 /-! ## Verification 2 -/
 

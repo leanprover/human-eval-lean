@@ -16,11 +16,11 @@ def maxFill (grid : Vector (Vector Nat n) m) (capacity : Nat) : Nat :=
 # Tests
 -/
 
-example : maxFill #v[#v[0,0,1,0], #v[0,1,0,0], #v[1,1,1,1]]              1 = 6 := by native_decide
-example : maxFill #v[#v[0,0,1,1], #v[0,0,0,0], #v[1,1,1,1], #v[0,1,1,1]] 2 = 5 := by native_decide
-example : maxFill #v[#v[0,0,0],   #v[0,0,0]]                             5 = 0 := by native_decide
-example : maxFill #v[#v[1,1,1,1], #v[1,1,1,1]]                           2 = 4 := by native_decide
-example : maxFill #v[#v[1,1,1,1], #v[1,1,1,1]]                           9 = 2 := by native_decide
+example : maxFill #v[#v[0,0,1,0], #v[0,1,0,0], #v[1,1,1,1]]              1 = 6 := by cbv
+example : maxFill #v[#v[0,0,1,1], #v[0,0,0,0], #v[1,1,1,1], #v[0,1,1,1]] 2 = 5 := by cbv
+example : maxFill #v[#v[0,0,0],   #v[0,0,0]]                             5 = 0 := by cbv
+example : maxFill #v[#v[1,1,1,1], #v[1,1,1,1]]                           2 = 4 := by cbv
+example : maxFill #v[#v[1,1,1,1], #v[1,1,1,1]]                           9 = 2 := by cbv
 
 /-!
 ## Verification

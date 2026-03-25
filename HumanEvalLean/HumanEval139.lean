@@ -45,10 +45,10 @@ theorem special_factorial_func_correct {n : Nat} :
     apply this <;> simp [Nat.factorial, Nat.brazilianFactorial]
   intros; fun_induction special_factorial.go <;> grind [Nat.factorial, Nat.brazilianFactorial]
 
-theorem test1 : special_factorial 4 = 288 := by native_decide
-theorem test2 : special_factorial 5 = 34560 := by native_decide
-theorem test3 : special_factorial 7 = 125411328000 := by native_decide
-theorem test4 : special_factorial 1 = 1 := by native_decide
+theorem test1 : special_factorial 4 = 288 := by cbv
+theorem test2 : special_factorial 5 = 34560 := by cbv
+theorem test3 : special_factorial 7 = 125411328000 := by cbv
+theorem test4 : special_factorial 1 = 1 := by cbv
 
 /-!
 ## Prompt

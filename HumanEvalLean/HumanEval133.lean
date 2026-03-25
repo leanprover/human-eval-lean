@@ -5,18 +5,18 @@ def sumSquares (xs : List Rat) : Int :=
 
 /-! ## Tests -/
 
-example : sumSquares [1, 2, 3] = 14 := by native_decide
-example : sumSquares [1.0, 2, 3] = 14 := by native_decide
-example : sumSquares [1, 3, 5, 7] = 84 := by native_decide
-example : sumSquares [1.4, 4.2, 0] = 29 := by native_decide
-example : sumSquares [-2.4, 1, 1] = 6 := by native_decide
-example : sumSquares [100, 1, 15, 2] = 10230 := by native_decide
-example : sumSquares [10000, 10000] = 200000000 := by native_decide
-example : sumSquares [-1.4, 4.6, 6.3] = 75 := by native_decide
-example : sumSquares [-1.4, 17.9, 18.9, 19.9] = 1086 := by native_decide
-example : sumSquares [0] = 0 := by native_decide
-example : sumSquares [-1] = 1 := by native_decide
-example : sumSquares [-1, 1, 0] = 2 := by native_decide
+example : sumSquares [1, 2, 3] = 14 := by cbv
+example : sumSquares [1.0, 2, 3] = 14 := by cbv
+example : sumSquares [1, 3, 5, 7] = 84 := by cbv
+example : sumSquares [1.4, 4.2, 0] = 29 := by cbv
+example : sumSquares [-2.4, 1, 1] = 6 := by cbv
+example : sumSquares [100, 1, 15, 2] = 10230 := by cbv
+example : sumSquares [10000, 10000] = 200000000 := by cbv
+example : sumSquares [-1.4, 4.6, 6.3] = 75 := by cbv
+example : sumSquares [-1.4, 17.9, 18.9, 19.9] = 1086 := by cbv
+example : sumSquares [0] = 0 := by cbv
+example : sumSquares [-1] = 1 := by cbv
+example : sumSquares [-1, 1, 0] = 2 := by cbv
 
 /-!
 ## Verification

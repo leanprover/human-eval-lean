@@ -32,16 +32,16 @@ def isSimplePower (x n : Nat) : Bool :=
 ## Tests
 -/
 
-example : isSimplePower 16 2 = true := by native_decide
-example : isSimplePower 143214 16 = false := by native_decide
-example : isSimplePower 4 2 = true := by native_decide
-example : isSimplePower 9 3 = true := by native_decide
-example : isSimplePower 16 4 = true := by native_decide
-example : isSimplePower 24 2 = false := by native_decide
-example : isSimplePower 128 4 = false := by native_decide
-example : isSimplePower 12 6 = false := by native_decide
-example : isSimplePower 1 1 = true := by native_decide
-example : isSimplePower 1 12 = true := by native_decide
+example : isSimplePower 16 2 = true := by cbv
+example : isSimplePower 143214 16 = false := by cbv
+example : isSimplePower 4 2 = true := by cbv
+example : isSimplePower 9 3 = true := by cbv
+example : isSimplePower 16 4 = true := by cbv
+example : isSimplePower 24 2 = false := by cbv
+example : isSimplePower 128 4 = false := by cbv
+example : isSimplePower 12 6 = false := by cbv
+example : isSimplePower 1 1 = true := by cbv
+example : isSimplePower 1 12 = true := by cbv
 
 /-!
 ## Verification

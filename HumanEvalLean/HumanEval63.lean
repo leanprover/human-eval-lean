@@ -19,13 +19,13 @@ def fibfib (n : Nat) : Nat := Id.run do
 
 /-! ## Tests -/
 
-example : fibfib 2 = 1 := by native_decide
-example : fibfib 1 = 0 := by native_decide
-example : fibfib 5 = 4 := by native_decide
-example : fibfib 8 = 24 := by native_decide
-example : fibfib 10 = 81 := by native_decide
-example : fibfib 12 = 274 := by native_decide
-example : fibfib 14 = 927 := by native_decide
+example : fibfib 2 = 1 := by cbv
+example : fibfib 1 = 0 := by cbv
+example : fibfib 5 = 4 := by cbv
+example : fibfib 8 = 24 := by cbv
+example : fibfib 10 = 81 := by cbv
+example : fibfib 12 = 274 := by cbv
+example : fibfib 14 = 927 := by cbv
 
 /-! ## Missing API -/
 

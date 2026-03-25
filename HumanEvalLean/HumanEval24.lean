@@ -19,11 +19,11 @@ where
       | i + 2 => exact Nat.lt_of_lt_of_le (Nat.lt_mul_self_iff.2 (by omega)) (Nat.not_lt.1 h)
     omega
 
-example : largestDivisor 3 = 1 := by native_decide
-example : largestDivisor 7 = 1 := by native_decide
-example : largestDivisor 10 = 5 := by native_decide
-example : largestDivisor 100 = 50 := by native_decide
-example : largestDivisor 49 = 7 := by native_decide
+example : largestDivisor 3 = 1 := by cbv
+example : largestDivisor 7 = 1 := by cbv
+example : largestDivisor 10 = 5 := by cbv
+example : largestDivisor 100 = 50 := by cbv
+example : largestDivisor 49 = 7 := by cbv
 
 inductive LargestDivisorSpec (n : Nat) : Nat → Prop
   | one : (∀ j, 2 ≤ j → j * j ≤ n → n % j ≠ 0) → LargestDivisorSpec n 1

@@ -13,10 +13,10 @@ def getPositive (xs : Array Int): Array Int :=
 
 /-! ## Tests -/
 
-example : getPositive #[-1, -2, 4, 5, 6] = #[4, 5, 6] := by native_decide
-example : getPositive #[5, 3, -5, 2, 3, 3, 9, 0, 123, 1, -10] = #[5, 3, 2, 3, 3, 9, 123, 1] := by native_decide
-example : getPositive #[-1, -2] = #[] := by native_decide
-example : getPositive #[] = #[] := by native_decide
+example : getPositive #[-1, -2, 4, 5, 6] = #[4, 5, 6] := by cbv
+example : getPositive #[5, 3, -5, 2, 3, 3, 9, 0, 123, 1, -10] = #[5, 3, 2, 3, 3, 9, 123, 1] := by cbv
+example : getPositive #[-1, -2] = #[] := by cbv
+example : getPositive #[] = #[] := by cbv
 
 /-! ## Verification -/
 

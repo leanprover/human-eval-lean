@@ -28,15 +28,15 @@ public def triplesSumToZero (xs : Array Int) : Bool := Id.run do
 
 /-! ## Tests 1 -/
 
-example : triplesSumToZero #[1, 3, 5, 0] = false := by native_decide
-example : triplesSumToZero #[1, 3, 5, -1] = false := by native_decide
-example : triplesSumToZero #[1, 3, -2, 1] = true := by native_decide
-example : triplesSumToZero #[1, 2, 3, 7] = false := by native_decide
-example : triplesSumToZero #[1, 2, 5, 7] = false := by native_decide
-example : triplesSumToZero #[2, 4, -5, 3, 9, 7] = true := by native_decide
-example : triplesSumToZero #[1] = false := by native_decide
-example : triplesSumToZero #[1, 3, 5, -100] = false := by native_decide
-example : triplesSumToZero #[100, 3, 5, -100] = false := by native_decide
+example : triplesSumToZero #[1, 3, 5, 0] = false := by cbv
+example : triplesSumToZero #[1, 3, 5, -1] = false := by cbv
+example : triplesSumToZero #[1, 3, -2, 1] = true := by cbv
+example : triplesSumToZero #[1, 2, 3, 7] = false := by cbv
+example : triplesSumToZero #[1, 2, 5, 7] = false := by cbv
+example : triplesSumToZero #[2, 4, -5, 3, 9, 7] = true := by cbv
+example : triplesSumToZero #[1] = false := by cbv
+example : triplesSumToZero #[1, 3, 5, -100] = false := by cbv
+example : triplesSumToZero #[100, 3, 5, -100] = false := by cbv
 
 /-! ## Missing API -/
 
@@ -134,15 +134,15 @@ where
 
 /-! ## Tests 2 -/
 
-example : triplesSumToZero' #[1, 3, 5, 0] = false := by native_decide
-example : triplesSumToZero' #[1, 3, 5, -1] = false := by native_decide
-example : triplesSumToZero' #[1, 3, -2, 1] = true := by native_decide
-example : triplesSumToZero' #[1, 2, 3, 7] = false := by native_decide
-example : triplesSumToZero' #[1, 2, 5, 7] = false := by native_decide
-example : triplesSumToZero' #[2, 4, -5, 3, 9, 7] = true := by native_decide
-example : triplesSumToZero' #[1] = false := by native_decide
-example : triplesSumToZero' #[1, 3, 5, -100] = false := by native_decide
-example : triplesSumToZero' #[100, 3, 5, -100] = false := by native_decide
+example : triplesSumToZero' #[1, 3, 5, 0] = false := by cbv
+example : triplesSumToZero' #[1, 3, 5, -1] = false := by cbv
+example : triplesSumToZero' #[1, 3, -2, 1] = true := by cbv
+example : triplesSumToZero' #[1, 2, 3, 7] = false := by cbv
+example : triplesSumToZero' #[1, 2, 5, 7] = false := by cbv
+example : triplesSumToZero' #[2, 4, -5, 3, 9, 7] = true := by cbv
+example : triplesSumToZero' #[1] = false := by cbv
+example : triplesSumToZero' #[1, 3, 5, -100] = false := by cbv
+example : triplesSumToZero' #[100, 3, 5, -100] = false := by cbv
 
 /-! ## Verification 2 -/
 

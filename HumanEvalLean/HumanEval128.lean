@@ -68,14 +68,14 @@ def prodSigns (arr : List Int) : Option Int := do
 ## Tests
 -/
 
-example : prodSigns [1, 2, 2, -4] = some (-9) := by native_decide
-example : prodSigns [0, 1] = some 0 := by native_decide
-example : prodSigns [] = none := by native_decide
-example : prodSigns [1, 1, 1, 2, 3, -1, 1] = some (-10) := by native_decide
-example : prodSigns [2, 4, 1, 2, -1, -1, 9] = some 20 := by native_decide
-example : prodSigns [-1, 1, -1, 1] = some 4 := by native_decide
-example : prodSigns [-1, 1, 1, 1] = some (-4) := by native_decide
-example : prodSigns [-1, 1, 1, 0] = some 0 := by native_decide
+example : prodSigns [1, 2, 2, -4] = some (-9) := by cbv
+example : prodSigns [0, 1] = some 0 := by cbv
+example : prodSigns [] = none := by cbv
+example : prodSigns [1, 1, 1, 2, 3, -1, 1] = some (-10) := by cbv
+example : prodSigns [2, 4, 1, 2, -1, -1, 9] = some 20 := by cbv
+example : prodSigns [-1, 1, -1, 1] = some 4 := by cbv
+example : prodSigns [-1, 1, 1, 1] = some (-4) := by cbv
+example : prodSigns [-1, 1, 1, 0] = some 0 := by cbv
 
 /-!
 ## Verification

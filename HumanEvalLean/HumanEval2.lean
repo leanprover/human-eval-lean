@@ -13,9 +13,9 @@ def truncateNumber (x : Rat) : Rat :=
 ## Tests
 -/
 
-example : truncateNumber (7/2) = 1/2 := by native_decide
-example : truncateNumber (133/100) = 33/100 := by native_decide
-example : truncateNumber (123456/1000) = 456/1000 := by native_decide
+example : truncateNumber (7/2) = 1/2 := by cbv
+example : truncateNumber (133/100) = 33/100 := by cbv
+example : truncateNumber (123456/1000) = 456/1000 := by cbv
 
 /-!
 ## Verification

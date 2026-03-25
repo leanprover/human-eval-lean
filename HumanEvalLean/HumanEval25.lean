@@ -27,16 +27,16 @@ def factorize (x : Nat) : Array Nat :=
 
 /-! ## Tests -/
 
-example : factorize 2 = #[2] := by native_decide
-example : factorize 4 = #[2, 2] := by native_decide
-example : factorize 8 = #[2, 2, 2] := by native_decide
-example : factorize 25 = #[5, 5] := by native_decide
-example : factorize 70 = #[2, 5, 7] := by native_decide
-example : factorize 57 = #[3, 19] := by native_decide
-example : factorize 3249 = #[3, 3, 19, 19] := by native_decide
-example : factorize 185193 = #[3, 3, 3, 19, 19, 19] := by native_decide
-example : factorize 20577 = #[3, 19, 19, 19] := by native_decide
-example : factorize 18 = #[2, 3, 3] := by native_decide
+example : factorize 2 = #[2] := by cbv
+example : factorize 4 = #[2, 2] := by cbv
+example : factorize 8 = #[2, 2, 2] := by cbv
+example : factorize 25 = #[5, 5] := by cbv
+example : factorize 70 = #[2, 5, 7] := by cbv
+example : factorize 57 = #[3, 19] := by cbv
+example : factorize 3249 = #[3, 3, 19, 19] := by cbv
+example : factorize 185193 = #[3, 3, 3, 19, 19, 19] := by cbv
+example : factorize 20577 = #[3, 19, 19, 19] := by cbv
+example : factorize 18 = #[2, 3, 3] := by cbv
 
 /-! ## Verification -/
 

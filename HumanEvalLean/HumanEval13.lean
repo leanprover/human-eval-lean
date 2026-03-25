@@ -8,10 +8,10 @@ There is nothing to implement: The standard library provides `Int.gcd` out of th
 ## Tests
 -/
 
-example : Int.gcd 3 7 = 1 := by native_decide
-example : Int.gcd 10 15 = 5 := by native_decide
-example : Int.gcd 49 14 = 7 := by native_decide
-example : Int.gcd 144 60 = 12 := by native_decide
+example : Int.gcd 3 7 = 1 := by cbv
+example : Int.gcd 10 15 = 5 := by cbv
+example : Int.gcd 49 14 = 7 := by cbv
+example : Int.gcd 144 60 = 12 := by cbv
 
 /-!
 ## Verification
