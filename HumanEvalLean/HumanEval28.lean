@@ -1,7 +1,11 @@
 module
 
-def concatenate : Unit :=
-  ()
+def concatenate (strings : List String) : String :=
+  String.join strings
+
+theorem toList_concatenate {strings : List String} :
+    (concatenate strings).toList = strings.flatMap String.toList := by
+  simp [concatenate]
 
 /-!
 ## Prompt
