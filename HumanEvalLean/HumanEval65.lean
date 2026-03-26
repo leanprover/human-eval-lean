@@ -1,7 +1,46 @@
 module
+import Std
 
-def circular_shift : Unit :=
-  ()
+def reverse (s : String) : String :=
+  s.revChars.fold (init := "") String.push
+
+def shiftString (s : String) (i : Nat) : String :=
+  let p := s.startPos.nextn (s.length - i)
+  (s.sliceFrom p).copy ++ s.sliceTo p
+
+def circularShift (x shift : Nat) : String :=
+  let str := x.repr
+  if shift > str.length then
+    reverse str
+  else
+    shiftString str shift
+
+example : circularShift 12 1 = "21" := by native_decide
+example : circularShift 12 2 = "12" := by native_decide
+example : circularShift 100 2 = "001" := by native_decide
+example : circularShift 97 8 = "79" := by native_decide
+
+@[simp]
+theorem toList_reverse {s : String} : (reverse s).toList = s.toList.reverse := by
+  simp only [reverse, ne_eq, ← Std.Iter.foldl_toList, String.toList_revChars, List.foldl_reverse]
+  suffices ∀ (t : String), (s.toList.foldr (fun c s => s.push c) t).toList = t.toList ++ s.toList.reverse by
+    simpa using this ""
+  intro t
+  induction s.toList generalizing t with simp_all
+
+@[simp]
+theorem toList_shiftString {s : String} {i : Nat} :
+    (shiftString s i).toList = s.toList.drop (s.length - i) ++ s.toList.take (s.length - i) := by
+  have := s.splits_nextn_startPos (s.length - i)
+  simp [shiftString, this.copy_sliceFrom_eq, this.copy_sliceTo_eq]
+
+theorem toList_circularShift {x shift : Nat} : (circularShift x shift).toList =
+    if shift > x.repr.length then
+      x.repr.toList.reverse
+    else
+      x.repr.toList.drop (x.repr.length - shift) ++ x.repr.toList.take (x.repr.length - shift) := by
+  simp [circularShift, apply_ite String.toList]
+
 
 /-!
 ## Prompt
