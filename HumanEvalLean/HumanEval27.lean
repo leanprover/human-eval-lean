@@ -20,10 +20,6 @@ theorem toList_flipCase {string : String} : (flipCase string).toList = string.to
 
 namespace Char
 
-@[simp]
-theorem toNat_mk {val : UInt32} {h} : (Char.mk val h).toNat = val.toNat := by
-  simp [← toNat_val]
-
 theorem isUpper_flipCase {c : Char} : c.flipCase.isUpper ↔ c.isLower := by
   grind [flipCase, isUpper, isLower, toUpper, toLower]
 

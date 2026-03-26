@@ -3,7 +3,7 @@ import Std.Data.Iterators.Producers.Range
 import Std
 
 def stringSequence (n : Nat) : String :=
-  Std.Iter.intercalateString.{0} " " ((0...=n).iter.map (String.toSlice ∘ Nat.repr))
+  Std.Iter.intercalateString " " ((0...=n).iter.map (String.toSlice ∘ Nat.repr))
 
 example : stringSequence 0 = "0" := by native_decide
 example : stringSequence 3 = "0 1 2 3" := by native_decide
