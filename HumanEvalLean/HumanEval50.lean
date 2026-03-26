@@ -12,10 +12,6 @@ def encodeShift (s : String) : String :=
 def decodeShift (s : String) : String :=
   s.map Char.unshiftByFive
 
-@[simp]
-theorem Char.toNat_mk {val : UInt32} {h} : (Char.mk val h).toNat = val.toNat := by
-  simp [← toNat_val]
-
 theorem Char.toNat_ofNat_of_isValidChar {n : Nat} (h : n.isValidChar) : (Char.ofNat n).toNat = n := by
   simp [ofNat, h, ofNatAux]
 
