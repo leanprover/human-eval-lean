@@ -10,16 +10,9 @@ example : changeBase 16 2 = "10000" := by native_decide
 example : changeBase 8 2 = "1000" := by native_decide
 example : changeBase 7 2 = "111" := by native_decide
 
-namespace Nat
-
-theorem ofDigitChars_toDigits' {b n : Nat} (hb' : 1 < b) (hb : b ≤ 10) : ofDigitChars b (toDigits b n) 0 = n := by
-  sorry -- https://github.com/leanprover/lean4/pull/13098
-
-end Nat
-
 theorem ofDigitChars_changeBase {x : Nat} {base : Nat} (hb' : 1 < base) (hb : base ≤ 10) :
     Nat.ofDigitChars base (changeBase x base).toList 0 = x := by
-  simp [changeBase, Nat.ofDigitChars_toDigits' hb' hb]
+  simp [changeBase, Nat.ofDigitChars_toDigits hb' hb]
 
 /-!
 ## Prompt
