@@ -1,7 +1,44 @@
 module
 
-def decimal_to_binary : Unit :=
-  ()
+def decimalToBinary (n : Nat) : String :=
+  "db" ++ String.ofList (Nat.toDigits 2 n) ++ "db"
+
+example : decimalToBinary 0 = "db0db" := by native_decide
+example : decimalToBinary 15 = "db1111db" := by native_decide
+example : decimalToBinary 32 = "db100000db" := by native_decide
+example : decimalToBinary 103 = "db1100111db" := by native_decide
+
+section
+
+open String.Slice.Pattern
+
+@[simp]
+theorem String.dropPrefix?_eq_none_iff {ρ : Type} {pat : ρ} [ForwardPattern pat] [LawfulForwardPattern pat]
+    {s : String} : s.dropPrefix? pat = none ↔ s.startsWith pat = false := by
+  simp [dropPrefix?_eq_dropPrefix?_toSlice, startsWith_eq_startsWith_toSlice]
+
+public instance {pat : String.Slice} : LawfulForwardPattern pat := sorry
+public instance {pat : String} : LawfulForwardPattern pat := sorry
+
+
+end
+
+theorem toNat?_decimalToBinary {n : Nat} :
+    ((decimalToBinary n).dropPrefix? "db").any
+      (fun withoutPrefix => (withoutPrefix.dropSuffix? "db").any
+          (fun withoutSuffix => Nat.ofDigitChars b withoutSuffix.copy.toList 0 == n)) := by
+  simp [decimalToBinary, Option.any_eq_true]
+  match h : ("db" ++ String.ofList (Nat.toDigits 2 n) ++ "db").dropPrefix? "db" with
+  | none => simp at h
+  | some y =>
+    simp
+    have := String.eq_append_of_dropPrefix?_string_eq_some h
+    match h' : y.dropSuffix? "db" with
+    | none => simp at h'
+    | some y' => sorry
+
+
+
 
 /-!
 ## Prompt
