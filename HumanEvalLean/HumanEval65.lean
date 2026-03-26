@@ -28,10 +28,6 @@ theorem toList_reverse {s : String} : (reverse s).toList = s.toList.reverse := b
   intro t
   induction s.toList generalizing t with simp_all
 
-theorem String.splits_nextn_startPos (s : String) (n : Nat) :
-    (s.startPos.nextn n).Splits (String.ofList (s.toList.take n)) (String.ofList (s.toList.drop n)) :=
-  sorry -- https://github.com/leanprover/lean4/pull/13106
-
 @[simp]
 theorem toList_shiftString {s : String} {i : Nat} :
     (shiftString s i).toList = s.toList.drop (s.length - i) ++ s.toList.take (s.length - i) := by
