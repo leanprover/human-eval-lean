@@ -18,11 +18,11 @@ def RemoveVowelsIff (solution : String → String) : Prop :=
 def removeVowels (s : String) : String :=
     String.ofList (s.toList.filter (· ∉ vowels))
 
-example : removeVowels "abcdef" = "bcdf" := by native_decide
-example : removeVowels "abcdef\nghijklm" = "bcdf\nghjklm" := by native_decide
-example : removeVowels "aaaaa" = "" := by native_decide
-example : removeVowels "aaBAA" = "B" := by native_decide
-example : removeVowels "zbcd" = "zbcd" := by native_decide
+example : removeVowels "abcdef" = "bcdf" := by cbv
+example : removeVowels "abcdef\nghijklm" = "bcdf\nghjklm" := by cbv
+example : removeVowels "aaaaa" = "" := by cbv
+example : removeVowels "aaBAA" = "B" := by cbv
+example : removeVowels "zbcd" = "zbcd" := by cbv
 
 theorem IsSubseq.length_le {s t : String} (hst : IsSubseq s t) :
     s.length ≤ t.length :=

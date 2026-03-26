@@ -37,9 +37,9 @@ def longest? (xs : List String) : Option String :=
 ## Tests
 -/
 
-example : longest? [] = none := by native_decide
-example : longest? ["x", "y", "z"] = some "x" := by native_decide
-example : longest? ["x", "yyy", "zzzz", "www", "kkkk", "abc"] = some "zzzz" := by native_decide
+example : longest? [] = none := by cbv
+example : longest? ["x", "y", "z"] = some "x" := by cbv
+example : longest? ["x", "yyy", "zzzz", "www", "kkkk", "abc"] = some "zzzz" := by cbv
 
 /-!
 ## Verification

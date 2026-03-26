@@ -17,9 +17,9 @@ def removeDuplicates (xs : Array Int) : Array Int :=
 
 /-! ## Tests -/
 
-example : removeDuplicates #[] = #[] := by native_decide
-example : removeDuplicates #[1, 2, 3, 4] = #[1, 2, 3, 4] := by native_decide
-example : removeDuplicates #[1, 2, 3, 2, 4, 3, 5] = #[1, 4, 5] := by native_decide
+example : removeDuplicates #[] = #[] := by cbv
+example : removeDuplicates #[1, 2, 3, 4] = #[1, 2, 3, 4] := by cbv
+example : removeDuplicates #[1, 2, 3, 2, 4, 3, 5] = #[1, 4, 5] := by cbv
 
 /-! ## Missing API -/
 

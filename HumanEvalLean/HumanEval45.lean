@@ -7,9 +7,9 @@ def triangleArea (a h : Rat) : Rat :=
 
 /-! ## Tests -/
 
-example : triangleArea 5 3 = 7.5 := by native_decide
-example : triangleArea 2 2 = 2.0 := by native_decide
-example : triangleArea 10 8 = 40.0 := by native_decide
+example : triangleArea 5 3 = 7.5 := by cbv
+example : triangleArea 2 2 = 2.0 := by cbv
+example : triangleArea 10 8 = 40.0 := by cbv
 
 /-!
 ## Verification

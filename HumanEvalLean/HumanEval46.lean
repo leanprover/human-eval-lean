@@ -15,10 +15,10 @@ def fib4 (n : Nat) : Nat := Id.run do
 
 /-! ## Tests -/
 
-example : fib4 5 = 4 := by native_decide
-example : fib4 8 = 28 := by native_decide
-example : fib4 10 = 104 := by native_decide
-example : fib4 12 = 386 := by native_decide
+example : fib4 5 = 4 := by cbv
+example : fib4 8 = 28 := by cbv
+example : fib4 10 = 104 := by cbv
+example : fib4 12 = 386 := by cbv
 
 /-! ## Missing API -/
 
