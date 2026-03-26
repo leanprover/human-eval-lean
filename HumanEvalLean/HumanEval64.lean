@@ -22,9 +22,6 @@ example : vowelsCount "keY" = 2 := by native_decide
 example : vowelsCount "bYe" = 1 := by native_decide
 example : vowelsCount "ACEDY" = 3 := by native_decide
 
-theorem String.back?_eq {s : String} : s.back? = s.toList.getLast? :=
-  sorry -- https://github.com/leanprover/lean4/pull/13105
-
 theorem vowelsCount_eq {s : String} :
     vowelsCount s = (s.toList.filter (· ∈ vowelsList)).length +
       (if s.toList.getLast? = some 'y' ∨ s.toList.getLast? = some 'Y' then 1 else 0) := by
