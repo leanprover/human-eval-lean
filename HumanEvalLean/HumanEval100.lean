@@ -19,23 +19,23 @@ def makeAPile₂ (n : Nat) : List Nat :=
 ## Tests
 -/
 
-example : makeAPile₁ 0 = [] := by native_decide
-example : makeAPile₁ 1 = [1] := by native_decide
-example : makeAPile₁ 2 = [2, 4] := by native_decide
-example : makeAPile₁ 3 = [3, 5, 7] := by native_decide
-example : makeAPile₁ 4 = [4, 6, 8, 10] := by native_decide
-example : makeAPile₁ 5 = [5, 7, 9, 11, 13] := by native_decide
-example : makeAPile₁ 6 = [6, 8, 10, 12, 14, 16] := by native_decide
-example : makeAPile₁ 8 = [8, 10, 12, 14, 16, 18, 20, 22] := by native_decide
+example : makeAPile₁ 0 = [] := by cbv
+example : makeAPile₁ 1 = [1] := by cbv
+example : makeAPile₁ 2 = [2, 4] := by cbv
+example : makeAPile₁ 3 = [3, 5, 7] := by cbv
+example : makeAPile₁ 4 = [4, 6, 8, 10] := by cbv
+example : makeAPile₁ 5 = [5, 7, 9, 11, 13] := by cbv
+example : makeAPile₁ 6 = [6, 8, 10, 12, 14, 16] := by cbv
+example : makeAPile₁ 8 = [8, 10, 12, 14, 16, 18, 20, 22] := by cbv
 
-example : makeAPile₂ 0 = [] := by native_decide
-example : makeAPile₂ 1 = [1] := by native_decide
-example : makeAPile₂ 2 = [2, 4] := by native_decide
-example : makeAPile₂ 3 = [3, 5, 7] := by native_decide
-example : makeAPile₂ 4 = [4, 6, 8, 10] := by native_decide
-example : makeAPile₂ 5 = [5, 7, 9, 11, 13] := by native_decide
-example : makeAPile₂ 6 = [6, 8, 10, 12, 14, 16] := by native_decide
-example : makeAPile₂ 8 = [8, 10, 12, 14, 16, 18, 20, 22] := by native_decide
+example : makeAPile₂ 0 = [] := by cbv
+example : makeAPile₂ 1 = [1] := by cbv
+example : makeAPile₂ 2 = [2, 4] := by cbv
+example : makeAPile₂ 3 = [3, 5, 7] := by cbv
+example : makeAPile₂ 4 = [4, 6, 8, 10] := by cbv
+example : makeAPile₂ 5 = [5, 7, 9, 11, 13] := by cbv
+example : makeAPile₂ 6 = [6, 8, 10, 12, 14, 16] := by cbv
+example : makeAPile₂ 8 = [8, 10, 12, 14, 16, 18, 20, 22] := by cbv
 
 /-!
 ## Verification
