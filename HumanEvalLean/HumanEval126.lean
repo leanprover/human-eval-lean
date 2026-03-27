@@ -31,19 +31,19 @@ def isSorted (xs : Array Nat) : Bool := Id.run do
 ## Tests
 -/
 
-example : isSorted #[5] = true := by native_decide
-example : isSorted #[1, 2, 3, 4, 5] = true := by native_decide
-example : isSorted #[1, 3, 2, 4, 5] = false := by native_decide
-example : isSorted #[1, 2, 3, 4, 5, 6] = true := by native_decide
-example : isSorted #[1, 2, 3, 4, 5, 6, 7] = true := by native_decide
-example : isSorted #[1, 3, 2, 4, 5, 6, 7] = false := by native_decide
-example : isSorted #[] = true := by native_decide
-example : isSorted #[1] = true := by native_decide
-example : isSorted #[3, 2, 1] = false := by native_decide
-example : isSorted #[1, 2, 2, 2, 3, 4] = false := by native_decide
-example : isSorted #[1, 2, 3, 3, 3, 4] = false := by native_decide
-example : isSorted #[1, 2, 2, 3, 3, 4] = true := by native_decide
-example : isSorted #[1, 2, 3, 4] = true := by native_decide
+example : isSorted #[5] = true := by cbv
+example : isSorted #[1, 2, 3, 4, 5] = true := by cbv
+example : isSorted #[1, 3, 2, 4, 5] = false := by cbv
+example : isSorted #[1, 2, 3, 4, 5, 6] = true := by cbv
+example : isSorted #[1, 2, 3, 4, 5, 6, 7] = true := by cbv
+example : isSorted #[1, 3, 2, 4, 5, 6, 7] = false := by cbv
+example : isSorted #[] = true := by cbv
+example : isSorted #[1] = true := by cbv
+example : isSorted #[3, 2, 1] = false := by cbv
+example : isSorted #[1, 2, 2, 2, 3, 4] = false := by cbv
+example : isSorted #[1, 2, 3, 3, 3, 4] = false := by cbv
+example : isSorted #[1, 2, 2, 3, 3, 4] = true := by cbv
+example : isSorted #[1, 2, 3, 4] = true := by cbv
 
 /-!
 ## Missing API

@@ -6,13 +6,13 @@ open Std
 def isPalindrome (s : String) : Bool :=
   s.chars.zip s.revChars |>.all (fun p => p.1 == p.2)
 
-example : isPalindrome "" = true := by native_decide
-example : isPalindrome "aba" = true := by native_decide
-example : isPalindrome "aaaaa" = true := by native_decide
-example : isPalindrome "zbcd" = false := by native_decide
-example : isPalindrome "xywyx" = true := by native_decide
-example : isPalindrome "xywyz" = false := by native_decide
-example : isPalindrome "xywxz" = false := by native_decide
+example : isPalindrome "" = true := by cbv
+example : isPalindrome "aba" = true := by cbv
+example : isPalindrome "aaaaa" = true := by cbv
+example : isPalindrome "zbcd" = false := by cbv
+example : isPalindrome "xywyx" = true := by cbv
+example : isPalindrome "xywyz" = false := by cbv
+example : isPalindrome "xywxz" = false := by cbv
 
 theorem isPalindome_iff {s : String} : isPalindrome s ↔ s.toList = s.toList.reverse := by
   simp [isPalindrome, ← Iter.all_toList, List.mem_iff_getElem, List.ext_getElem_iff]

@@ -7,8 +7,8 @@ def maxElement (xs : Array Int) : Int :=
 
 /-! ## Tests -/
 
-example : maxElement #[1, 2, 3] = 3 := by native_decide
-example : maxElement #[5, 3, -5, 2, -3, 3, 9, 0, 124, 1, -10] = 124 := by native_decide
+example : maxElement #[1, 2, 3] = 3 := by cbv
+example : maxElement #[5, 3, -5, 2, -3, 3, 9, 0, 124, 1, -10] = 124 := by cbv
 
 /-! ## Verification -/
 
